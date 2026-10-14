@@ -1,6 +1,6 @@
 // Word: notes and a colour-marking keyboard. Everything stays in this browser.
 
-import { fittingSets, letterSets, zeroGuesses } from "./helpers.js";
+import { fittingSets, knownLetters, zeroGuesses } from "./helpers.js";
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -12,6 +12,7 @@ const $ = (id) => document.getElementById(id);
 //              helper: "" | "basic" | "advanced", how much to work out from the counts } ---
 
 let state = load();
+let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
 
 function load() {
   const empty = { notes: [], colours: {}, secret: "", helper: "" };
@@ -33,7 +34,7 @@ function update(change) {
 // --- Actions ---
 
 function cycleColour(letter) {
-  if (deduce().known[letter]) return; // the helper has settled this letter, so it stays put
+  if (settled[letter]) return; // the helper has settled this letter, so it stays put
   update(() => {
     const next = NEXT_COLOUR[state.colours[letter] || ""];
     if (next) state.colours[letter] = next;
@@ -60,8 +61,14 @@ function deleteNote(note) {
 
 function newGame() {
   if (confirm("Clear your word, guesses and key colours?")) {
+    showSecret(false);
     update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper }));
   }
+}
+
+function showSecret(show) {
+  $("secret").type = show ? "text" : "password";
+  $("reveal").textContent = show ? "Hide" : "Show";
 }
 
 const HELPER_QUESTIONS = {
@@ -81,7 +88,7 @@ function deduce() {
   if (state.helper === "basic") return { known: zeroGuesses(state.notes) };
   if (state.helper === "advanced") {
     const fitting = fittingSets(state.notes);
-    return { known: letterSets(fitting, state.colours), fitting };
+    return { known: knownLetters(fitting, state.colours), fitting };
   }
   return { known: {} };
 }
@@ -128,27 +135,25 @@ function buildControls() {
   $("word").addEventListener("input", (event) => {
     event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
     showMessage("");
-    render();
+    $("counts").classList.toggle("ready", event.target.value.length === 4);
   });
   $("secret").addEventListener("input", (event) => {
     event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
     update(() => (state.secret = event.target.value.toLowerCase()));
   });
-  $("reveal").addEventListener("click", () => {
-    const hidden = $("secret").type === "password";
-    $("secret").type = hidden ? "text" : "password";
-    $("reveal").textContent = hidden ? "Hide" : "Show";
-  });
+  $("reveal").addEventListener("click", () => showSecret($("secret").type === "password"));
   $("reset").addEventListener("click", newGame);
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
 }
 
 function render() {
-  $("secret").value = state.secret;
+  // Only write the secret back when it differs, so typing doesn't jump the cursor to the end.
+  if ($("secret").value.toLowerCase() !== state.secret) $("secret").value = state.secret;
   $("helper").value = state.helper;
   document.body.classList.toggle("dark", state.helper === "advanced");
   $("counts").classList.toggle("ready", $("word").value.length === 4);
   const { known, fitting } = deduce();
+  settled = known;
   $("progress").hidden = !fitting;
   if (fitting) $("progress").textContent = progress(fitting);
   const colour = (letter) => (known[letter] ? `${known[letter]} locked` : state.colours[letter] || "");

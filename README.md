@@ -2,8 +2,14 @@
 
 A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the phone's browser over the home Wi-Fi.
 
+## Rules
+1. Each of you picks a secret 4-letter word.
+2. Take turns guessing the other's word with any 4-letter word.
+3. The other says how many letters of the guess are in their word. Where a letter sits doesn't matter, and a repeated letter counts once: against RACK, TART scores 2 (R and A), and can never score 4.
+4. First to guess the other's word wins.
+
 ## What it does
-You play the game out loud: each of you picks a secret word and tells the other how many letters their guess got right. The app never checks the secret words. It just helps you keep track:
+You play out loud; the app never checks the secret words or the scores. It just helps you keep track:
 
 - **Your word:** type your secret word at the bottom of the page. It's hidden as dots; tap **Show** to reveal it to the other player.
 - **Note your guesses:** type the word, tap **0–4** for how many letters were correct. Tap **×** to remove one (asks first).
@@ -14,7 +20,9 @@ You play the game out loud: each of you picks a secret word and tells the other 
   - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many sets are left, and the letters once only one fits.
 - **New game** clears everything, including your word.
 
-Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. The server only hands out the page; after that each phone works on its own.
+Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. The page itself still comes from the server, so keep it running while you play.
+
+Browser storage belongs to the exact address, like `http://192.168.1.23:8501`. If the address changes (a new IP from the router, another port, the Mac instead of the Pi), the page opens empty; the old notes are still there under the old address. Give the Pi a fixed IP in your router's settings so it always gets the same one.
 
 ## Run
 Needs [uv](https://docs.astral.sh/uv/) (on the Pi: `curl -LsSf https://astral.sh/uv/install.sh | sh`). Then:
@@ -33,7 +41,7 @@ rm -rf .venv && mkdir .venv.nosync && ln -s .venv.nosync .venv && uv sync
 Or move the project out of `~/Desktop`.
 
 ## How it works
-The server only hands out a few static files; once a phone has them, it never talks to the server again.
+The server only hands out a few static files. Each time the page opens, the phone asks whether they changed (a quick "not modified" if not), so updates show up on the next refresh. Everything else happens on the phone. The Poppins font comes from Google Fonts, so the Wi-Fi needs internet for it.
 - `src/word/static/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`) and `helpers.js` (the helper logic). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
 - `src/word/__init__.py`: the `word` command, serving that folder with Python's built-in `http.server`.
 

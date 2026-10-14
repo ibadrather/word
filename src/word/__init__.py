@@ -1,5 +1,6 @@
 """Serves the static notes page. Everything else happens in the browser."""
 
+import argparse
 import contextlib
 import logging
 import socket
@@ -7,8 +8,6 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import override
-
-import click
 
 STATIC = Path(__file__).parent / "static"
 ALL_INTERFACES = "0.0.0.0"  # noqa: S104 - phones on the home Wi-Fi must reach it
@@ -27,7 +26,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     @override
     def end_headers(self) -> None:
-        self.send_header("Cache-Control", "no-store")  # always serve the latest version
+        # Phones check for a newer version on each load (a quick 304 if unchanged).
+        self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
     @override
@@ -55,10 +55,19 @@ def lan_ip() -> str:
             return "127.0.0.1"
 
 
-@click.command()
-@click.option("--port", "-p", default=8501, show_default=True, help="Port to serve on.")
-def main(port: int) -> None:
+def main() -> None:
     """Start the Word notes page."""
+    parser = argparse.ArgumentParser(
+        prog="word", description="Start the Word notes page."
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=8501,
+        help="port to serve on (default: %(default)s)",
+    )
+    port: int = parser.parse_args().port
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S"
     )

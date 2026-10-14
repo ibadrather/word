@@ -28,13 +28,14 @@ function allSets(chosen, from) {
 }
 
 // The letter sets (like "ackr") that give every guess its count.
+// knownLetters then says which letters those sets settle as "in" or "out".
 export function fittingSets(notes) {
   return LETTER_SETS.filter((set) =>
     notes.every(({ word, count }) => [...new Set(word)].filter((letter) => set.includes(letter)).length === count),
   );
 }
 
-export function letterSets(fitting, colours) {
+export function knownLetters(fitting, colours) {
   const marks = Object.entries(colours).filter(([, colour]) => colour !== "unsure");
   const known = {};
   for (const letter of ALPHABET) {
