@@ -1,4 +1,4 @@
-/* Colours from the Edreate palette (edreate/static/css/global.css), plus a clear green for correct */
+/* Colours from the Edreate palette (edreate/static/css/global.css), plus clear red/yellow/green marks */
 :root {
   color-scheme: light;
   --bg: #ffffff;
@@ -10,7 +10,7 @@
   --accent: #4531cc;
   --in: #16a34a;
   --out: #dc2626;
-  --unsure: #fcf3d1;
+  --unsure: #facc15;
   --error: #dc2626;
 }
 
@@ -20,9 +20,10 @@ body.dark {
   --bg: #121212;
   --fg: #f2f2f2;
   --muted: #9ca3af;
-  --line: #333333;
+  --line: #2e2e30;
   --key: #3a3a3c;
   --heading: #a497ff;
+  --error: #f87171;
 }
 
 * { box-sizing: border-box; }
@@ -34,12 +35,47 @@ body {
   font: 16px/1.4 "Poppins", system-ui, -apple-system, sans-serif;
 }
 
-main { max-width: 480px; margin: 0 auto; padding: 12px 8px 48px; }
+main { max-width: 480px; margin: 0 auto; padding: 12px 16px 48px; }
 
-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.actions { display: flex; gap: 6px; }
-h1 { font-size: 1.3rem; margin: 0; color: var(--heading); }
-h2 { font-size: 1rem; margin: 20px 0 6px; }
+/* Header: logo, mode, New game on one line */
+header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+
+/* Logo: WORD as a 2×2 block of tiles in the four marking colours */
+.logo { display: grid; grid-template-columns: repeat(2, 20px); gap: 2px; flex: none; margin: 0; }
+.logo b {
+  display: grid;
+  place-items: center;
+  height: 20px;
+  border-radius: 4px;
+  font-size: .7rem;
+  line-height: 1;
+}
+.logo b:not([class]) { background: var(--key); color: var(--fg); }
+
+/* Mode: a soft accent pill with its own chevron */
+.mode {
+  flex: 0 1 auto;
+  min-width: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 8px 26px 8px 12px;
+  border: 0;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg))
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%234531cc' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat right 10px center / 10px;
+  color: var(--accent);
+  font-size: .85rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+.mode:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body.dark .mode {
+  background-color: color-mix(in srgb, var(--heading) 18%, var(--bg));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a497ff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  color: var(--heading);
+}
+h2 { margin: 28px 0 8px; font-size: .95rem; }
 
 button, select {
   font: inherit;
@@ -50,16 +86,17 @@ button, select {
 }
 
 .pill {
-  padding: 6px 14px;
+  padding: 6px 16px;
   border: 2px solid var(--line);
   border-radius: 20px;
   background: transparent;
   font-weight: 600;
 }
-#helper { max-width: 9.5em; }
+.link { flex: none; margin-left: auto; padding: 6px 0; border: 0; background: none; font-size: .9rem; font-weight: 600; color: var(--accent); }
+body.dark .link { color: var(--heading); }
 
-.hint { margin: 8px 0 6px; text-align: center; font-size: .85rem; color: var(--muted); }
-.msg { min-height: 1.4em; margin: 6px 0; text-align: center; font-weight: 600; color: var(--error); }
+.label { margin: 14px 0 8px; font-size: .9rem; font-weight: 600; text-align: center; }
+.msg { min-height: 1.4em; margin: 4px 0; text-align: center; font-size: .9rem; font-weight: 600; color: var(--error); }
 
 /* Word entry */
 #word, .secret input {
@@ -67,7 +104,7 @@ button, select {
   width: 100%;
   padding: 12px;
   border: 2px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   font-size: 1.5rem;
@@ -76,29 +113,36 @@ button, select {
   text-transform: uppercase;
   letter-spacing: .3em;
 }
+#word:focus, .secret input:focus { outline: none; border-color: var(--accent); }
+#word::placeholder, .secret input::placeholder { color: var(--muted); font-weight: 600; letter-spacing: normal; text-transform: none; }
 
-.secret { display: flex; gap: 8px; margin-top: 24px; }
+.secret { display: flex; gap: 8px; }
 .secret input { flex: 1; min-width: 0; padding: 8px; font-size: 1.2rem; }
 
+/* Score buttons stay dim until the guess has 4 letters */
 .counts { display: flex; gap: 8px; }
 .counts button {
   flex: 1;
   height: 52px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--accent);
   color: #fff;
   font-size: 1.4rem;
   font-weight: 700;
+  transition: opacity .15s;
 }
+.counts:not(.ready) button { opacity: .35; }
+.counts button:active { filter: brightness(.85); }
 
 /* Keyboard and letter tiles share the same colours */
-.keyboard { margin-top: 8px; user-select: none; -webkit-user-select: none; }
+.keyboard { user-select: none; -webkit-user-select: none; }
 .row { display: flex; gap: 4px; margin-bottom: 6px; }
 .row:nth-child(2) { padding: 0 5%; }
 .row:nth-child(3) { padding: 0 15%; }
 
 .key, .tile {
+  position: relative;
   padding: 0;
   border: 0;
   border-radius: 6px;
@@ -114,9 +158,46 @@ button, select {
 .out { background: var(--out); color: #fff; }
 .unsure { background: var(--unsure); color: #0c0c0c; }
 
-/* Guess list */
+/* A helper-settled letter gets a dot: tapping it does nothing */
+.locked::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .7;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+  font-size: .8rem;
+  color: var(--muted);
+}
+.legend span { display: inline-flex; align-items: center; gap: 4px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; }
+
+/* Guess list: newest first, the score in a circle */
 .notes { margin: 0; padding: 0; list-style: none; }
 .notes li { display: flex; align-items: center; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-.notes .empty { color: var(--muted); }
-.score { margin-left: auto; min-width: 2ch; font-size: 1.4rem; font-weight: 700; text-align: center; }
+.notes li:last-child { border-bottom: 0; }
+.notes .empty { padding: 12px 0; color: var(--muted); font-size: .9rem; }
+.score {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+body.dark .score { border-color: var(--heading); }
 .delete { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; }

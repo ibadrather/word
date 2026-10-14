@@ -58,11 +58,11 @@ def lan_ip() -> str:
 @click.command()
 @click.option("--port", "-p", default=8501, show_default=True, help="Port to serve on.")
 def main(port: int) -> None:
-    """Start the Guess Word notes page."""
+    """Start the Word notes page."""
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S"
     )
     with make_server(port) as server:
-        log.info("Guess Word on http://%s:%d  (Ctrl+C to stop)", lan_ip(), port)
+        log.info("Word on http://%s:%d  (Ctrl+C to stop)", lan_ip(), port)
         with contextlib.suppress(KeyboardInterrupt):
             server.serve_forever()

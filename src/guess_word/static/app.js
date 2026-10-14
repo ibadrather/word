@@ -1,7 +1,7 @@
-// Guess Word: notes and a colour-marking keyboard. Everything stays in this browser.
+// Word: notes and a colour-marking keyboard. Everything stays in this browser.
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
-const NEXT_COLOUR = { "": "in", in: "out", out: "unsure", unsure: "" }; // grey → green → red → not sure → grey
+const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
 const STORAGE_KEY = "guess-word-v2";
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
@@ -62,9 +62,10 @@ function newGame() {
 }
 
 const HELPER_QUESTIONS = {
-  "": "Turn the helper off?",
-  basic: "Turn on the basic helper? Every letter of a guess that scored 0 turns red and stays red.",
-  advanced: "Turn on the advanced helper? It works out letters from all your guesses and switches to dark mode.",
+  "": "Switch to Normal Mode? You mark every letter yourself.",
+  basic: "Switch to Basic Helper Mode? Letters from guesses that scored 0 turn red. Letters it sets get a dot and are locked.",
+  advanced:
+    "Switch to Advanced Helper Mode (dark)? It works out letters from every score. Letters it sets get a dot and are locked.",
 };
 
 function chooseHelper(helper) {
@@ -155,6 +156,7 @@ function buildControls() {
   $("word").addEventListener("input", (event) => {
     event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
     showMessage("");
+    render();
   });
   $("secret").addEventListener("input", (event) => {
     event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
@@ -173,8 +175,9 @@ function render() {
   $("secret").value = state.secret;
   $("helper").value = state.helper;
   document.body.classList.toggle("dark", state.helper === "advanced");
+  $("counts").classList.toggle("ready", $("word").value.length === 4);
   const known = deduce();
-  const colour = (letter) => known[letter] || state.colours[letter] || "";
+  const colour = (letter) => (known[letter] ? `${known[letter]} locked` : state.colours[letter] || "");
 
   for (const key of $("keyboard").querySelectorAll(".key")) {
     key.className = `key ${colour(key.dataset.letter)}`;
@@ -190,7 +193,7 @@ function render() {
     return li;
   });
   if (!items.length) {
-    items.push(Object.assign(document.createElement("li"), { className: "empty", textContent: "None yet" }));
+    items.push(Object.assign(document.createElement("li"), { className: "empty", textContent: "No guesses yet. Type one above and tap its score." }));
   }
   $("notes").replaceChildren(...items);
 }

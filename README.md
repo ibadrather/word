@@ -1,4 +1,4 @@
-# Guess Word
+# Word
 
 A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the phone's browser over the home Wi-Fi.
 
@@ -7,10 +7,11 @@ You play the game out loud: each of you picks a secret word and tells the other 
 
 - **Your word:** type your secret word at the bottom of the page. It's hidden as dots; tap **Show** to reveal it to the other player.
 - **Note your guesses:** type the word, tap **0–4** for how many letters were correct.
-- **Mark letters:** tap a key to cycle it grey → **green** (in the word) → **red** (not in it) → **cream** (not sure) → grey.
-- **Helper** (dropdown, asks to confirm): letters it works out are locked while it's on, so tapping them does nothing.
-  - **Basic:** every letter of a guess that scored 0 turns red.
-  - **Advanced** (dark mode): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red.
+- **Mark letters:** tap a key to cycle it grey → **red** (not in it) → **yellow** (not sure) → **green** (in the word) → grey. Red comes first because most letters end up red.
+- **Mode** (next to New game, asks to confirm). Letters a helper sets get a dot and are locked: tapping them does nothing.
+  - **Normal Mode:** you mark every letter yourself.
+  - **Basic Helper Mode:** every letter of a guess that scored 0 turns red.
+  - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red.
 - **New game** clears everything, including your word.
 
 Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. The server only hands out the page; after that each phone works on its own.
