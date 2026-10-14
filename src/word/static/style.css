@@ -218,7 +218,7 @@ button, select {
   font-size: 1.1rem;
   font-weight: 700;
 }
-.delete, .close { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; }
+.delete { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; }
 
 /* Menu: a drawer from the left, 80% of the screen; tap outside or × to close */
 .menu {
@@ -229,24 +229,87 @@ button, select {
   margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 0 24px 24px 0;
   background: var(--bg);
   color: var(--fg);
-  box-shadow: 4px 0 24px rgb(0 0 0 / .25);
+  box-shadow: 8px 0 40px rgb(0 0 0 / .25);
+  overflow-y: auto;
+  overscroll-behavior: contain; /* scrolling the drawer doesn't scroll the page behind it */
 }
-.menu[open] { animation: slide-in .2s ease-out; }
-.menu::backdrop { background: rgb(0 0 0 / .4); }
+.menu[open] { animation: slide-in .25s cubic-bezier(.2, .8, .2, 1); }
+.menu::backdrop { background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
 @keyframes slide-in { from { transform: translateX(-100%); } }
-.menu-body { min-height: 100%; padding: max(12px, env(safe-area-inset-top)) 16px 24px 20px; outline: none; }
-.menu-head { display: flex; align-items: center; justify-content: space-between; }
-.menu h2 { margin: 0; font-size: 1.1rem; color: var(--heading); }
-.intro { margin: 12px 0 0; font-size: .95rem; }
-.menu h3 { margin: 16px 0 0; font-size: .95rem; }
-.rules { margin: 8px 0 16px; padding-left: 20px; font-size: .95rem; }
-.rules li { margin-bottom: 6px; }
-.example {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--heading) 12%, var(--bg));
-  font-size: .9rem;
+
+.menu-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: max(16px, env(safe-area-inset-top)) 18px max(16px, env(safe-area-inset-bottom)) 20px;
+  outline: none;
 }
+.menu-head { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.menu h2 { flex: 1; margin: 0; font-size: 1.1rem; color: var(--heading); }
+.close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--key);
+  color: var(--fg);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.close:active { filter: brightness(.9); }
+
+.intro { margin: 16px 0 0; font-size: .95rem; }
+.intro b { color: var(--heading); }
+
+/* Small section labels */
+.menu h3 {
+  margin: 22px 0 10px;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Rules: numbers in soft circles */
+.rules { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: rule; font-size: .95rem; }
+.rules li { display: flex; gap: 10px; counter-increment: rule; }
+.rules li::before {
+  content: counter(rule);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--heading) 14%, var(--bg));
+  color: var(--heading);
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+/* Example: the word and the guess as tiles, with the score like in the guess list */
+.example { padding: 14px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); }
+.example-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.example-label { width: 46px; font-size: .75rem; font-weight: 600; color: var(--muted); }
+.tiles { display: flex; gap: 4px; }
+.tiles b {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  font-size: .95rem;
+}
+.tiles b:not([class]) { background: var(--key); }
+.tiles .again { box-shadow: inset 0 0 0 2px var(--line); color: var(--muted); }
+.example .score { width: 30px; height: 30px; font-size: .95rem; }
+.example p { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
+
+.menu-foot { margin: auto 0 0; padding-top: 24px; text-align: center; font-size: .8rem; color: var(--muted); }
