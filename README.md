@@ -1,6 +1,8 @@
 # Word
 
-A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the phone's browser over the home Wi-Fi.
+A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the phone's browser.
+
+**Play: https://ibadrather.github.io/word**
 
 ## Rules
 1. Each of you picks a secret 4-letter word.
@@ -22,12 +24,15 @@ You play face to face, saying guesses and scores out loud. The app never checks 
   - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many sets are left, and the letters once only one fits.
 - **New game** clears everything, including your word.
 
-Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. The page itself still comes from the server, so keep it running while you play.
+Notes stay on each phone (browser storage), so a refresh or locked screen keeps them.
 
-Browser storage belongs to the exact address, like `http://192.168.1.23:8501`. If the address changes (a new IP from the router, another port, the Mac instead of the Pi), the page opens empty; the old notes are still there under the old address. Give the Pi a fixed IP in your router's settings so it always gets the same one.
+Browser storage belongs to the exact address. Notes made on https://ibadrather.github.io/word don't show up on a local server like `http://192.168.1.23:8501`, and the other way round. On a local server, a new IP from the router or another port also opens an empty page; the old notes are still there under the old address. Give the Pi a fixed IP in your router's settings so it always gets the same one.
 
-## Run
-Needs [uv](https://docs.astral.sh/uv/) (on the Pi: `curl -LsSf https://astral.sh/uv/install.sh | sh`). Then:
+## Deploy
+Every push to `main` publishes `src/word/static/` to GitHub Pages (`.github/workflows/pages.yml`), live at https://ibadrather.github.io/word within a minute or so.
+
+## Run locally
+You can also serve it yourself on the home Wi-Fi. Needs [uv](https://docs.astral.sh/uv/) (on the Pi: `curl -LsSf https://astral.sh/uv/install.sh | sh`). Then:
 ```sh
 uv run word            # or: uv run word -p 9000
 ```
@@ -43,7 +48,7 @@ rm -rf .venv && mkdir .venv.nosync && ln -s .venv.nosync .venv && uv sync
 Or move the project out of `~/Desktop`.
 
 ## How it works
-The server only hands out a few static files. Each time the page opens, the phone asks whether they changed (a quick "not modified" if not), so updates show up on the next refresh. Everything else happens on the phone. The Poppins font comes from Google Fonts, so the Wi-Fi needs internet for it.
+The page is a few static files, served by GitHub Pages or the local server. Everything else happens on the phone. Updates show up on the next refresh (GitHub Pages may cache for a few minutes). The Poppins font comes from Google Fonts, so a local game needs internet for it.
 - `src/word/static/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`) and `helpers.js` (the helper logic). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
 - `src/word/__init__.py`: the `word` command, serving that folder with Python's built-in `http.server`.
 
