@@ -13,24 +13,28 @@ A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the
 4. First to guess the other's word wins.
 
 ## What it does
-You play face to face, saying guesses and scores out loud. The app never checks the secret words, whether a word is real, or the scores. It just helps you keep track:
+You play face to face, saying guesses and scores out loud. The app never checks the scores or shows anyone's word. It just helps you keep track:
 
-- **Menu:** tap the logo for a short intro and the rules. Tap × or outside to close it.
+- **Menu:** tap the logo for a short intro, the rules and how many words the dictionary knows. Tap × or outside to close it.
 
 - **Your word:** type your secret word at the bottom of the page. It's hidden as dots; tap **Show** to reveal it to the other player.
 - **Note your guesses:** type the word, tap **0–4** for how many letters were correct. Tap **×** to remove one (asks first).
+- **Dictionary:** a guess or secret word that isn't one of its 4,983 four-letter words gets a red "Not in the dictionary". It's only a warning: you can still note the guess.
 - **Mark letters:** tap a key to cycle it grey → **red** (not in it) → **yellow** (not sure) → **green** (in the word) → grey. Red comes first because most letters end up red.
 - **Mode** (next to New game, asks to confirm). Letters a helper sets get a dot and are locked: tapping them does nothing.
   - **Normal Mode:** you mark every letter yourself.
   - **Basic Helper Mode:** every letter of a guess that scored 0 turns red.
-  - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many sets are left, and the letters once only one fits.
+  - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many dictionary words and letter sets are left, and the letters once only one set fits. It counts words but never shows one.
 - **New game** clears everything, including your word.
 
 Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. They belong to the exact address, so notes made on a local preview (below) don't show up on the live site, and the other way round.
 
 ## How it works
 The page is a few static files in `web/`, served by GitHub Pages. Everything happens on the phone; the page never talks back to a server. The Poppins font comes from Google Fonts.
-- `web/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`) and `helpers.js` (the helper logic). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
+- `web/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`), `helpers.js` (the helper logic) and `words.js` (the dictionary). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
+
+## The dictionary
+`web/words.js` holds every 4-letter word the page accepts, about 13 KB once compressed. It comes from [SCOWL](http://wordlist.aspell.net) 2020.12.07, the word lists behind most English spellcheckers. It keeps sizes up to 80 ("words found in larger dictionaries") in British (including Oxford's -ize spelling) and American spellings, and drops names, abbreviations and accented words. The file's header lists the exact lists used and carries SCOWL's copyright notice, which its licence asks to keep. Oxford's own dictionary isn't openly licensed, so this is the closest open stand-in.
 
 ## Versions and releases
 The version lives in `pyproject.toml` and shows at the bottom of the menu (a local preview shows `dev`). Any change to `web/` needs a higher version, or the **Version bump** check fails. Bump it with:
@@ -60,4 +64,4 @@ python3.14 -m venv .venv && source .venv/bin/activate
 pip install --group dev                       # pip 25.1+, which Python 3.14 ships with
 ruff format . && ruff check . && mypy tests .github/scripts && pytest
 ```
-`tests/games/` holds real games as JSON: the secret word, then each guess with its score and what the advanced helper should show after it (`green` letters and `letterSetsLeft`). Add a file there to test another game.
+`tests/games/` holds real games as JSON: the secret word, then each guess with its score and what the advanced helper should show after it (`green` letters, `letterSetsLeft` and `wordsLeft`). Add a file there to test another game.

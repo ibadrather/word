@@ -1,16 +1,16 @@
 {
   "secret": "rack",
   "guesses": [
-    { "word": "ship", "count": 0, "green": "", "letterSetsLeft": 9108 },
-    { "word": "read", "count": 2, "green": "", "letterSetsLeft": 1032 },
-    { "word": "fart", "count": 2, "green": "", "letterSetsLeft": 274 },
-    { "word": "crib", "count": 2, "green": "r", "letterSetsLeft": 38 },
-    { "word": "folk", "count": 1, "green": "r", "letterSetsLeft": 10 },
-    { "word": "club", "count": 1, "green": "r", "letterSetsLeft": 8 },
-    { "word": "cart", "count": 3, "green": "acr", "letterSetsLeft": 2 },
-    { "word": "tart", "count": 2, "green": "acr", "letterSetsLeft": 2 },
-    { "word": "corn", "count": 2, "green": "ackr", "letterSetsLeft": 1 },
-    { "word": "mark", "count": 3, "green": "ackr", "letterSetsLeft": 1 },
-    { "word": "larp", "count": 2, "green": "ackr", "letterSetsLeft": 1 }
+    { "word": "ship", "count": 0, "green": "", "letterSetsLeft": 9108, "wordsLeft": 1943 },
+    { "word": "read", "count": 2, "green": "", "letterSetsLeft": 1032, "wordsLeft": 637 },
+    { "word": "fart", "count": 2, "green": "", "letterSetsLeft": 274, "wordsLeft": 199 },
+    { "word": "crib", "count": 2, "green": "r", "letterSetsLeft": 38, "wordsLeft": 35 },
+    { "word": "folk", "count": 1, "green": "r", "letterSetsLeft": 10, "wordsLeft": 10 },
+    { "word": "club", "count": 1, "green": "r", "letterSetsLeft": 8, "wordsLeft": 9 },
+    { "word": "cart", "count": 3, "green": "acr", "letterSetsLeft": 2, "wordsLeft": 4 },
+    { "word": "tart", "count": 2, "green": "acr", "letterSetsLeft": 2, "wordsLeft": 4 },
+    { "word": "corn", "count": 2, "green": "ackr", "letterSetsLeft": 1, "wordsLeft": 2 },
+    { "word": "mark", "count": 3, "green": "ackr", "letterSetsLeft": 1, "wordsLeft": 2 },
+    { "word": "larp", "count": 2, "green": "ackr", "letterSetsLeft": 1, "wordsLeft": 2 }
   ]
 }

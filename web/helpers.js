@@ -1,7 +1,17 @@
 // Word: the helpers. Plain functions of the guesses (and your marks), so tests can run them in Node.
 // Notes are [{ word, count }]; a result is { letter: "in" | "out" }. Repeated letters in a guess count once.
 
+import { WORDS } from "./words.js";
+
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+
+// --- The dictionary: only ever asked about a word or for a count, so the page never shows one. ---
+
+export const WORD_COUNT = WORDS.size;
+
+export function isWord(word) {
+  return WORDS.has(word);
+}
 
 // --- Basic helper: a guess that scored 0 has none of its letters in the word. ---
 
@@ -48,4 +58,16 @@ export function knownLetters(fitting, colours) {
     else if (!sets.some((set) => set.includes(letter))) known[letter] = "out";
   }
   return known;
+}
+
+// How many dictionary words the secret could still be: those whose letters are a fitting set, minus the ones
+// already guessed (a right guess would have ended the game).
+export function wordsLeft(fitting, notes) {
+  const sets = new Set(fitting);
+  const guessed = new Set(notes.map((note) => note.word));
+  let count = 0;
+  for (const word of WORDS) {
+    if (!guessed.has(word) && sets.has([...new Set(word)].sort().join(""))) count++;
+  }
+  return count;
 }

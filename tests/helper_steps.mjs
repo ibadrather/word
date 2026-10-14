@@ -1,6 +1,6 @@
 // Prints what the advanced helper shows after each guess of a game: node helper_steps.mjs <game.json>
 import { readFileSync } from "node:fs";
-import { fittingSets, knownLetters } from "../web/helpers.js";
+import { fittingSets, knownLetters, wordsLeft } from "../web/helpers.js";
 
 const notes = [];
 const steps = JSON.parse(readFileSync(process.argv[2], "utf8")).guesses.map(({ word, count }) => {
@@ -8,6 +8,6 @@ const steps = JSON.parse(readFileSync(process.argv[2], "utf8")).guesses.map(({ w
   const fitting = fittingSets(notes);
   const known = knownLetters(fitting, {});
   const green = Object.keys(known).filter((letter) => known[letter] === "in").sort().join("");
-  return { word, green, letterSetsLeft: fitting.length };
+  return { word, green, letterSetsLeft: fitting.length, wordsLeft: wordsLeft(fitting, notes) };
 });
 console.log(JSON.stringify(steps));
