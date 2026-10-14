@@ -1,0 +1,40 @@
+# Guess Word
+
+A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the phone's browser over the home Wi-Fi.
+
+## What it does
+You play the game out loud: each of you picks a secret word and tells the other how many letters their guess got right. The app never knows the secret words. It just helps you keep track:
+
+- **Note your guesses:** type the word, tap **0–4** for how many letters were correct.
+- **Mark letters:** tap a key to cycle it grey → **green** (in the word) → **red** (not in it) → grey.
+- **New game** clears everything.
+
+Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. The server only hands out the page; after that each phone works on its own.
+
+## Run
+Needs [uv](https://docs.astral.sh/uv/) (on the Pi: `curl -LsSf https://astral.sh/uv/install.sh | sh`). Then:
+```sh
+uv run guess-word            # or: uv run guess-word -p 9000
+```
+It prints the address to open on each phone/laptop on the same Wi-Fi. To find the IP yourself:
+- Mac: `ipconfig getifaddr en0`
+- Raspberry Pi: `hostname -I`
+
+### Mac: project on the iCloud Desktop
+iCloud marks files inside `.venv` as hidden, and Python 3.14 then ignores them (`No module named 'guess_word'`). Keep the venv in a folder iCloud skips, once:
+```sh
+rm -rf .venv && mkdir .venv.nosync && ln -s .venv.nosync .venv && uv sync
+```
+Or move the project out of `~/Desktop`.
+
+## How it works
+The server only hands out three static files; once a phone has them, it never talks to the server again.
+- `src/guess_word/static/`: `index.html`, `style.css` and `app.js` (plain HTML/CSS/JS, saved in the browser's `localStorage`).
+- `src/guess_word/__init__.py`: the `guess-word` command, serving that folder with Python's built-in `http.server`.
+
+## Dev
+```sh
+uv run ruff format . && uv run ruff check .   # all ruff rules enabled
+uv run mypy src tests                         # strict typing
+uv run pytest
+```

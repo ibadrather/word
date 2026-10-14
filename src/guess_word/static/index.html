@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Guess Word</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔤</text></svg>">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Guess Word</h1>
+      <button id="reset" class="pill" type="button">New game</button>
+    </header>
+
+    <input id="word" maxlength="4" placeholder="Guess" aria-label="Guessed word"
+           autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
+    <p class="hint">Correct letters, tap to save:</p>
+    <div id="counts" class="counts"></div>
+    <p id="msg" class="msg"></p>
+
+    <div id="keyboard" class="keyboard"></div>
+    <p class="hint">Tap a letter: grey → green → red → grey</p>
+
+    <h2>Your guesses</h2>
+    <ul id="notes" class="notes"></ul>
+  </main>
+</body>
+</html>

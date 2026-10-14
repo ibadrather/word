@@ -1,0 +1,45 @@
+[project]
+name = "guess-word"
+version = "0.1.0"
+description = "Word notes and a colour-marking keyboard for Asna and Ibad's word guessing game"
+readme = "README.md"
+authors = [
+    { name = "Ibad Rather", email = "ibad.rather.ir@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "click>=8.5.0",
+]
+
+[project.scripts]
+guess-word = "guess_word:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812", # conflicts with the formatter
+    "CPY001", # no copyright header for a personal project
+    "D203",   # conflicts with D211 (no blank line before class docstring)
+    "D213",   # conflicts with D212 (summary on the first docstring line)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "INP001", # tests are not a package
+    "S101",   # pytest uses assert
+    "S310",   # urlopen of a local http:// URL is the point of the test
+]
+
+[tool.mypy]
+strict = true
