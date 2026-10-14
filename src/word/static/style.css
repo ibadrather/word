@@ -96,6 +96,7 @@ button, select {
 body.dark .link { color: var(--heading); }
 
 .label { margin: 14px 0 8px; font-size: .9rem; font-weight: 600; text-align: center; }
+.progress { margin: 0 0 12px; text-align: center; font-size: .9rem; font-weight: 600; color: var(--heading); }
 .msg { min-height: 1.4em; margin: 4px 0; text-align: center; font-size: .9rem; font-weight: 600; color: var(--error); }
 
 /* Word entry */

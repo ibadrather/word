@@ -1,9 +1,10 @@
 // Word: notes and a colour-marking keyboard. Everything stays in this browser.
 
+import { fittingSets, letterSets, zeroGuesses } from "./helpers.js";
+
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
-const STORAGE_KEY = "guess-word-v2";
-const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+const STORAGE_KEY = "guess-word-v2"; // old name kept so saved games survive the rename
 
 const $ = (id) => document.getElementById(id);
 
@@ -32,7 +33,7 @@ function update(change) {
 // --- Actions ---
 
 function cycleColour(letter) {
-  if (deduce()[letter]) return; // the helper has settled this letter, so it stays put
+  if (deduce().known[letter]) return; // the helper has settled this letter, so it stays put
   update(() => {
     const next = NEXT_COLOUR[state.colours[letter] || ""];
     if (next) state.colours[letter] = next;
@@ -52,7 +53,9 @@ function addNote(count) {
 }
 
 function deleteNote(note) {
-  update(() => (state.notes = state.notes.filter((n) => n !== note)));
+  if (confirm(`Remove ${note.word.toUpperCase()} (scored ${note.count})?`)) {
+    update(() => (state.notes = state.notes.filter((n) => n !== note)));
+  }
 }
 
 function newGame() {
@@ -73,53 +76,22 @@ function chooseHelper(helper) {
   else render(); // put the dropdown back
 }
 
-// What the chosen helper has settled: { letter: "in" | "out" }.
+// What the chosen helper has settled ({ letter: "in" | "out" }), and for the advanced one the letter sets that fit.
 function deduce() {
-  if (state.helper === "basic") return zeroGuesses();
-  if (state.helper === "advanced") return letterSets();
-  return {};
-}
-
-// --- Basic helper: a guess that scored 0 has none of its letters in the word. ---
-
-function zeroGuesses() {
-  const known = {};
-  for (const { word, count } of state.notes) {
-    if (count === 0) for (const letter of word) known[letter] = "out";
+  if (state.helper === "basic") return { known: zeroGuesses(state.notes) };
+  if (state.helper === "advanced") {
+    const fitting = fittingSets(state.notes);
+    return { known: letterSets(fitting, state.colours), fitting };
   }
-  return known;
+  return { known: {} };
 }
 
-// --- Advanced helper: try every set of up to 4 letters the secret word could use (about 18,000) and keep the
-// ones that give every guess its count. A letter in all of them is green, in none of them red.
-// Repeated letters in a guess count once. Your green/red marks narrow it down too, but never your
-// mark on the letter itself, so a letter the counts settle can't be changed by tapping it. ---
-
-const LETTER_SETS = allSets("", 0);
-
-function allSets(chosen, from) {
-  const sets = chosen ? [chosen] : [];
-  if (chosen.length === 4) return sets;
-  for (let i = from; i < ALPHABET.length; i++) sets.push(...allSets(chosen + ALPHABET[i], i + 1));
-  return sets;
-}
-
-function letterSets() {
-  const fitting = LETTER_SETS.filter((set) =>
-    state.notes.every(({ word, count }) => [...new Set(word)].filter((letter) => set.includes(letter)).length === count),
-  );
-  const marks = Object.entries(state.colours).filter(([, colour]) => colour !== "unsure");
-  const known = {};
-  for (const letter of ALPHABET) {
-    const marked = fitting.filter((set) =>
-      marks.every(([other, colour]) => other === letter || set.includes(other) === (colour === "in")),
-    );
-    const sets = marked.length ? marked : fitting; // if your marks clash with the counts, trust the counts
-    if (!sets.length) continue; // the counts contradict each other
-    if (sets.every((set) => set.includes(letter))) known[letter] = "in";
-    else if (!sets.some((set) => set.includes(letter))) known[letter] = "out";
-  }
-  return known;
+// The advanced helper's progress line.
+function progress(fitting) {
+  if (!state.notes.length) return "Every score you note narrows down the letters.";
+  if (!fitting.length) return "No letters fit all these scores. Check them for a mistake.";
+  if (fitting.length === 1) return `Letters found: ${[...fitting[0].toUpperCase()].join(" ")}. Now find the order!`;
+  return `${fitting.length.toLocaleString()} possible letter sets left`;
 }
 
 function showMessage(text) {
@@ -176,7 +148,9 @@ function render() {
   $("helper").value = state.helper;
   document.body.classList.toggle("dark", state.helper === "advanced");
   $("counts").classList.toggle("ready", $("word").value.length === 4);
-  const known = deduce();
+  const { known, fitting } = deduce();
+  $("progress").hidden = !fitting;
+  if (fitting) $("progress").textContent = progress(fitting);
   const colour = (letter) => (known[letter] ? `${known[letter]} locked` : state.colours[letter] || "");
 
   for (const key of $("keyboard").querySelectorAll(".key")) {

@@ -1,5 +1,5 @@
 [project]
-name = "guess-word"
+name = "word"
 version = "0.1.0"
 description = "Word notes and a colour-marking keyboard for Asna and Ibad's word guessing game"
 readme = "README.md"
@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-guess-word = "guess_word:main"
+word = "word:main"
 
 [build-system]
 requires = ["uv_build>=0.12.7,<0.13.0"]

@@ -13,7 +13,7 @@ import click
 STATIC = Path(__file__).parent / "static"
 ALL_INTERFACES = "0.0.0.0"  # noqa: S104 - phones on the home Wi-Fi must reach it
 
-log = logging.getLogger("guess_word")
+log = logging.getLogger("word")
 
 
 class Handler(SimpleHTTPRequestHandler):
