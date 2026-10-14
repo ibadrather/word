@@ -1,3 +1,5 @@
+<img src="web/icon.png" alt="WORD logo" width="96">
+
 # Word
 
 A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the phone's browser.
@@ -30,7 +32,7 @@ Notes stay on each phone (browser storage), so a refresh or locked screen keeps 
 The page is a few static files in `web/`, served by GitHub Pages. Everything happens on the phone; the page never talks back to a server. The Poppins font comes from Google Fonts.
 - `web/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`) and `helpers.js` (the helper logic). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
 
-Every push to `main` publishes `web/` (`.github/workflows/pages.yml`), live at https://ibadrather.github.io/word within a minute or so. Phones may keep the old files for up to 10 minutes; a refresh after that picks up the update.
+Every push to `main` that changes `web/` publishes it (`.github/workflows/pages.yml`; run it by hand from the Actions tab after editing the workflow itself), live at https://ibadrather.github.io/word within a minute or so. Phones may keep the old files for up to 10 minutes; a refresh after that picks up the update.
 
 ## Dev
 Preview changes before pushing (`app.js` is a module, so opening `index.html` as a file doesn't work):
