@@ -19,6 +19,7 @@ class Guess(TypedDict):
     count: int
     green: str
     letterSetsLeft: int
+    wordsLeft: int
 
 
 class Game(TypedDict):
@@ -46,7 +47,7 @@ def test_scores_match_the_secret(path: Path) -> None:
 @pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
 @pytest.mark.parametrize("path", GAMES, ids=[path.stem for path in GAMES])
 def test_advanced_helper(path: Path) -> None:
-    """After each guess, the advanced helper shows the expected greens and sets left."""
+    """After each guess, the advanced helper shows the expected greens and counts."""
     assert NODE is not None
     result = subprocess.run(  # noqa: S603 - our own script, run with the local node
         [NODE, Path(__file__).parent / "helper_steps.mjs", path],
@@ -55,7 +56,12 @@ def test_advanced_helper(path: Path) -> None:
         text=True,
     )
     expected = [
-        {"word": g["word"], "green": g["green"], "letterSetsLeft": g["letterSetsLeft"]}
+        {
+            "word": g["word"],
+            "green": g["green"],
+            "letterSetsLeft": g["letterSetsLeft"],
+            "wordsLeft": g["wordsLeft"],
+        }
         for g in load(path)["guesses"]
     ]
     assert json.loads(result.stdout) == expected

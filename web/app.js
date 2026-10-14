@@ -1,10 +1,13 @@
 // Word: notes and a colour-marking keyboard. Everything stays in this browser.
 
-import { fittingSets, knownLetters, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, fittingSets, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
 const STORAGE_KEY = "guess-word-v2"; // old name kept so saved games survive the rename
+
+const NOT_A_WORD = "Not in the dictionary";
+const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 
 const $ = (id) => document.getElementById(id);
 
@@ -93,12 +96,15 @@ function deduce() {
   return { known: {} };
 }
 
-// The advanced helper's progress line.
+const plural = (count, noun) => `${count.toLocaleString()} ${noun}${count === 1 ? "" : "s"}`;
+
+// The advanced helper's progress line. It counts the words left but never shows one.
 function progress(fitting) {
-  if (!state.notes.length) return "Every score you note narrows down the letters.";
+  if (!state.notes.length) return `${plural(WORD_COUNT, "word")} to start. Every score you note narrows them down.`;
   if (!fitting.length) return "No letters fit all these scores. Check them for a mistake.";
-  if (fitting.length === 1) return `Letters found: ${[...fitting[0].toUpperCase()].join(" ")}. Now find the order!`;
-  return `${fitting.length.toLocaleString()} possible letter sets left`;
+  const words = plural(wordsLeft(fitting, state.notes), "possible word");
+  if (fitting.length === 1) return `Letters found: ${[...fitting[0].toUpperCase()].join(" ")}. ${words} left!`;
+  return `${words}, ${plural(fitting.length, "letter set")} left`;
 }
 
 function showMessage(text) {
@@ -134,8 +140,9 @@ function buildControls() {
   }
   $("word").addEventListener("input", (event) => {
     event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
-    showMessage("");
-    $("counts").classList.toggle("ready", event.target.value.length === 4);
+    const word = event.target.value.toLowerCase();
+    showMessage(word.length === 4 && !isWord(word) ? NOT_A_WORD : ""); // a warning only: you can still note it
+    $("counts").classList.toggle("ready", word.length === 4);
   });
   $("secret").addEventListener("input", (event) => {
     event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
@@ -149,11 +156,20 @@ function buildControls() {
     if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
   });
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
+  // The dictionary's size as tiles in the logo's colours
+  const tile = (digit, i) => {
+    const el = Object.assign(document.createElement("b"), { textContent: digit });
+    if (LOGO[i % LOGO.length]) el.className = LOGO[i % LOGO.length]; // the plain grey tile has no class
+    return el;
+  };
+  $("word-count").append(...[...String(WORD_COUNT)].map(tile));
+  $("word-count").ariaLabel = `${WORD_COUNT.toLocaleString()} words`;
 }
 
 function render() {
   // Only write the secret back when it differs, so typing doesn't jump the cursor to the end.
   if ($("secret").value.toLowerCase() !== state.secret) $("secret").value = state.secret;
+  $("secret-msg").textContent = state.secret.length === 4 && !isWord(state.secret) ? NOT_A_WORD : "";
   $("helper").value = state.helper;
   document.body.classList.toggle("dark", state.helper === "advanced");
   $("counts").classList.toggle("ready", $("word").value.length === 4);

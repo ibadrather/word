@@ -49,6 +49,7 @@
              autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
       <button id="reveal" class="pill" type="button">Show</button>
     </div>
+    <p id="secret-msg" class="msg"></p>
   </main>
 
   <dialog id="menu" class="menu" aria-labelledby="about">
@@ -62,7 +63,7 @@
       <p class="intro">
         <b>Play it face to face.</b> Say your guesses and scores out loud to each other.
         This page only helps you keep track of letters.
-        It doesn't check if a word is real or if a score is right.
+        It tells you when a word isn't in its dictionary, but never checks a score.
       </p>
 
       <h3>Rules</h3>
@@ -86,6 +87,16 @@
           <span class="score">3</span>
         </div>
         <p>T, A and R are in the word. The second T doesn't count again.</p>
+      </div>
+
+      <h3>Dictionary</h3>
+      <div class="example">
+        <div class="example-row">
+          <span id="word-count" class="tiles" role="img"></span>
+          <span class="dictionary-label">words it knows</span>
+        </div>
+        <p>Every 4-letter word in British and American spelling, from the SCOWL word list. Type a word it doesn't know and it tells you.
+          Advanced Helper Mode counts how many your partner's word could still be.</p>
       </div>
 
       <p class="menu-foot">Built by Asna and Ibad for you ❤️<span class="version">dev</span></p>
