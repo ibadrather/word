@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Guess Word</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔤</text></svg>">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="app.js"></script>
 </head>
@@ -22,10 +23,16 @@
     <p id="msg" class="msg"></p>
 
     <div id="keyboard" class="keyboard"></div>
-    <p class="hint">Tap a letter: grey → green → red → grey</p>
+    <p class="hint">Tap a letter: grey → green → red → not sure → grey</p>
 
     <h2>Your guesses</h2>
     <ul id="notes" class="notes"></ul>
+
+    <div class="secret">
+      <input id="secret" type="password" maxlength="4" placeholder="My word" aria-label="My secret word"
+             autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
+      <button id="reveal" class="pill" type="button">Show</button>
+    </div>
   </main>
 </body>
 </html>

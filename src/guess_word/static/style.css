@@ -1,26 +1,17 @@
+/* Colours from the Edreate palette (edreate/static/css/global.css), plus a clear green for correct */
 :root {
-  color-scheme: light dark;
-  --bg: #fff;
-  --fg: #111;
-  --muted: #666;
-  --line: #d0d0d0;
-  --key: #d3d6da;
-  --in: #2e7d32;
-  --out: #c62828;
-  --accent: #1565c0;
-  --error: #c62828;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121213;
-    --fg: #eee;
-    --muted: #9a9a9a;
-    --line: #3a3a3c;
-    --key: #565758;
-    --accent: #4a8fe0;
-    --error: #ff6b6b;
-  }
+  color-scheme: light;
+  --bg: #ffffff;
+  --fg: #0c0c0c;
+  --muted: #6b7280;
+  --line: #e7e7e7;
+  --key: #e7e7e7;
+  --heading: #4531cc;
+  --accent: #4531cc;
+  --in: #16a34a;
+  --out: #dc2626;
+  --unsure: #fcf3d1;
+  --error: #dc2626;
 }
 
 * { box-sizing: border-box; }
@@ -29,13 +20,13 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font: 16px/1.4 system-ui, -apple-system, sans-serif;
+  font: 16px/1.4 "Poppins", system-ui, -apple-system, sans-serif;
 }
 
 main { max-width: 480px; margin: 0 auto; padding: 12px 8px 48px; }
 
 header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-h1 { font-size: 1.3rem; margin: 0; }
+h1 { font-size: 1.3rem; margin: 0; color: var(--heading); }
 h2 { font-size: 1rem; margin: 20px 0 6px; }
 
 button {
@@ -58,7 +49,7 @@ button {
 .msg { min-height: 1.4em; margin: 6px 0; text-align: center; font-weight: 600; color: var(--error); }
 
 /* Word entry */
-#word {
+#word, .secret input {
   display: block;
   width: 100%;
   padding: 12px;
@@ -72,6 +63,9 @@ button {
   text-transform: uppercase;
   letter-spacing: .3em;
 }
+
+.secret { display: flex; gap: 8px; margin-top: 24px; }
+.secret input { flex: 1; min-width: 0; padding: 8px; font-size: 1.2rem; }
 
 .counts { display: flex; gap: 8px; }
 .counts button {
@@ -105,6 +99,7 @@ button {
 
 .in { background: var(--in); color: #fff; }
 .out { background: var(--out); color: #fff; }
+.unsure { background: var(--unsure); color: #0c0c0c; }
 
 /* Guess list */
 .notes { margin: 0; padding: 0; list-style: none; }

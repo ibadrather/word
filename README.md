@@ -3,11 +3,12 @@
 A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the phone's browser over the home Wi-Fi.
 
 ## What it does
-You play the game out loud: each of you picks a secret word and tells the other how many letters their guess got right. The app never knows the secret words. It just helps you keep track:
+You play the game out loud: each of you picks a secret word and tells the other how many letters their guess got right. The app never checks the secret words. It just helps you keep track:
 
+- **Your word:** type your secret word at the bottom of the page. It's hidden as dots; tap **Show** to reveal it to the other player.
 - **Note your guesses:** type the word, tap **0–4** for how many letters were correct.
-- **Mark letters:** tap a key to cycle it grey → **green** (in the word) → **red** (not in it) → grey.
-- **New game** clears everything.
+- **Mark letters:** tap a key to cycle it grey → **green** (in the word) → **red** (not in it) → **cream** (not sure) → grey.
+- **New game** clears everything, including your word.
 
 Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. The server only hands out the page; after that each phone works on its own.
 

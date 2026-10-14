@@ -1,17 +1,17 @@
 // Guess Word: notes and a colour-marking keyboard. Everything stays in this browser.
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
-const NEXT_COLOUR = { "": "in", in: "out", out: "" }; // grey → green → red → grey
+const NEXT_COLOUR = { "": "in", in: "out", out: "unsure", unsure: "" }; // grey → green → red → not sure → grey
 const STORAGE_KEY = "guess-word-v2";
 
 const $ = (id) => document.getElementById(id);
 
-// --- State: { notes: [{ word, count }] oldest first, colours: { letter: "in" | "out" } } ---
+// --- State: { notes: [{ word, count }] oldest first, colours: { letter: "in" | "out" | "unsure" }, secret: my word } ---
 
 let state = load();
 
 function load() {
-  const empty = { notes: [], colours: {} };
+  const empty = { notes: [], colours: {}, secret: "" };
   try {
     return { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
   } catch {
@@ -53,8 +53,8 @@ function deleteNote(note) {
 }
 
 function newGame() {
-  if (confirm("Clear all guesses and key colours?")) {
-    update(() => (state = { notes: [], colours: {} }));
+  if (confirm("Clear your word, guesses and key colours?")) {
+    update(() => (state = { notes: [], colours: {}, secret: "" }));
   }
 }
 
@@ -93,10 +93,20 @@ function buildControls() {
     event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
     showMessage("");
   });
+  $("secret").addEventListener("input", (event) => {
+    event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
+    update(() => (state.secret = event.target.value.toLowerCase()));
+  });
+  $("reveal").addEventListener("click", () => {
+    const hidden = $("secret").type === "password";
+    $("secret").type = hidden ? "text" : "password";
+    $("reveal").textContent = hidden ? "Hide" : "Show";
+  });
   $("reset").addEventListener("click", newGame);
 }
 
 function render() {
+  $("secret").value = state.secret;
   const colour = (letter) => state.colours[letter] || "";
 
   for (const key of $("keyboard").querySelectorAll(".key")) {
