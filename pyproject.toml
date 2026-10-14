@@ -1,6 +1,6 @@
 [project]
 name = "word"
-version = "0.1.0"
+version = "1.0.0"
 description = "Word notes and a colour-marking keyboard for Asna and Ibad's word guessing game"
 readme = "README.md"
 authors = [
@@ -15,6 +15,7 @@ package = false  # a static site in web/; Python is only for the tests
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",
+    "packaging>=26.0",  # the version-bump check in .github/scripts
     "pytest>=9.1.1",
     "ruff>=0.17.0",
 ]
@@ -29,6 +30,13 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+".github/scripts/**" = [
+    "INP001",  # standalone scripts, not a package
+    "PLR0911", # one early return per outcome reads best in a check
+    "S603",    # git with our own arguments
+    "S607",    # git from PATH, as on the runner
+    "T201",    # CI scripts report by printing
+]
 "tests/**" = [
     "INP001", # tests are not a package
     "S101",   # pytest uses assert

@@ -10,3 +10,10 @@ def test_page_never_calls_the_server() -> None:
     code = "".join(path.read_text() for path in WEB.glob("*.js"))
     for call in ("fetch(", "WebSocket", "XMLHttpRequest", "EventSource", "sendBeacon"):
         assert call not in code
+
+
+def test_page_has_a_version_slot() -> None:
+    """The deploy swaps this placeholder for the release version; keep it as is."""
+    assert (WEB / "index.html").read_text().count(
+        '<span class="version">dev</span>'
+    ) == 1

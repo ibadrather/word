@@ -32,7 +32,14 @@ Notes stay on each phone (browser storage), so a refresh or locked screen keeps 
 The page is a few static files in `web/`, served by GitHub Pages. Everything happens on the phone; the page never talks back to a server. The Poppins font comes from Google Fonts.
 - `web/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`) and `helpers.js` (the helper logic). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
 
-Every push to `main` that changes `web/` publishes it (`.github/workflows/pages.yml`; run it by hand from the Actions tab after editing the workflow itself), live at https://ibadrather.github.io/word within a minute or so. Phones may keep the old files for up to 10 minutes; a refresh after that picks up the update.
+## Versions and releases
+The version lives in `pyproject.toml` and shows at the bottom of the menu (a local preview shows `dev`). Any change to `web/` needs a higher version, or the **Version bump** check fails. Bump it with:
+```sh
+uv version --bump patch   # 1.0.0 -> 1.0.1: fixes; minor for new features, major for big changes
+```
+Pushing a new version to `main` runs **Release** (`.github/workflows/release.yml`): CI, then a `v<version>` tag and GitHub release with notes, then the deploy of that version to https://ibadrather.github.io/word, live within a minute or so. Phones may keep the old files for up to 10 minutes; a refresh after that picks up the update. To republish without a new version, run **Deploy to GitHub Pages** by hand from the Actions tab.
+
+**CI** (`.github/workflows/ci.yml`) runs the checks below on every push and pull request that touches the page, tests or tooling.
 
 ## Dev
 Preview changes before pushing (`app.js` is a module, so opening `index.html` as a file doesn't work):
@@ -44,13 +51,13 @@ Open http://localhost:8000, or `http://<mac-ip>:8000` on a phone on the same Wi-
 Checks need Python 3.14+ and the dev tools in `pyproject.toml`. [uv](https://docs.astral.sh/uv/) is recommended: it fetches the right Python and the tools on the first run.
 ```sh
 uv run ruff format . && uv run ruff check .   # all ruff rules enabled
-uv run mypy tests                             # strict typing
+uv run mypy tests .github/scripts             # strict typing
 uv run pytest                                 # the helper tests need Node; they're skipped without it
 ```
 Without uv, make a venv with Python 3.14 (the Mac's built-in `python3` is older) and drop the `uv run` prefix:
 ```sh
 python3.14 -m venv .venv && source .venv/bin/activate
 pip install --group dev                       # pip 25.1+, which Python 3.14 ships with
-ruff format . && ruff check . && mypy tests && pytest
+ruff format . && ruff check . && mypy tests .github/scripts && pytest
 ```
 `tests/games/` holds real games as JSON: the secret word, then each guess with its score and what the advanced helper should show after it (`green` letters and `letterSetsLeft`). Add a file there to test another game.

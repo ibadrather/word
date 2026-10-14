@@ -313,3 +313,5 @@ button, select {
 .example p { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
 
 .menu-foot { margin: auto 0 0; padding-top: 24px; text-align: center; font-size: .8rem; color: var(--muted); }
+/* The release version, stamped in on deploy; a local preview shows dev */
+.version { display: block; margin-top: 4px; font-size: .7rem; }
