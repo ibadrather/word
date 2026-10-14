@@ -6,6 +6,14 @@ A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the
 
 **Play: https://ibadrather.github.io/word**
 
+## Install it as an app
+Installed, it gets its own icon, opens full-screen without the browser bar, and works with no connection.
+- **Android** (Chrome): open the page, then tap **Install app** when offered, or ⋮ → **Add to Home screen** → **Install**.
+- **iPhone** (Safari, or Chrome on iOS 16.4+): Share → **Add to Home Screen**.
+- **Mac**: in Safari (macOS Sonoma or later), File → **Add to Dock**; in Chrome or Edge, the install icon at the right of the address bar. Firefox can't install it.
+
+The installed app keeps its own notes, apart from the browser's, so a game in progress in the browser doesn't carry over. On iPhone that's a plus: Safari may clear a site's notes after 7 days without a visit, but not a home-screen app's.
+
 ## Rules
 1. Each of you picks a secret 4-letter word.
 2. Take turns guessing the other's word with any 4-letter word.
@@ -27,11 +35,14 @@ You play face to face, saying guesses and scores out loud. The app never checks 
   - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many dictionary words and letter sets are left, and the letters once only one set fits. It counts words but never shows one.
 - **New game** clears everything, including your word.
 
-Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. They belong to the exact address, so notes made on a local preview (below) don't show up on the live site, and the other way round.
+Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. They belong to the exact address, so notes made on a local preview (below) don't show up on the live site, and the other way round. An installed app keeps its own, too.
 
 ## How it works
-The page is a few static files in `web/`, served by GitHub Pages. Everything happens on the phone; the page never talks back to a server. The Poppins font comes from Google Fonts.
-- `web/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`), `helpers.js` (the helper logic) and `words.js` (the dictionary). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
+The page is a few static files in `web/`, served by GitHub Pages. Everything happens on the phone; the page never talks back to a server, and loads nothing from other sites.
+- `web/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`), `helpers.js` (the helper logic) and `words.js` (the dictionary).
+- `fonts/`: Poppins (Latin letters only), from Google Fonts under the Open Font License in `fonts/OFL.txt`.
+- Installing: `manifest.webmanifest` names the app and its icons. `icon.png` is the iPhone and Mac icon; `icon-192.png` and `icon-512.png` are Android's, and `icon-maskable.png` has room around the tiles for Android to crop it to a circle or any other shape. The favicon is inline in `index.html`.
+- `sw.js`, the service worker, keeps a copy of every file so the page opens offline. It still fetches each file from the network when it can, so updates arrive as before and the copies are only used offline. Its `FILES` list must name every file in `web/`; a test checks it.
 
 ## The dictionary
 `web/words.js` holds every 4-letter word the page accepts, about 13 KB once compressed. It comes from [SCOWL](http://wordlist.aspell.net) 2020.12.07, the word lists behind most English spellcheckers. It keeps sizes up to 80 ("words found in larger dictionaries") in British (including Oxford's -ize spelling) and American spellings, and drops names, abbreviations and accented words. The file's header lists the exact lists used and carries SCOWL's copyright notice, which its licence asks to keep. Oxford's own dictionary isn't openly licensed, so this is the closest open stand-in.
@@ -41,7 +52,7 @@ The version lives in `pyproject.toml` and shows at the bottom of the menu (a loc
 ```sh
 uv version --bump patch   # 1.0.0 -> 1.0.1: fixes; minor for new features, major for big changes
 ```
-Pushing a new version to `main` runs **Release** (`.github/workflows/release.yml`): CI, then a `v<version>` tag and GitHub release with notes, then the deploy of that version to https://ibadrather.github.io/word, live within a minute or so. Phones may keep the old files for up to 10 minutes; a refresh after that picks up the update. To republish without a new version, run **Deploy to GitHub Pages** by hand from the Actions tab.
+Pushing a new version to `main` runs **Release** (`.github/workflows/release.yml`): CI, then a `v<version>` tag and GitHub release with notes, then the deploy of that version to https://ibadrather.github.io/word, live within a minute or so. Phones may keep the old files for up to 10 minutes; a refresh after that (or, for the installed app, closing and reopening it) picks up the update. To republish without a new version, run **Deploy to GitHub Pages** by hand from the Actions tab.
 
 **CI** (`.github/workflows/ci.yml`) runs the checks below on every push and pull request that touches the page, tests or tooling.
 

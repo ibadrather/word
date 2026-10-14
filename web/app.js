@@ -172,6 +172,8 @@ function render() {
   $("secret-msg").textContent = state.secret.length === 4 && !isWord(state.secret) ? NOT_A_WORD : "";
   $("helper").value = state.helper;
   document.body.classList.toggle("dark", state.helper === "advanced");
+  // The installed app's status or title bar follows the page into dark and back
+  document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
   $("counts").classList.toggle("ready", $("word").value.length === 4);
   const { known, fitting } = deduce();
   settled = known;
@@ -200,3 +202,6 @@ function render() {
 
 buildControls();
 render();
+
+// Keeps the files for offline use, which also lets the page be installed as an app (sw.js)
+navigator.serviceWorker?.register("sw.js").catch(() => {});
