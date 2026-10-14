@@ -143,6 +143,11 @@ function buildControls() {
   });
   $("reveal").addEventListener("click", () => showSecret($("secret").type === "password"));
   $("reset").addEventListener("click", newGame);
+  $("logo").addEventListener("click", () => $("menu").showModal());
+  $("close").addEventListener("click", () => $("menu").close());
+  $("menu").addEventListener("click", (event) => {
+    if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
+  });
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
 }
 

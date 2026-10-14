@@ -40,8 +40,8 @@ main { max-width: 480px; margin: 0 auto; padding: 12px 16px 48px; }
 /* Header: logo, mode, New game on one line */
 header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 
-/* Logo: WORD as a 2×2 block of tiles in the four marking colours */
-.logo { display: grid; grid-template-columns: repeat(2, 20px); gap: 2px; flex: none; margin: 0; }
+/* Logo: WORD as a 2×2 block of tiles in the four marking colours; tapping it opens the menu */
+.logo { display: grid; grid-template-columns: repeat(2, 20px); gap: 2px; flex: none; margin: 0; padding: 0; border: 0; background: none; }
 .logo b {
   display: grid;
   place-items: center;
@@ -218,4 +218,35 @@ button, select {
   font-size: 1.1rem;
   font-weight: 700;
 }
-.delete { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; }
+.delete, .close { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; }
+
+/* Menu: a drawer from the left, 80% of the screen; tap outside or × to close */
+.menu {
+  width: 80%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 4px 0 24px rgb(0 0 0 / .25);
+}
+.menu[open] { animation: slide-in .2s ease-out; }
+.menu::backdrop { background: rgb(0 0 0 / .4); }
+@keyframes slide-in { from { transform: translateX(-100%); } }
+.menu-body { min-height: 100%; padding: max(12px, env(safe-area-inset-top)) 16px 24px 20px; outline: none; }
+.menu-head { display: flex; align-items: center; justify-content: space-between; }
+.menu h2 { margin: 0; font-size: 1.1rem; color: var(--heading); }
+.intro { margin: 12px 0 0; font-size: .95rem; }
+.menu h3 { margin: 16px 0 0; font-size: .95rem; }
+.rules { margin: 8px 0 16px; padding-left: 20px; font-size: .95rem; }
+.rules li { margin-bottom: 6px; }
+.example {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--heading) 12%, var(--bg));
+  font-size: .9rem;
+}

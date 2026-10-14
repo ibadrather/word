@@ -5,11 +5,13 @@ A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the
 ## Rules
 1. Each of you picks a secret 4-letter word.
 2. Take turns guessing the other's word with any 4-letter word.
-3. The other says how many letters of the guess are in their word. Where a letter sits doesn't matter, and a repeated letter counts once: against RACK, TART scores 2 (R and A), and can never score 4.
+3. The other says how many letters of the guess are in their word. Where a letter sits doesn't matter, and a repeated letter counts once: against CART, TART scores 3 (T, A and R; the second T doesn't count again).
 4. First to guess the other's word wins.
 
 ## What it does
-You play out loud; the app never checks the secret words or the scores. It just helps you keep track:
+You play face to face, saying guesses and scores out loud. The app never checks the secret words, whether a word is real, or the scores. It just helps you keep track:
+
+- **Menu:** tap the logo for a short intro and the rules. Tap × or outside to close it.
 
 - **Your word:** type your secret word at the bottom of the page. It's hidden as dots; tap **Show** to reveal it to the other player.
 - **Note your guesses:** type the word, tap **0–4** for how many letters were correct. Tap **×** to remove one (asks first).

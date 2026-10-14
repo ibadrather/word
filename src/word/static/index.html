@@ -13,7 +13,7 @@
 <body>
   <main>
     <header>
-      <h1 class="logo" aria-label="Word"><b class="unsure">W</b><b class="out">O</b><b>R</b><b class="in">D</b></h1>
+      <button id="logo" class="logo" type="button" aria-label="Menu"><b class="unsure">W</b><b class="out">O</b><b>R</b><b class="in">D</b></button>
       <select id="helper" class="mode" aria-label="Mode">
         <option value="">Normal Mode</option>
         <option value="basic">Basic Helper Mode</option>
@@ -50,5 +50,31 @@
       <button id="reveal" class="pill" type="button">Show</button>
     </div>
   </main>
+
+  <dialog id="menu" class="menu" aria-labelledby="about">
+    <div class="menu-body" tabindex="-1" autofocus>
+      <div class="menu-head">
+        <h2 id="about">About the game</h2>
+        <button id="close" class="close" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="intro">
+        Play this face to face. Say your guesses and scores out loud to each other.
+        This page only helps you keep track of letters.
+        It doesn't check if a word is real or if a score is right.
+      </p>
+      <h3>Rules</h3>
+      <ol class="rules">
+        <li>Each of you picks a secret word of 4 letters.</li>
+        <li>Take turns guessing the other's word.</li>
+        <li>The answer is how many of the guess's letters are in the word. Where they sit doesn't matter.</li>
+        <li>A repeated letter counts once.</li>
+        <li>First to guess the word wins.</li>
+      </ol>
+      <p class="example">
+        The word is <b>CART</b>, the guess is <b>TART</b>: <b>3 correct</b>.
+        T, A and R are in the word. The second T doesn't count again.
+      </p>
+    </div>
+  </dialog>
 </body>
 </html>
