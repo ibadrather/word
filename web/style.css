@@ -1,3 +1,8 @@
+/* Poppins, Latin letters only, kept with the page so it looks the same offline (licence: fonts/OFL.txt) */
+@font-face { font-family: "Poppins"; font-weight: 400; font-display: swap; src: url("fonts/poppins-400.woff2") format("woff2"); }
+@font-face { font-family: "Poppins"; font-weight: 600; font-display: swap; src: url("fonts/poppins-600.woff2") format("woff2"); }
+@font-face { font-family: "Poppins"; font-weight: 700; font-display: swap; src: url("fonts/poppins-700.woff2") format("woff2"); }
+
 /* Colours from the Edreate palette (edreate/static/css/global.css), plus clear red/yellow/green marks */
 :root {
   color-scheme: light;
