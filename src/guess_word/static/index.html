@@ -13,7 +13,14 @@
   <main>
     <header>
       <h1>Guess Word</h1>
-      <button id="reset" class="pill" type="button">New game</button>
+      <div class="actions">
+        <select id="helper" class="pill" aria-label="Helper">
+          <option value="">No helper</option>
+          <option value="basic">Basic</option>
+          <option value="advanced">Advanced</option>
+        </select>
+        <button id="reset" class="pill" type="button">New game</button>
+      </div>
     </header>
 
     <input id="word" maxlength="4" placeholder="Guess" aria-label="Guessed word"

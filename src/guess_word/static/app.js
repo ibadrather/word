@@ -3,15 +3,17 @@
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "in", in: "out", out: "unsure", unsure: "" }; // grey → green → red → not sure → grey
 const STORAGE_KEY = "guess-word-v2";
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
 const $ = (id) => document.getElementById(id);
 
-// --- State: { notes: [{ word, count }] oldest first, colours: { letter: "in" | "out" | "unsure" }, secret: my word } ---
+// --- State: { notes: [{ word, count }] oldest first, colours: { letter: "in" | "out" | "unsure" }, secret: my word,
+//              helper: "" | "basic" | "advanced", how much to work out from the counts } ---
 
 let state = load();
 
 function load() {
-  const empty = { notes: [], colours: {}, secret: "" };
+  const empty = { notes: [], colours: {}, secret: "", helper: "" };
   try {
     return { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
   } catch {
@@ -30,6 +32,7 @@ function update(change) {
 // --- Actions ---
 
 function cycleColour(letter) {
+  if (deduce()[letter]) return; // the helper has settled this letter, so it stays put
   update(() => {
     const next = NEXT_COLOUR[state.colours[letter] || ""];
     if (next) state.colours[letter] = next;
@@ -54,8 +57,68 @@ function deleteNote(note) {
 
 function newGame() {
   if (confirm("Clear your word, guesses and key colours?")) {
-    update(() => (state = { notes: [], colours: {}, secret: "" }));
+    update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper }));
   }
+}
+
+const HELPER_QUESTIONS = {
+  "": "Turn the helper off?",
+  basic: "Turn on the basic helper? Every letter of a guess that scored 0 turns red and stays red.",
+  advanced: "Turn on the advanced helper? It works out letters from all your guesses and switches to dark mode.",
+};
+
+function chooseHelper(helper) {
+  if (confirm(HELPER_QUESTIONS[helper])) update(() => (state.helper = helper));
+  else render(); // put the dropdown back
+}
+
+// What the chosen helper has settled: { letter: "in" | "out" }.
+function deduce() {
+  if (state.helper === "basic") return zeroGuesses();
+  if (state.helper === "advanced") return letterSets();
+  return {};
+}
+
+// --- Basic helper: a guess that scored 0 has none of its letters in the word. ---
+
+function zeroGuesses() {
+  const known = {};
+  for (const { word, count } of state.notes) {
+    if (count === 0) for (const letter of word) known[letter] = "out";
+  }
+  return known;
+}
+
+// --- Advanced helper: try every set of up to 4 letters the secret word could use (about 18,000) and keep the
+// ones that give every guess its count. A letter in all of them is green, in none of them red.
+// Repeated letters in a guess count once. Your green/red marks narrow it down too, but never your
+// mark on the letter itself, so a letter the counts settle can't be changed by tapping it. ---
+
+const LETTER_SETS = allSets("", 0);
+
+function allSets(chosen, from) {
+  const sets = chosen ? [chosen] : [];
+  if (chosen.length === 4) return sets;
+  for (let i = from; i < ALPHABET.length; i++) sets.push(...allSets(chosen + ALPHABET[i], i + 1));
+  return sets;
+}
+
+function letterSets() {
+  const fitting = LETTER_SETS.filter((set) =>
+    state.notes.every(({ word, count }) => [...new Set(word)].filter((letter) => set.includes(letter)).length === count),
+  );
+  const marks = Object.entries(state.colours).filter(([, colour]) => colour !== "unsure");
+  const known = {};
+  for (const letter of ALPHABET) {
+    const marked = fitting.filter((set) =>
+      marks.every(([other, colour]) => other === letter || set.includes(other) === (colour === "in")),
+    );
+    const sets = marked.length ? marked : fitting; // if your marks clash with the counts, trust the counts
+    if (!sets.length) continue; // the counts contradict each other
+    if (sets.every((set) => set.includes(letter))) known[letter] = "in";
+    else if (!sets.some((set) => set.includes(letter))) known[letter] = "out";
+  }
+  return known;
 }
 
 function showMessage(text) {
@@ -103,11 +166,15 @@ function buildControls() {
     $("reveal").textContent = hidden ? "Hide" : "Show";
   });
   $("reset").addEventListener("click", newGame);
+  $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
 }
 
 function render() {
   $("secret").value = state.secret;
-  const colour = (letter) => state.colours[letter] || "";
+  $("helper").value = state.helper;
+  document.body.classList.toggle("dark", state.helper === "advanced");
+  const known = deduce();
+  const colour = (letter) => known[letter] || state.colours[letter] || "";
 
   for (const key of $("keyboard").querySelectorAll(".key")) {
     key.className = `key ${colour(key.dataset.letter)}`;

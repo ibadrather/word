@@ -14,6 +14,17 @@
   --error: #dc2626;
 }
 
+/* The advanced helper switches to dark */
+body.dark {
+  color-scheme: dark;
+  --bg: #121212;
+  --fg: #f2f2f2;
+  --muted: #9ca3af;
+  --line: #333333;
+  --key: #3a3a3c;
+  --heading: #a497ff;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -26,10 +37,11 @@ body {
 main { max-width: 480px; margin: 0 auto; padding: 12px 8px 48px; }
 
 header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.actions { display: flex; gap: 6px; }
 h1 { font-size: 1.3rem; margin: 0; color: var(--heading); }
 h2 { font-size: 1rem; margin: 20px 0 6px; }
 
-button {
+button, select {
   font: inherit;
   color: inherit;
   cursor: pointer;
@@ -44,6 +56,7 @@ button {
   background: transparent;
   font-weight: 600;
 }
+#helper { max-width: 9.5em; }
 
 .hint { margin: 8px 0 6px; text-align: center; font-size: .85rem; color: var(--muted); }
 .msg { min-height: 1.4em; margin: 6px 0; text-align: center; font-weight: 600; color: var(--error); }
