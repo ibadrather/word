@@ -9,12 +9,8 @@ authors = [
 requires-python = ">=3.14"
 dependencies = []
 
-[project.scripts]
-word = "word:main"
-
-[build-system]
-requires = ["uv_build>=0.12.7,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false  # a static site in web/; Python is only for the tests
 
 [dependency-groups]
 dev = [
@@ -36,7 +32,6 @@ ignore = [
 "tests/**" = [
     "INP001", # tests are not a package
     "S101",   # pytest uses assert
-    "S310",   # urlopen of a local http:// URL is the point of the test
 ]
 
 [tool.mypy]

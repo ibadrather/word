@@ -1,6 +1,6 @@
 // Prints what the advanced helper shows after each guess of a game: node helper_steps.mjs <game.json>
 import { readFileSync } from "node:fs";
-import { fittingSets, knownLetters } from "../src/word/static/helpers.js";
+import { fittingSets, knownLetters } from "../web/helpers.js";
 
 const notes = [];
 const steps = JSON.parse(readFileSync(process.argv[2], "utf8")).guesses.map(({ word, count }) => {

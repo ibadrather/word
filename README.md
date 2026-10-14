@@ -24,38 +24,31 @@ You play face to face, saying guesses and scores out loud. The app never checks 
   - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many sets are left, and the letters once only one fits.
 - **New game** clears everything, including your word.
 
-Notes stay on each phone (browser storage), so a refresh or locked screen keeps them.
-
-Browser storage belongs to the exact address. Notes made on https://ibadrather.github.io/word don't show up on a local server like `http://192.168.1.23:8501`, and the other way round. On a local server, a new IP from the router or another port also opens an empty page; the old notes are still there under the old address. Give the Pi a fixed IP in your router's settings so it always gets the same one.
-
-## Deploy
-Every push to `main` publishes `src/word/static/` to GitHub Pages (`.github/workflows/pages.yml`), live at https://ibadrather.github.io/word within a minute or so.
-
-## Run locally
-You can also serve it yourself on the home Wi-Fi. Needs [uv](https://docs.astral.sh/uv/) (on the Pi: `curl -LsSf https://astral.sh/uv/install.sh | sh`). Then:
-```sh
-uv run word            # or: uv run word -p 9000
-```
-It prints the address to open on each phone/laptop on the same Wi-Fi. To find the IP yourself:
-- Mac: `ipconfig getifaddr en0`
-- Raspberry Pi: `hostname -I`
-
-### Mac: project on the iCloud Desktop
-iCloud marks files inside `.venv` as hidden, and Python 3.14 then ignores them (`No module named 'word'`). Keep the venv in a folder iCloud skips, once:
-```sh
-rm -rf .venv && mkdir .venv.nosync && ln -s .venv.nosync .venv && uv sync
-```
-Or move the project out of `~/Desktop`.
+Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. They belong to the exact address, so notes made on a local preview (below) don't show up on the live site, and the other way round.
 
 ## How it works
-The page is a few static files, served by GitHub Pages or the local server. Everything else happens on the phone. Updates show up on the next refresh (GitHub Pages may cache for a few minutes). The Poppins font comes from Google Fonts, so a local game needs internet for it.
-- `src/word/static/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`) and `helpers.js` (the helper logic). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
-- `src/word/__init__.py`: the `word` command, serving that folder with Python's built-in `http.server`.
+The page is a few static files in `web/`, served by GitHub Pages. Everything happens on the phone; the page never talks back to a server. The Poppins font comes from Google Fonts.
+- `web/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`) and `helpers.js` (the helper logic). The favicon is inline in `index.html`; `icon.png` is only fetched when you add the page to an iPhone home screen.
+
+Every push to `main` publishes `web/` (`.github/workflows/pages.yml`), live at https://ibadrather.github.io/word within a minute or so. Phones may keep the old files for up to 10 minutes; a refresh after that picks up the update.
 
 ## Dev
+Preview changes before pushing (`app.js` is a module, so opening `index.html` as a file doesn't work):
+```sh
+python3 -m http.server -d web 8000
+```
+Open http://localhost:8000, or `http://<mac-ip>:8000` on a phone on the same Wi-Fi (`ipconfig getifaddr en0`). This server doesn't stop the browser caching, so after an edit hard-refresh (Cmd+Shift+R) or tick DevTools → Network → Disable cache.
+
+Checks need Python 3.14+ and the dev tools in `pyproject.toml`. [uv](https://docs.astral.sh/uv/) is recommended: it fetches the right Python and the tools on the first run.
 ```sh
 uv run ruff format . && uv run ruff check .   # all ruff rules enabled
-uv run mypy src tests                         # strict typing
+uv run mypy tests                             # strict typing
 uv run pytest                                 # the helper tests need Node; they're skipped without it
+```
+Without uv, make a venv with Python 3.14 (the Mac's built-in `python3` is older) and drop the `uv run` prefix:
+```sh
+python3.14 -m venv .venv && source .venv/bin/activate
+pip install --group dev                       # pip 25.1+, which Python 3.14 ships with
+ruff format . && ruff check . && mypy tests && pytest
 ```
 `tests/games/` holds real games as JSON: the secret word, then each guess with its score and what the advanced helper should show after it (`green` letters and `letterSetsLeft`). Add a file there to test another game.
