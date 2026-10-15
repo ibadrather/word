@@ -10,6 +10,7 @@ const FILES = [
   "app.js",
   "helpers.js",
   "words.js",
+  "trystero.js",
   "manifest.webmanifest",
   "icon.png",
   "icon-192.png",
