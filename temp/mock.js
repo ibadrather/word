@@ -1,10 +1,11 @@
 // Fills each <div data-game> with the page below the header, as main draws it, with a sample game in progress.
-// data-game="empty" draws a fresh game with no guesses; data-word="seat" shows a guess being typed.
+// data-game="empty" draws a fresh game with no guesses; data-word="seat" shows a guess being typed on the page's keyboard.
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const COLOURS = { l: "out", i: "out", o: "out", n: "out", m: "out", a: "in", r: "unsure", e: "unsure" };
 const NOTES = [["rate", 3, "3:10"], ["team", 2, "1:52"], ["lion", 0, "0:40"]];
 
+const BACKSPACE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-5 6M12 9l5 6"/></svg>';
 const RESET_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>';
 window.CLOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>';
 
@@ -21,19 +22,20 @@ function game(el) {
   const empty = el.dataset.game === "empty";
   const word = el.dataset.word || "";
   const colours = empty ? {} : COLOURS;
-  const keys = ROWS.map((row) => `<div class="row">${[...row].map((l) => `<button class="key ${colours[l] || ""}">${l}</button>`).join("")}</div>`).join("");
+  const keys = ROWS.map((row, i) => `<div class="row">${[...row].map((l) => `<button class="key ${colours[l] || ""}">${l}</button>`).join("")}${i === 2 ? `<button class="key back">${BACKSPACE_ICON}</button>` : ""}</div>`).join("");
+  const slots = [0, 1, 2, 3].map((i) => `<span class="${i === word.length ? "next" : ""}">${word[i] || ""}</span>`).join("");
   const notes = empty
     ? '<li class="empty">No guesses yet. Type one above and tap its score.</li>'
     : NOTES.map(([w, count, at]) => `<li>${[...w].map((l) => `<button class="tile ${colours[l] || ""}">${l}</button>`).join("")}<span class="at">${at}</span><span class="score">${count}</span><button class="delete">×</button></li>`).join("");
   el.outerHTML = `
     ${el.dataset.timer === "off" ? "" : `<p class="timer">${empty ? "0:12" : "0:41"}</p>`}
     ${el.dataset.before ? window[el.dataset.before] : ""}
-    <input id="word" value="${word}" placeholder="Guess">
+    <p class="slots">${slots}</p>
     <p class="label">How many letters are right?</p>
     <div class="counts ${word.length === 4 ? "ready" : ""}">${[0, 1, 2, 3, 4].map((n) => `<button>${n}</button>`).join("")}</div>
     <p class="msg"></p>
     <div class="keyboard">${keys}</div>
-    <p class="legend">Tap to mark: <span><i class="out"></i>not in</span><span><i class="unsure"></i>not sure</span><span><i class="in"></i>in word</span></p>
+    <p class="legend">Tap guessed letters: <span><i class="out"></i>not in</span><span><i class="unsure"></i>not sure</span><span><i class="in"></i>in word</span></p>
     <button class="clear" ${empty ? "disabled" : ""}>Clear</button>
     <div class="guesses-head"><h2>Your guesses</h2><p class="game-stats"><span>Guesses: <b>${empty ? 0 : 3}</b></span><span>Game Timer: <b>${empty ? "0:12" : "3:51"}</b></span></p></div>
     <ul class="notes">${notes}</ul>

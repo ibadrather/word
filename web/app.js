@@ -1,4 +1,4 @@
-// Word: notes and a colour-marking keyboard. Everything stays in this browser.
+// Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { WORD_COUNT, fittingSets, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the two-player clock; `clock` below is the m:ss formatter
@@ -11,6 +11,8 @@ const NOT_A_WORD = "Not in the dictionary";
 const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 
 const $ = (id) => document.getElementById(id);
+const BACKSPACE_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-5 6M12 9l5 6"/></svg>';
 
 // --- State: { notes: [{ word, count, at }] oldest first, at being ms into the game (none before the first New game), colours: { letter: "in" | "out" | "unsure" }, secret: my word,
 //              helper: "" | "basic" | "advanced", how much to work out from the counts,
@@ -18,6 +20,7 @@ const $ = (id) => document.getElementById(id);
 
 let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
+let guess = ""; // the guess being typed on the page's keyboard, up to 4 letters
 
 function load() {
   const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null };
@@ -38,6 +41,21 @@ function update(change) {
 
 // --- Actions ---
 
+// The page's keyboard only types: any key, whatever its colour. Colours are set from the guess list's tiles.
+function type(letter) {
+  if (guess.length < 4) setGuess(guess + letter);
+}
+
+function backspace() {
+  setGuess(guess.slice(0, -1));
+}
+
+function setGuess(word) {
+  guess = word;
+  showMessage(guess.length === 4 && !isWord(guess) ? NOT_A_WORD : ""); // a warning only: you can still note it
+  showGuess();
+}
+
 function cycleColour(letter) {
   if (settled[letter]) return; // the helper has settled this letter, so it stays put
   update(() => {
@@ -53,13 +71,11 @@ function clearColours() {
 }
 
 function addNote(count) {
-  const word = $("word").value.toLowerCase();
+  const word = guess;
   if (word.length !== 4) return showMessage("Type a 4-letter word first");
   if (state.notes.some((note) => note.word === word)) return showMessage("Already noted");
 
-  $("word").value = "";
-  $("word").blur();
-  showMessage("");
+  setGuess("");
   const at = state.startedAt ? Date.now() - state.startedAt : undefined;
   update(() => state.notes.push({ word, count, at }));
   mode.press(); // in clock mode, my clock stops and the other player's starts
@@ -151,6 +167,16 @@ function showMessage(text) {
   $("msg").textContent = text;
 }
 
+// The guess in its four slots, the next one to fill underlined; the scores light up once it's full
+function showGuess() {
+  for (const [i, slot] of [...$("word").children].entries()) {
+    slot.textContent = guess[i] ?? "";
+    slot.classList.toggle("next", i === guess.length);
+  }
+  $("word").ariaLabel = guess ? `Your guess: ${guess.toUpperCase()}` : "Your guess";
+  $("counts").classList.toggle("ready", guess.length === 4);
+}
+
 // --- Rendering ---
 
 function button(text, className, onPress) {
@@ -162,6 +188,7 @@ function button(text, className, onPress) {
   return el;
 }
 
+// A letter in the guess list: tapping it cycles its colour
 function letterButton(letter, className) {
   const el = button(letter, className, () => cycleColour(letter));
   el.dataset.letter = letter;
@@ -169,20 +196,33 @@ function letterButton(letter, className) {
 }
 
 function buildControls() {
-  for (const letters of ROWS) {
+  for (const [i, letters] of ROWS.entries()) {
     const row = document.createElement("div");
     row.className = "row";
-    row.append(...[...letters].map((letter) => letterButton(letter, "key")));
+    for (const letter of letters) {
+      const key = button(letter, "key", () => type(letter));
+      key.dataset.letter = letter;
+      row.append(key);
+    }
+    if (i === ROWS.length - 1) {
+      const back = button("", "key back", backspace);
+      back.innerHTML = BACKSPACE_ICON;
+      back.ariaLabel = "Delete letter";
+      row.append(back);
+    }
     $("keyboard").append(row);
   }
   for (let count = 0; count <= 4; count++) {
     $("counts").append(button(count, "", () => addNote(count)));
   }
-  $("word").addEventListener("input", (event) => {
-    event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
-    const word = event.target.value.toLowerCase();
-    showMessage(word.length === 4 && !isWord(word) ? NOT_A_WORD : ""); // a warning only: you can still note it
-    $("counts").classList.toggle("ready", word.length === 4);
+  // A computer's own keyboard types too, unless you're typing in a box or the menu is open
+  document.addEventListener("keydown", (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey || $("menu").open) return;
+    if (event.target.closest("input, select, textarea")) return;
+    if (/^[a-z]$/i.test(event.key)) type(event.key.toLowerCase());
+    else if (event.key === "Backspace") backspace();
+    else return;
+    event.preventDefault();
   });
   $("secret").addEventListener("input", (event) => {
     event.target.value = event.target.value.replace(/[^a-z]/gi, "").slice(0, 4);
@@ -223,7 +263,7 @@ function render() {
   document.body.classList.toggle("dark", state.helper === "advanced");
   // The installed app's status or title bar follows the page into dark and back
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
-  $("counts").classList.toggle("ready", $("word").value.length === 4);
+  showGuess();
   const v = mode.view();
   if ($("name").value !== v.name) $("name").value = v.name;
   if ($("room").value !== v.room) $("room").value = v.room;
@@ -240,7 +280,7 @@ function render() {
   if (fitting) $("progress").textContent = progress(fitting);
   const colour = (letter) => (known[letter] ? `${known[letter]} locked` : state.colours[letter] || "");
 
-  for (const key of $("keyboard").querySelectorAll(".key")) {
+  for (const key of $("keyboard").querySelectorAll(".key[data-letter]")) {
     key.className = `key ${colour(key.dataset.letter)}`;
   }
 

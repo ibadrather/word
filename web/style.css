@@ -141,48 +141,62 @@ button, select {
 .progress { margin: 0 0 12px; text-align: center; font-size: .9rem; font-weight: 600; color: var(--heading); }
 .msg { min-height: 1.4em; margin: 4px 0; text-align: center; font-size: .9rem; font-weight: 600; color: var(--error); }
 
-/* Word entry */
-#word, .secret input {
-  display: block;
-  width: 100%;
-  padding: 12px;
+/* The guess: four slots filled from the page's keyboard, the next one to fill underlined */
+.slots { display: flex; justify-content: center; gap: 12px; margin: 0; }
+.slots span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 46px;
+  border-bottom: 3px solid var(--line);
+  font-size: 1.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  transition: border-color .15s;
+}
+.slots span.next { border-color: var(--heading); }
+
+/* Secret word entry */
+.secret input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
   border: 2px solid var(--line);
   border-radius: 12px;
   background: transparent;
   color: inherit;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 700;
   text-align: center;
   text-transform: uppercase;
   letter-spacing: .3em;
 }
-#word:focus, .secret input:focus { outline: none; border-color: var(--accent); }
-#word::placeholder, .secret input::placeholder { color: var(--muted); font-weight: 600; letter-spacing: normal; text-transform: none; }
+.secret input:focus { outline: none; border-color: var(--accent); }
+.secret input::placeholder { color: var(--muted); font-weight: 600; letter-spacing: normal; text-transform: none; }
 
 .secret { display: flex; gap: 8px; }
-.secret input { flex: 1; min-width: 0; padding: 8px; font-size: 1.2rem; }
 
 /* Score buttons stay dim until the guess has 4 letters */
 .counts { display: flex; gap: 8px; }
 .counts button {
   flex: 1;
-  height: 52px;
+  height: 42px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--accent);
   color: #fff;
-  font-size: 1.4rem;
+  font-size: 1.12rem;
   font-weight: 700;
   transition: opacity .15s;
 }
 .counts:not(.ready) button { opacity: .35; }
 .counts button:active { filter: brightness(.85); }
 
-/* Keyboard and letter tiles share the same colours */
+/* The keyboard types the guess; its keys and the guess list's tiles share the same colours */
 .keyboard { user-select: none; -webkit-user-select: none; }
 .row { display: flex; gap: 4px; margin-bottom: 6px; }
 .row:nth-child(2) { padding: 0 5%; }
-.row:nth-child(3) { padding: 0 15%; }
+.row:nth-child(3) { padding-left: 15%; }
 
 .key, .tile {
   position: relative;
@@ -195,13 +209,15 @@ button, select {
 }
 .key { flex: 1 1 0; min-width: 0; height: 56px; font-size: 1.2rem; }
 .key:active { filter: brightness(.85); }
+.key.back { flex-grow: 1.5; display: grid; place-items: center; }
+.key.back svg { width: 24px; height: 24px; }
 .tile { width: 40px; height: 40px; font-size: 1.2rem; }
 
 .in { background: var(--in); color: #fff; }
 .out { background: var(--out); color: #fff; }
 .unsure { background: var(--unsure); color: #0c0c0c; }
 
-/* A helper-settled letter gets a dot: tapping it does nothing */
+/* A helper-settled letter gets a dot: its colour can't be changed, though its key still types */
 .locked::after {
   content: "";
   position: absolute;

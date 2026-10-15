@@ -32,8 +32,7 @@
       <div id="theirs" class="clock"><span class="who"></span><b></b></div>
     </div>
 
-    <input id="word" maxlength="4" placeholder="Guess" aria-label="Your guess"
-           autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
+    <p id="word" class="slots" role="status" aria-label="Your guess"><span></span><span></span><span></span><span></span></p>
     <p class="label">How many letters are right?</p>
     <div id="counts" class="counts"></div>
     <p id="msg" class="msg"></p>
@@ -41,7 +40,7 @@
 
     <div id="keyboard" class="keyboard"></div>
     <p class="legend">
-      Tap to mark:
+      Tap guessed letters:
       <span><i class="out"></i>not in</span>
       <span><i class="unsure"></i>not sure</span>
       <span><i class="in"></i>in word</span>
