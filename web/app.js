@@ -12,13 +12,14 @@ const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 const $ = (id) => document.getElementById(id);
 
 // --- State: { notes: [{ word, count }] oldest first, colours: { letter: "in" | "out" | "unsure" }, secret: my word,
-//              helper: "" | "basic" | "advanced", how much to work out from the counts } ---
+//              helper: "" | "basic" | "advanced", how much to work out from the counts,
+//              startedAt: when New game was last pressed, in ms, or null before the first one } ---
 
 let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
 
 function load() {
-  const empty = { notes: [], colours: {}, secret: "", helper: "" };
+  const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null };
   try {
     return { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
   } catch {
@@ -70,7 +71,7 @@ function deleteNote(note) {
 function newGame() {
   if (confirm("Clear your word, guesses and key colours?")) {
     showSecret(false);
-    update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper }));
+    update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now() }));
   }
 }
 
@@ -110,6 +111,16 @@ function progress(fitting) {
   const words = plural(wordsLeft(fitting, state.notes), "possible word");
   if (fitting.length === 1) return `Letters found: ${[...fitting[0].toUpperCase()].join(" ")}. ${words} left!`;
   return `${words}, ${plural(fitting.length, "letter set")} left`;
+}
+
+// The time since New game as m:ss, or h:mm:ss past an hour
+function showTimer() {
+  $("timer").hidden = !state.startedAt;
+  if (!state.startedAt) return;
+  const seconds = Math.max(0, Math.floor((Date.now() - state.startedAt) / 1000));
+  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
+  const pad = (n) => String(n).padStart(2, "0");
+  $("timer").textContent = h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
 function showMessage(text) {
@@ -184,6 +195,8 @@ function render() {
   const { known, fitting } = deduce();
   settled = known;
   $("clear").disabled = !Object.keys(state.colours).length;
+  $("guess-count").textContent = state.notes.length ? `(${state.notes.length})` : "";
+  showTimer();
   $("progress").hidden = !fitting;
   if (fitting) $("progress").textContent = progress(fitting);
   const colour = (letter) => (known[letter] ? `${known[letter]} locked` : state.colours[letter] || "");
@@ -209,6 +222,7 @@ function render() {
 
 buildControls();
 render();
+setInterval(showTimer, 1000);
 
 // Keeps the files for offline use, which also lets the page be installed as an app (sw.js)
 navigator.serviceWorker?.register("sw.js").catch(() => {});

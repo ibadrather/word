@@ -25,6 +25,7 @@
         <span>New<span class="wide"> game</span></span>
       </button>
     </header>
+    <p id="timer" class="timer" aria-label="Time since the game started" hidden></p>
 
     <input id="word" maxlength="4" placeholder="Guess" aria-label="Your guess"
            autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
@@ -39,10 +40,10 @@
       <span><i class="out"></i>not in</span>
       <span><i class="unsure"></i>not sure</span>
       <span><i class="in"></i>in word</span>
-      <button id="clear" class="clear" type="button">Clear</button>
     </p>
+    <button id="clear" class="clear" type="button">Clear</button>
 
-    <h2>Your guesses</h2>
+    <h2>Your guesses <span id="guess-count" class="guess-count"></span></h2>
     <ul id="notes" class="notes"></ul>
 
     <h2><label for="secret">Your secret word</label></h2>

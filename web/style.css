@@ -100,7 +100,10 @@ body.dark .mode {
 .new-game:active { background: color-mix(in srgb, var(--heading) 14%, var(--bg)); }
 /* On narrow phones it says just "New", so the mode name isn't cut off */
 @media (max-width: 420px) { .new-game .wide { display: none; } }
+/* Game timer: centred under the header, digits that don't jiggle as they tick */
+.timer { margin: -6px 0 10px; text-align: center; font-size: 1.1rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 h2 { margin: 28px 0 8px; font-size: .95rem; }
+.guess-count { color: var(--muted); font-weight: 600; }
 
 button, select {
   font: inherit;
@@ -208,12 +211,14 @@ button, select {
 .legend i { width: 10px; height: 10px; border-radius: 3px; }
 /* Clear: undoes your own key colours, dim when there are none */
 .clear {
-  padding: 1px 10px;
-  border: 1.5px solid var(--line);
+  display: block;
+  margin: 12px auto 0;
+  padding: 8px 28px;
+  border: 2px solid var(--line);
   border-radius: 20px;
   background: transparent;
   color: var(--heading);
-  font-size: .8rem;
+  font-size: .95rem;
   font-weight: 600;
 }
 .clear:disabled { opacity: .4; cursor: default; }
