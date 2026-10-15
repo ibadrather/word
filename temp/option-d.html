@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Option D · Bottom clock</title>
+  <link rel="stylesheet" href="mock.css">
+  <style>
+    /* Pinned to the bottom of the screen like a real chess clock: the side that's ticking is big and filled */
+    .phone main { padding-bottom: 110px; }
+    .shot figcaption { min-height: 8.8em; }
+    .dock { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 8px 10px 18px; background: var(--bg); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgb(0 0 0 / .06); font-variant-numeric: tabular-nums; }
+    .dock .side { flex: 1; display: grid; justify-items: center; padding: 6px 4px; border-radius: 14px; background: var(--key); color: var(--muted); transition: flex .2s; }
+    .dock .side span { font-size: .7rem; font-weight: 600; }
+    .dock .side b { font-size: 1.25rem; line-height: 1.2; }
+    .dock .side.running { flex: 1.6; background: var(--accent); color: #fff; }
+    .dock .side.running b { font-size: 2rem; }
+    .dock .side.over { background: color-mix(in srgb, var(--out) 12%, var(--bg)); color: var(--out); }
+    .dock .side.idle { opacity: .55; }
+    .dock .mid { display: grid; place-items: center; width: 40px; border: 0; border-radius: 14px; background: none; color: var(--muted); }
+    .dock .mid svg { width: 20px; height: 20px; }
+    .dock .mid .dot { margin-top: -4px; }
+    /* A small label sitting on the dock's top edge: waiting, joined, left */
+    .dock .note { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 3px 11px; border: 1px solid var(--line); border-radius: 20px; background: var(--bg); font-size: .7rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .dock .note.warn { border-color: color-mix(in srgb, var(--out) 40%, var(--bg)); color: var(--out); }
+    .dot.wait { animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .25; } }
+
+    .sheet { position: absolute; top: 0; left: 0; right: 0; padding: 22px 18px 18px; border-radius: 0 0 24px 24px; background: var(--bg); box-shadow: 0 10px 40px rgb(0 0 0 / .25); display: grid; gap: 14px; }
+    .sheet-head { display: flex; align-items: center; gap: 10px; }
+    .sheet-head h2 { flex: 1; margin: 0; font-size: 1.1rem; color: var(--heading); }
+    .live-line { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--in) 10%, var(--bg)); font-size: .9rem; font-weight: 600; }
+    .times-up { margin: -4px 0 10px; text-align: center; font-size: .85rem; font-weight: 600; color: var(--out); }
+    .wait-box { display: grid; justify-items: center; gap: 8px; padding: 16px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); text-align: center; }
+    .wait-box .waiting { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; color: var(--muted); }
+    .wait-box .room-big { font-size: 1.4rem; font-weight: 700; color: var(--heading); letter-spacing: .02em; }
+    .err { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); font-size: .85rem; font-weight: 600; }
+    .field input.typing { border-color: var(--accent); }
+    .opt { font-weight: 400; }
+
+    /* "How you play" in the drawer: two cards, the chosen one outlined */
+    .play-cards { display: grid; gap: 8px; }
+    .play-card { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 2px solid var(--line); border-radius: 14px; text-align: left; background: var(--bg); }
+    .play-card.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
+    .play-card .radio { flex: none; width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--line); border-radius: 50%; }
+    .play-card.on .radio { border: 6px solid var(--accent); }
+    .play-card b { display: block; font-size: .95rem; }
+    .play-card span { font-size: .8rem; color: var(--muted); }
+    .tap { position: relative; }
+    .tap::after { content: ""; position: absolute; right: 18px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%; background: rgb(69 49 204 / .25); box-shadow: 0 0 0 6px rgb(69 49 204 / .12); }
+
+
+    /* The phone's own confirm box, which the code uses today */
+    .alert { position: absolute; left: 44px; right: 44px; top: 36%; overflow: hidden; border-radius: 14px; background: rgb(242 242 247 / .97); color: #000; text-align: center; }
+    .alert p { margin: 0; padding: 18px 16px 16px; font-size: .9rem; font-weight: 600; }
+    .alert small { display: block; margin-top: 4px; font-size: .75rem; font-weight: 400; color: #3c3c43; }
+    .alert .btns { display: flex; border-top: 1px solid #c6c6c8; }
+    .alert .btns button { flex: 1; padding: 11px; border: 0; background: none; color: #007aff; font-size: .95rem; }
+    .alert .btns button + button { border-left: 1px solid #c6c6c8; font-weight: 700; }
+
+    /* Advanced Helper Mode turns the page dark; the dock follows */
+    .dark { color-scheme: dark; --bg: #121212; --fg: #f2f2f2; --muted: #9ca3af; --line: #2e2e30; --key: #3a3a3c; --heading: #a497ff; --error: #f87171; color: var(--fg); }
+    .dark .mode { background-color: color-mix(in srgb, var(--heading) 18%, var(--bg)); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a497ff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); }
+
+    /* Page layout: chapters, pairs of phones, the walk-through table, the dock's states */
+    .chapter { max-width: 1180px; margin: 34px auto 0; padding: 0 24px; }
+    .chapter h2 { margin: 0 0 4px; font-size: 1.2rem; color: #0c0c0c; }
+    .chapter h2 .num { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 8px; border-radius: 50%; background: #4531cc; color: #fff; font-size: .8rem; vertical-align: 2px; }
+    .chapter p { margin: 0; max-width: 780px; color: #374151; }
+    .pair { display: flex; flex-wrap: wrap; justify-content: center; gap: 28px; padding: 14px 20px 20px; border: 2px dashed #c9c4f3; border-radius: 28px; background: rgb(255 255 255 / .5); }
+    .pair > .pair-label { flex-basis: 100%; margin: 0; text-align: center; font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #4531cc; }
+    .whose { display: inline-block; margin-bottom: 4px; padding: 2px 8px; border-radius: 10px; background: #e3e0fb; color: #4531cc; font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .whose.two { background: #fef3c7; color: #92400e; }
+
+    .walk { max-width: 1180px; margin: 0 auto; padding: 18px 24px 0; }
+    .walk table { width: 100%; border-collapse: collapse; font-size: .88rem; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 10px rgb(0 0 0 / .05); }
+    .walk th, .walk td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid #eceef3; color: #374151; }
+    .walk th { background: #f6f5ff; color: #0c0c0c; }
+    .walk td:first-child { width: 34px; font-weight: 700; color: #4531cc; }
+    .walk td.both { text-align: center; background: #f6fef9; }
+    .walk a { color: #4531cc; font-weight: 600; }
+    .walk .scroll { overflow-x: auto; }
+    .explain { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px; }
+    .explain div { padding: 14px 16px; border-radius: 14px; background: #fff; font-size: .88rem; color: #374151; }
+    .explain b { display: block; margin-bottom: 2px; color: #0c0c0c; }
+
+    .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 30px 24px; max-width: 1180px; margin: 0 auto; padding: 26px 24px 8px; }
+    .state { display: grid; gap: 8px; }
+    .state .dock { position: relative; padding-bottom: 8px; border: 1px solid var(--line); border-radius: 16px; box-shadow: none; }
+    .state .cap { font-size: .82rem; color: #374151; }
+    .state .cap b { color: #0c0c0c; }
+    .state .dark-wrap { padding: 16px 10px 10px; border-radius: 18px; background: var(--bg); }
+  </style>
+</head>
+<body class="gallery">
+  <div class="intro-text">
+    <h1>Option D · A chess clock pinned to the bottom</h1>
+    <p class="lede">The top of the page stays as on main, even while you play: the timer, the guess and the keyboard don't move down. The clocks sit in a dock at the bottom, where your thumb already is. The side that's ticking grows and fills in, so whose turn it is shows from across the table. This page walks through the whole duel on both phones: turning it on, joining, playing, the awkward moments and leaving.</p>
+  </div>
+
+  <!-- ===== How a duel is made, in words ===== -->
+  <div class="walk">
+    <div class="scroll"><table>
+      <tr><th>#</th><th>Player one's phone</th><th>Player two's phone</th></tr>
+      <tr><td>1</td><td>Tap the logo, then <b>Duel clock</b> under "How you play". <a href="#v2">View 2</a></td><td>Nothing yet. Their page is the normal game.</td></tr>
+      <tr><td>2</td><td>A sheet drops from the top with a room name made up for you, like <b>mint-owl-42</b>. Pick the minutes and tap <b>Connect</b>. <a href="#v3">View 3</a></td><td></td></tr>
+      <tr><td>3</td><td>The phone waits for the other one. Tap <b>Share link</b> to send it over WhatsApp or Messages, or read the room name out. <a href="#v4">View 4</a></td><td>Opens the link: the page asks <b>Join the duel?</b> <a href="#v5">View 5</a><br>No link? Menu → Duel clock, type <b>mint-owl-42</b> over the made-up name, Connect. <a href="#v6">View 6</a></td></tr>
+      <tr><td>4</td><td class="both" colspan="2">The phones find each other (a few seconds over the internet). Both docks show <b>10:00 · 10:00</b>, nothing ticks yet: the first guess is free. <a href="#v8">View 8</a></td></tr>
+      <tr><td>5</td><td>Notes a guess and taps its score. Their own clock stops, player two's starts. <a href="#v9">View 9</a></td><td>Within a moment their side fills in: <b>Your turn</b>. Noting their guess passes it back.</td></tr>
+      <tr><td>6</td><td class="both" colspan="2">Either player taps the dock's middle, then <b>Leave duel</b>. That phone goes back to the plain game, and the other is told. <a href="#v18">View 18</a></td></tr>
+    </table></div>
+    <div class="explain">
+      <div><b>What a "room" is</b>Only a shared name. Two phones that connect with the same name find each other. There are no accounts and no server of ours. That's why the app makes up a name nobody else would pick, and why the link carries it, so nobody has to type it.</div>
+      <div><b>How the phones find each other</b>Both phones say "I'm in mint-owl-42" to a few public relays, swap a few KB of encrypted connection offers, then talk to each other directly. After that, each guess sends one tiny message. It's what <code>clock.js</code> does today, unchanged.</div>
+      <div><b>What's new in Option D</b>Where the duel shows up: "How you play" in the drawer, a made-up room with a Share link, minutes as chips, the dock at the bottom and its sheet. And one change to the game: guesses are typed on the page's own keyboard into four slots, so the phone's keyboard never opens and never covers the dock. Letters are marked by tapping them in your guesses. The scoring and the helpers stay as they are.</div>
+    </div>
+  </div>
+
+  <!-- ===== 1. Turning it on ===== -->
+  <div class="chapter"><h2><span class="num">1</span>Turning it on (player one)</h2><p>The default game looks just as it does on main. The duel only exists once someone chooses it from the menu.</p></div>
+  <div class="phones">
+    <figure class="shot" id="v1">
+      <figcaption><b>1 · The game, as on main</b>No dock, no clock button, nothing new. Tap the logo to open the menu.</figcaption>
+      <div class="phone"><div class="screen"><main style="padding-bottom:48px">
+        <div data-header></div>
+        <div data-game data-word="seat"></div>
+      </main></div></div>
+    </figure>
+
+    <figure class="shot" id="v2">
+      <figcaption><b>2 · Menu: "How you play"</b>Two choices at the top of the drawer. Face to face is the default. Tap <i>Duel clock</i>. The rules, the example and the dictionary below stay as on main.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game data-word="seat"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="menu"><div class="menu-body">
+          <div class="menu-head">
+            <div class="logo"><b class="unsure">W</b><b class="out">O</b><b>R</b><b class="in">D</b></div>
+            <h2>About the game</h2><button class="close">×</button>
+          </div>
+          <h3>How you play</h3>
+          <div class="play-cards">
+            <button class="play-card"><i class="radio"></i><div><b>Face to face</b><span>Say guesses and scores out loud.</span></div></button>
+            <button class="play-card on tap"><i class="radio"></i><div><b>Duel clock</b><span>The same, plus a chess clock shared by both phones.</span></div></button>
+          </div>
+          <h3>Rules</h3>
+          <ol class="rules">
+            <li>Each of you picks a secret word of 4 letters.</li>
+            <li>Take turns guessing the other's word.</li>
+            <li>The answer is how many of the guess's letters are in the word.</li>
+          </ol>
+        </div></div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v3">
+      <figcaption><b>3 · The duel sheet drops from the top</b>The drawer closes. The room name is already filled in, your name is optional (it defaults to "Player one"), and the minutes are one tap. Then Connect.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game="empty"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Duel clock</h2><button class="close">×</button></div>
+          <p class="hint">A chess clock shared by both phones. Noting a guess stops your clock and starts theirs.</p>
+          <label class="field"><span>Room</span><div class="row-flex"><input value="mint-owl-42"><button class="secondary">Share link</button></div></label>
+          <p class="hint" style="margin-top:-8px">Made up for you. Joining a friend? Type their room instead.</p>
+          <label class="field"><span>Your name <span class="opt">(optional)</span></span><input placeholder="Player one"></label>
+          <div class="field"><span>Minutes each</span><div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div></div>
+          <button class="primary">Connect</button>
+          <p class="hint" style="text-align:center">Both phones need internet to find each other.</p>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v4">
+      <figcaption><b>4 · Waiting for player two</b>The sheet now shows the room in big letters and Share link. The dock has appeared at the bottom, dimmed, with a hollow dot. Close the sheet and you can play while you wait.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game="empty"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Duel clock</h2><button class="close">×</button></div>
+          <div class="wait-box">
+            <span class="waiting"><i class="dot wait"></i>Waiting for player two…</span>
+            <span class="room-big">mint-owl-42</span>
+            <button class="secondary">Share link</button>
+            <p class="hint">Send the link, or read the room out to them.</p>
+          </div>
+          <div class="field"><span>Minutes each</span><div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div></div>
+          <button class="secondary danger">Leave duel</button>
+        </div>
+        <div data-dock='{"mine":"10:00","theirs":"10:00","idle":true,"dot":"wait"}'></div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ===== 2. Joining ===== -->
+  <div class="chapter"><h2><span class="num">2</span>Joining (player two)</h2><p>Two ways in. The link is the easy one. Typing the room is the fallback when the two of you are sitting together and one reads it out.</p></div>
+  <div class="phones">
+    <figure class="shot" id="v5">
+      <figcaption><b>5 · Opened the shared link</b>The link is the game's address with <code>?room=mint-owl-42</code>. The page opens with this sheet already down. Minutes come from the other phone, so there's nothing to set.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game="empty" data-timer="off"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Join the duel?</h2><button class="close">×</button></div>
+          <p class="hint">This link is for the room <b style="color:var(--heading)">mint-owl-42</b>. Join it and your phone shares a chess clock with the phone that sent it.</p>
+          <label class="field"><span>Your name <span class="opt">(optional)</span></span><input placeholder="Player two"></label>
+          <button class="primary">Join duel</button>
+          <button class="secondary">Not now, just play</button>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v6">
+      <figcaption><b>6 · No link: type the room</b>Menu → Duel clock gives the same sheet as view 3, with its own made-up name. Type the other phone's room over it and Connect.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game="empty"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Duel clock</h2><button class="close">×</button></div>
+          <label class="field"><span>Room</span><div class="row-flex"><input class="typing" value="mint-owl-42|"><button class="secondary">Share link</button></div></label>
+          <p class="hint" style="margin-top:-8px">Made up for you. Joining a friend? Type their room instead.</p>
+          <label class="field"><span>Your name <span class="opt">(optional)</span></span><input placeholder="Player two"></label>
+          <div class="field"><span>Minutes each</span><div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div></div>
+          <button class="primary">Connect</button>
+          <p class="hint" style="text-align:center">Joining? Your minutes give way to the other phone's.</p>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v7">
+      <figcaption><b>7 · When joining fails</b>No internet, or the page was opened over plain http (the clock needs https). The problem shows in the sheet, in plain words, with Try again.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game="empty"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Duel clock</h2><button class="close">×</button></div>
+          <p class="err">Couldn't join mint-owl-42. Check this phone is online and try again.</p>
+          <label class="field"><span>Room</span><div class="row-flex"><input value="mint-owl-42"><button class="secondary">Share link</button></div></label>
+          <div class="field"><span>Minutes each</span><div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div></div>
+          <button class="primary">Try again</button>
+          <button class="secondary">Back to face to face</button>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ===== 3. Connected ===== -->
+  <div class="chapter"><h2><span class="num">3</span>Connected</h2><p>Once the phones find each other, the sheet folds away on its own. The dot in the dock's middle turns green, and both clocks wait at the full time until someone notes the first guess.</p></div>
+  <div class="phones">
+    <div class="pair" id="v8">
+      <p class="pair-label">8 · The same moment on both phones</p>
+      <figure class="shot">
+        <figcaption><span class="whose">Player one's phone</span><b>Ready</b>"Player two joined" sits on the dock's edge for a few seconds. Neither clock ticks: the first guess is free.</figcaption>
+        <div class="phone"><div class="screen"><main>
+          <div data-header></div>
+          <div data-game="empty"></div>
+        </main></div>
+          <div data-dock='{"mine":"10:00","theirs":"10:00","note":"Player two joined · first guess is free","noteDot":"live"}'></div>
+        </div>
+      </figure>
+      <figure class="shot">
+        <figcaption><span class="whose two">Player two's phone</span><b>Ready</b>The same dock seen from the other side: "You" on the left is always this phone, so names flip.</figcaption>
+        <div class="phone"><div class="screen"><main>
+          <div data-header></div>
+          <div data-game="empty"></div>
+        </main></div>
+          <div data-dock='{"mine":"10:00","theirs":"10:00","who":"Player one","note":"Player one joined · first guess is free","noteDot":"live"}'></div>
+        </div>
+      </figure>
+    </div>
+  </div>
+
+  <!-- ===== 4. Playing ===== -->
+  <div class="chapter"><h2><span class="num">4</span>Playing</h2><p>Tapping a score (0–4) notes the guess, as on main, and in a duel it also passes the clock. There's no separate clock button to remember.</p></div>
+  <div class="phones">
+    <div class="pair" id="v9">
+      <p class="pair-label">9 · Player one has just noted a guess</p>
+      <figure class="shot">
+        <figcaption><span class="whose">Player one's phone</span><b>Their turn</b>Their own clock stopped at 7:31. Player two's side grows and fills in, so you can see you're waiting.</figcaption>
+        <div class="phone"><div class="screen"><main>
+          <div data-header></div>
+          <div data-game></div>
+        </main></div>
+          <div data-dock='{"mine":"7:31","theirs":"8:02","run":"theirs"}'></div>
+        </div>
+      </figure>
+      <figure class="shot">
+        <figcaption><span class="whose two">Player two's phone</span><b>Your turn</b>A moment later, their own side is the big one and ticking. They say a guess, hear the score, tap it, and it's player one's turn again.</figcaption>
+        <div class="phone"><div class="screen"><main>
+          <div data-header></div>
+          <div data-game data-word="mare"></div>
+        </main></div>
+          <div data-dock='{"mine":"8:02","theirs":"7:31","run":"mine","who":"Player one"}'></div>
+        </div>
+      </figure>
+    </div>
+  </div>
+  <div class="phones">
+    <figure class="shot" id="v10">
+      <figcaption><b>10 · Typing a guess</b>The guess is typed on the page's own keyboard and fills the four slots, so the phone's keyboard never opens. The dock stays in view, with your clock ticking, the whole time you type. Every key types, red ones too.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game data-word="sea"></div>
+      </main></div>
+        <div data-dock='{"mine":"7:42","theirs":"8:15","run":"mine"}'></div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v11">
+      <figcaption><b>11 · Scrolled down to your guesses</b>The dock stays put. The page gets about 90px more space at the bottom, so the secret word is never hidden under it.</figcaption>
+      <div class="phone"><div class="screen" data-scroll="bottom"><main>
+        <div data-header></div>
+        <div data-game></div>
+      </main></div>
+        <div data-dock='{"mine":"7:42","theirs":"8:15","run":"mine"}'></div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v12">
+      <figcaption><b>12 · A clock ran out</b>A red 0:00 and one quiet line. Nothing stops you playing on, as it works now.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game data-before="timesUp"></div>
+      </main></div>
+        <div data-dock='{"mine":"0:00","theirs":"2:47","over":"mine"}'></div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v13">
+      <figcaption><b>13 · In Advanced Helper Mode (dark)</b>The dock takes the dark colours like the rest of the page. The helper and the duel are independent: either works with or without the other.</figcaption>
+      <div class="phone dark"><div class="screen"><main>
+        <div data-adv-header></div>
+        <div data-game></div>
+      </main></div>
+        <div data-dock='{"mine":"7:42","theirs":"8:15","run":"mine"}'></div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ===== 5. Mid-game ===== -->
+  <div class="chapter"><h2><span class="num">5</span>Changing things mid-game</h2><p>Everything about the duel is behind one button: the clock icon in the dock's middle. Anything that would restart a ticking clock asks first, as the code does today.</p></div>
+  <div class="phones">
+    <figure class="shot" id="v14">
+      <figcaption><b>14 · Tap the dock's middle</b>The duel sheet again, now showing who's connected, the room, the minutes, Share link and Leave. The clocks stay visible underneath.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Duel clock</h2><button class="close">×</button></div>
+          <div class="live-line"><i class="dot live"></i>Player two is connected<span style="margin-left:auto;color:var(--muted);font-weight:400">mint-owl-42</span></div>
+          <div class="field"><span>Minutes each</span><div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div></div>
+          <div class="row-flex"><button class="secondary grow">Share link</button><button class="secondary grow danger">Leave duel</button></div>
+        </div>
+        <div data-dock='{"mine":"7:31","theirs":"8:02","run":"theirs"}'></div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v15">
+      <figcaption><b>15 · Changing the minutes while a clock ticks</b>Tapping 5 asks first. OK resets both clocks to 5:00 on both phones. Cancel leaves everything as it was.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game></div>
+      </main></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Duel clock</h2><button class="close">×</button></div>
+          <div class="live-line"><i class="dot live"></i>Player two is connected<span style="margin-left:auto;color:var(--muted);font-weight:400">mint-owl-42</span></div>
+          <div class="field"><span>Minutes each</span><div class="chips"><button>3</button><button class="on">5</button><button>10</button><button>15</button><button>30</button></div></div>
+          <div class="row-flex"><button class="secondary grow">Share link</button><button class="secondary grow danger">Leave duel</button></div>
+        </div>
+        <div data-dock='{"mine":"7:31","theirs":"8:02","run":"theirs"}'></div>
+        <div class="scrim"></div>
+        <div class="alert"><p>Restart both clocks with 5 minutes?</p><div class="btns"><button>Cancel</button><button>OK</button></div></div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v16">
+      <figcaption><b>16 · New game while a clock ticks</b>After main's usual "Start a new game?", the duel asks one more thing. Cancel keeps the clocks, for a second word in the same timed match. OK puts both back to the full time.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game></div>
+      </main></div>
+        <div data-dock='{"mine":"7:42","theirs":"8:15","run":"mine"}'></div>
+        <div class="scrim"></div>
+        <div class="alert"><p>Also restart both clocks?<small>Cancel keeps them running.</small></p><div class="btns"><button>Cancel</button><button>OK</button></div></div>
+      </div>
+    </figure>
+
+    <figure class="shot" id="v17">
+      <figcaption><b>17 · The other phone dropped out</b>Its screen locked, or it lost signal. The dot goes hollow and a line on the dock's edge says so. The clocks keep counting, and when the phone comes back both agree again within a moment, with nothing to tap.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game></div>
+      </main></div>
+        <div data-dock='{"mine":"7:31","theirs":"7:12","run":"theirs","dot":"wait","note":"Player two dropped out · reconnecting…","noteDot":"wait","warn":true}'></div>
+      </div>
+    </figure>
+  </div>
+
+  <!-- ===== 6. Leaving ===== -->
+  <div class="chapter"><h2><span class="num">6</span>Leaving</h2><p>Leave duel in the sheet (view 14), or choosing Face to face in the menu, switches the duel off on that phone. The room is remembered, so it's one tap to set up again next time.</p></div>
+  <div class="phones">
+    <div class="pair" id="v18">
+      <p class="pair-label">18 · Player one tapped Leave duel</p>
+      <figure class="shot">
+        <figcaption><span class="whose">Player one's phone</span><b>Back to the plain game</b>The dock is gone. The page is main's again, and the guesses and letters you'd noted are still there.</figcaption>
+        <div class="phone"><div class="screen"><main style="padding-bottom:48px">
+          <div data-header></div>
+          <div data-game></div>
+        </main></div></div>
+      </figure>
+      <figure class="shot">
+        <figcaption><span class="whose two">Player two's phone</span><b>Told the other player left</b>The clocks stop (today they'd keep ticking) and the dot goes hollow. They can wait in case player one comes back, or tap the middle and Leave too.</figcaption>
+        <div class="phone"><div class="screen"><main>
+          <div data-header></div>
+          <div data-game></div>
+        </main></div>
+          <div data-dock='{"mine":"7:12","theirs":"7:31","who":"Player one","idle":true,"dot":"","note":"Player one left the duel","noteDot":""}'></div>
+        </div>
+      </figure>
+    </div>
+  </div>
+
+  <!-- ===== The dock's states at a glance ===== -->
+  <div class="chapter"><h2><span class="num">★</span>Every state of the dock</h2><p>The dock is the whole duel during play. Here are all its states side by side, so you can check each one reads clearly.</p></div>
+  <div class="states">
+    <div class="state"><div data-dock='{"mine":"10:00","theirs":"10:00","idle":true,"dot":"wait","note":"Waiting for player two…","noteDot":"wait"}'></div><p class="cap"><b>Waiting.</b> Dimmed, hollow pulsing dot. You've connected, the other phone hasn't yet.</p></div>
+    <div class="state"><div data-dock='{"mine":"10:00","theirs":"10:00","note":"Player two joined · first guess is free","noteDot":"live"}'></div><p class="cap"><b>Ready.</b> Green dot, both at the full time, nothing ticking.</p></div>
+    <div class="state"><div data-dock='{"mine":"7:42","theirs":"8:15","run":"mine"}'></div><p class="cap"><b>Your turn.</b> Your side is wide, filled and counting down.</p></div>
+    <div class="state"><div data-dock='{"mine":"7:31","theirs":"8:02","run":"theirs"}'></div><p class="cap"><b>Their turn.</b> Theirs is. Noting a guess is what moves it.</p></div>
+    <div class="state"><div data-dock='{"mine":"0:00","theirs":"2:47","over":"mine"}'></div><p class="cap"><b>Out of time.</b> Red 0:00. Nothing ticks, and play can go on.</p></div>
+    <div class="state"><div data-dock='{"mine":"7:31","theirs":"7:12","run":"theirs","dot":"wait","note":"Player two dropped out · reconnecting…","noteDot":"wait","warn":true}'></div><p class="cap"><b>Dropped out.</b> Hollow dot and a red line on the edge. The clock keeps going.</p></div>
+    <div class="state"><div data-dock='{"mine":"7:12","theirs":"7:31","who":"Player one","idle":true,"dot":"","note":"Player one left the duel","noteDot":""}'></div><p class="cap"><b>Other player left.</b> Dimmed and stopped until they come back or you leave too.</p></div>
+    <div class="state"><div class="dark dark-wrap"><div data-dock='{"mine":"7:42","theirs":"8:15","run":"mine"}'></div></div><p class="cap"><b>Dark.</b> In Advanced Helper Mode.</p></div>
+  </div>
+
+  <div class="notes-box">
+    <h2>Trade-offs</h2>
+    <ul>
+      <li><span class="pro">+</span> Nothing above the keyboard moves, in any mode. The game you know stays where it was.</li>
+      <li><span class="pro">+</span> It reads like a real chess clock: big, at the bottom, and you can tell whose turn it is from across the table.</li>
+      <li><span class="pro">+</span> Setting up is three taps for the first phone (logo, Duel clock, Connect) and two for the second (the link, then Join duel). Nobody has to invent a room name.</li>
+      <li><span class="con">−</span> The dock covers about 90px of the bottom, so the guess list and secret word need that much more scrolling.</li>
+      <li><span class="con">−</span> A fixed bar needs care with the iPhone home indicator. (The phone's keyboard is no worry: guesses are typed on the page's own, view 10.)</li>
+      <li><span class="con">−</span> New code beyond what's there now: the made-up room name, reading <code>?room=</code> from the link, the "Join the duel?" sheet, the joining phone taking the other's minutes, and stopping the clocks when the other player leaves.</li>
+    </ul>
+    <h2>Open questions for you</h2>
+    <ul>
+      <li>Room names: word-word-number like <b>mint-owl-42</b>, or a 4-letter word like <b>MINT</b>, which is easier to say across the table but needs a hidden suffix so two tables never clash?</li>
+      <li>When the other player leaves (view 18), should your phone leave the duel on its own after a while?</li>
+    </ul>
+  </div>
+
+  <script src="mock.js"></script>
+  <script>
+    window.timesUp = `<p class="times-up">Your time is up. Play on if you like.</p>`;
+
+    // The dock: { mine, theirs, run: "mine" | "theirs", over: side, who, idle, dot: "live" | "wait" | "", note, noteDot, warn }
+    const dock = (o) => {
+      const side = (which, name, time) => {
+        const cls = [o.run === which && "running", o.over === which && "over", o.idle && "idle"].filter(Boolean).join(" ");
+        return `<div class="side ${cls}"><span>${name}</span><b>${time}</b></div>`;
+      };
+      const note = o.note ? `<span class="note ${o.warn ? "warn" : ""}">${o.noteDot !== undefined ? `<i class="dot ${o.noteDot}"></i>` : ""}${o.note}</span>` : "";
+      return `<div class="dock">${note}${side("mine", "You", o.mine)}<button class="mid">${CLOCK_ICON}<i class="dot ${o.dot ?? "live"}"></i></button>${side("theirs", o.who || "Player two", o.theirs)}</div>`;
+    };
+    document.querySelectorAll("[data-dock]").forEach((el) => (el.outerHTML = dock(JSON.parse(el.dataset.dock))));
+    document.querySelectorAll("[data-adv-header]").forEach((el) => (el.outerHTML = header("", "Advanced Helper Mode")));
+
+    // Views that show the page scrolled to the bottom
+    addEventListener("load", () => document.querySelectorAll("[data-scroll=bottom]").forEach((el) => (el.scrollTop = el.scrollHeight)));
+  </script>
+</body>
+</html>

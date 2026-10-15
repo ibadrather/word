@@ -26,9 +26,9 @@
       </button>
     </header>
     <p id="timer" class="timer" aria-label="Time since your last guess" hidden></p>
+    <p id="times-up" class="times-up" hidden>Your time is up. Play on if you like.</p>
 
-    <input id="word" maxlength="4" placeholder="Guess" aria-label="Your guess"
-           autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
+    <p id="word" class="slots" role="status" aria-label="Your guess"><span></span><span></span><span></span><span></span></p>
     <p class="label">How many letters are right?</p>
     <div id="counts" class="counts"></div>
     <p id="msg" class="msg"></p>
@@ -36,7 +36,7 @@
 
     <div id="keyboard" class="keyboard"></div>
     <p class="legend">
-      Tap to mark:
+      Tap guessed letters:
       <span><i class="out"></i>not in</span>
       <span><i class="unsure"></i>not sure</span>
       <span><i class="in"></i>in word</span>
@@ -61,12 +61,34 @@
     <p id="secret-msg" class="msg"></p>
   </main>
 
+  <div id="dock" class="dock" role="group" aria-label="Duel clock" hidden>
+    <span id="dock-note" class="note" hidden><i class="dot" aria-hidden="true"></i><span></span></span>
+    <div id="mine" class="side" role="timer"><span>You</span><b></b></div>
+    <button id="dock-menu" class="mid" type="button" aria-label="Duel clock settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>
+      <i class="dot" aria-hidden="true"></i>
+    </button>
+    <div id="theirs" class="side" role="timer"><span></span><b></b></div>
+  </div>
+
   <dialog id="menu" class="menu" aria-labelledby="about">
     <div class="menu-body" tabindex="-1" autofocus>
       <div class="menu-head">
         <div class="logo" aria-hidden="true"><b class="unsure">W</b><b class="out">O</b><b>R</b><b class="in">D</b></div>
         <h2 id="about">About the game</h2>
         <button id="close" class="close" type="button" aria-label="Close">×</button>
+      </div>
+
+      <h3 id="play-label">How you play</h3>
+      <div class="play-cards" role="radiogroup" aria-labelledby="play-label">
+        <label class="play-card">
+          <input id="play-face" type="radio" name="play" value="face"><i class="radio" aria-hidden="true"></i>
+          <span><b>Face to face</b>Say guesses and scores out loud.</span>
+        </label>
+        <label class="play-card">
+          <input id="play-duel" type="radio" name="play" value="duel"><i class="radio" aria-hidden="true"></i>
+          <span><b>Duel clock</b>The same, plus a chess clock shared by both phones.</span>
+        </label>
       </div>
 
       <p class="intro">
@@ -109,6 +131,50 @@
       </div>
 
       <p class="menu-foot">Built by Asna and Ibad for you ❤️<span class="version">dev</span></p>
+    </div>
+  </dialog>
+
+  <!-- The duel clock's sheet: duel.js shows the parts for setting up, joining from a link, waiting, connected or a
+       failed join -->
+  <dialog id="duel" class="sheet" aria-labelledby="duel-title">
+    <div class="sheet-body" tabindex="-1" autofocus>
+      <div class="sheet-head">
+        <h2 id="duel-title">Duel clock</h2>
+        <button id="duel-close" class="close" type="button" aria-label="Close">×</button>
+      </div>
+      <p id="duel-intro" class="hint">A chess clock shared by both phones. Noting a guess stops your clock and starts theirs.</p>
+      <p id="duel-invite" class="hint">This link is for the room <b></b>. Join it and your phone shares a chess clock with the phone that sent it.</p>
+      <p id="duel-error" class="err" role="alert" hidden></p>
+      <div id="duel-wait" class="wait-box" hidden>
+        <span class="waiting"><i class="dot wait" aria-hidden="true"></i><span></span></span>
+        <span class="room-big"></span>
+        <button class="secondary share" type="button">Share link</button>
+        <p class="hint">Send the link, or read the room out to them.</p>
+      </div>
+      <p id="duel-live" class="live-line" hidden><i class="dot" aria-hidden="true"></i><span></span><span class="room"></span></p>
+      <div id="duel-room-field" class="field">
+        <label for="duel-room">Room</label>
+        <div class="row-flex">
+          <input id="duel-room" maxlength="20" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
+          <button class="secondary share" type="button">Share link</button>
+        </div>
+      </div>
+      <p id="duel-room-hint" class="hint">Made up for you. Joining a friend? Type their room instead.</p>
+      <label id="duel-name-field" class="field">
+        <span>Your name <span class="opt">(optional)</span></span>
+        <input id="duel-name" maxlength="12" autocomplete="off" enterkeyhint="done">
+      </label>
+      <div id="duel-minutes" class="field">
+        <span id="minutes-label">Minutes each</span>
+        <div id="chips" class="chips" role="group" aria-labelledby="minutes-label"></div>
+      </div>
+      <button id="duel-go" class="primary" type="button"></button>
+      <button id="duel-not-now" class="secondary" type="button">Not now, just play</button>
+      <div id="duel-end" class="row-flex">
+        <button id="duel-share" class="secondary grow share" type="button">Share link</button>
+        <button id="duel-leave" class="secondary grow" type="button"></button>
+      </div>
+      <p id="duel-foot" class="hint foot"></p>
     </div>
   </dialog>
 </body>
