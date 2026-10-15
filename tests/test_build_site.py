@@ -41,10 +41,25 @@ def test_staging_copy_has_its_own_storage(tmp_path: Path) -> None:
         if (WEB / name).is_file():
             text = (copy / name).read_text()
             assert old not in text
-            assert new.format(slug="feat-duel-sheet", branch="feat/duel-sheet") in text
+            filled = new.format(
+                folder="staging/feat-duel-sheet", name="Word staging: feat/duel-sheet"
+            )
+            assert filled in text
     manifest = json.loads((copy / "manifest.webmanifest").read_text())
     assert manifest["name"] == "Word staging: feat/duel-sheet"
     assert manifest["start_url"] == "./"  # still the copy's own folder
+
+
+def test_beta_has_its_own_storage(tmp_path: Path) -> None:
+    """The staging branch is the beta, with its own keys, cache and app name."""
+    site = build_site()
+    copy = tmp_path / "copy"
+    shutil.copytree(WEB, copy)
+    site.separate(copy, "staging")
+    assert 'STORAGE_KEY = "guess-word-v2:beta"' in (copy / "app.js").read_text()
+    assert "<title>Word beta</title>" in (copy / "index.html").read_text()
+    manifest = json.loads((copy / "manifest.webmanifest").read_text())
+    assert (manifest["name"], manifest["short_name"]) == ("Word beta", "Word beta")
 
 
 def test_staging_copy_without_its_text_is_refused(tmp_path: Path) -> None:
@@ -63,6 +78,14 @@ def test_branch_folders() -> None:
     slug_of = build_site().slug_of
     assert slug_of("feat/duel-sheet") == "feat-duel-sheet"
     assert slug_of("claude/Blissful_volta") == "claude-blissful-volta"
+
+
+def test_beta_folder() -> None:
+    """The staging branch goes to beta/, and every other branch under staging/."""
+    folder_of = build_site().folder_of
+    assert folder_of("staging") == "beta"
+    assert folder_of("feat/duel-sheet") == "staging/feat-duel-sheet"
+    assert folder_of("beta") == "staging/beta"  # a branch called beta isn't the beta
 
 
 @pytest.mark.skipif(
