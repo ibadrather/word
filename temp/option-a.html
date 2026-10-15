@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Option A · Clock button</title>
+  <link rel="stylesheet" href="mock.css">
+  <style>
+    /* The duel sheet drops from the top of the screen, over a dimmed page */
+    .sheet { position: absolute; top: 0; left: 0; right: 0; padding: 22px 18px 18px; border-radius: 0 0 24px 24px; background: var(--bg); box-shadow: 0 10px 40px rgb(0 0 0 / .25); display: grid; gap: 14px; }
+    .sheet-head { display: flex; align-items: center; gap: 10px; }
+    .sheet-head h2 { flex: 1; margin: 0; font-size: 1.1rem; color: var(--heading); }
+    .sheet .grab { justify-self: center; width: 40px; height: 4px; border-radius: 2px; background: var(--line); }
+    .live-line { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--in) 10%, var(--bg)); font-size: .9rem; font-weight: 600; }
+  </style>
+</head>
+<body class="gallery">
+  <div class="intro-text">
+    <a class="back" href="index.html">← All options</a>
+    <h1>Option A · A clock button in the header</h1>
+    <p class="lede">The smallest change. Main's page stays as it is, plus one round clock button next to New game. It opens a sheet that drops from the top with the duel settings. Once you're connected the button fills in and gets a green dot, and the two clocks sit under the header. The status line goes away, because the dot and the names on the clocks already tell you who's connected.</p>
+  </div>
+
+  <div class="phones">
+    <figure class="shot">
+      <figcaption><b>1 · Default game</b>Main's page plus the clock button, which is the only way into the duel.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header="offBtn"></div>
+        <div data-game data-word="seat"></div>
+      </main></div></div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>2 · Tap the clock: the duel sheet drops down</b>A room code is made for you; share the link and the other phone opens straight into it.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header="offBtn"></div>
+        <div data-game="empty"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Duel clock</h2><button class="close">×</button></div>
+          <p class="hint" style="margin-top:-8px">A chess clock shared by both phones. Noting a guess passes the clock to the other player.</p>
+          <label class="field"><span>Room</span>
+            <div class="row-flex"><input value="mint-owl-42"><button class="secondary">Share link</button></div>
+          </label>
+          <label class="field"><span>Your name</span><input placeholder="Player one"></label>
+          <div class="field"><span>Minutes each</span>
+            <div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div>
+          </div>
+          <button class="primary">Start duel</button>
+          <p class="hint">Both phones need internet to find each other.</p>
+          <div class="grab"></div>
+        </div>
+      </div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>3 · Playing: your turn</b>The button is filled with a green dot. Your clock is filled while it runs. The time since your last guess stays above the clocks.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header="onBtn"></div>
+        <div data-game data-before="mineTurn" data-word="seat"></div>
+      </main></div></div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>4 · Tap the button while connected</b>The same sheet shows who's connected, the room and Leave. Changing the minutes restarts both clocks (it asks first).</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header="onBtn"></div>
+        <div data-game data-before="theirTurn"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheet-head"><h2>Duel clock</h2><button class="close">×</button></div>
+          <div class="live-line"><i class="dot live"></i>Player two is connected<span style="margin-left:auto;color:var(--muted);font-weight:400">mint-owl-42</span></div>
+          <div class="field"><span>Minutes each</span>
+            <div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div>
+          </div>
+          <div class="row-flex"><button class="secondary grow">Share link</button><button class="secondary grow danger">Leave duel</button></div>
+          <div class="grab"></div>
+        </div>
+      </div>
+    </figure>
+  </div>
+
+  <div class="notes-box">
+    <h2>Trade-offs</h2>
+    <ul>
+      <li><span class="pro">+</span> Main's layout is unchanged apart from one 36px button. The About drawer goes back to exactly what main has.</li>
+      <li><span class="pro">+</span> One tap from anywhere to see or change the duel. The button's state (outlined, filled, green dot) works as the connection light.</li>
+      <li><span class="con">−</span> The header gets tighter on a 360px phone; "New game" already shrinks to "New" there.</li>
+      <li><span class="con">−</span> A clock icon is less obvious than a word. First-time players may not know it means "play against another phone".</li>
+    </ul>
+  </div>
+
+  <script src="mock.js"></script>
+  <script>
+    window.offBtn = `<button class="icon-btn" aria-label="Duel clock">${CLOCK_ICON}</button>`;
+    window.onBtn = `<button class="icon-btn on" aria-label="Duel clock">${CLOCK_ICON}<i class="dot live"></i></button>`;
+    window.mineTurn = clocks("mine");
+    window.theirTurn = clocks("theirs", "7:31", "8:15");
+  </script>
+</body>
+</html>

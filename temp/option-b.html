@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Option B · Duel bar</title>
+  <link rel="stylesheet" href="mock.css">
+  <style>
+    /* "How you play" in the drawer: two cards, the chosen one outlined */
+    .play-cards { display: grid; gap: 8px; }
+    .play-card { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 2px solid var(--line); border-radius: 14px; text-align: left; background: var(--bg); }
+    .play-card.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
+    .play-card .radio { flex: none; width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--line); border-radius: 50%; }
+    .play-card.on .radio { border: 6px solid var(--accent); }
+    .play-card b { display: block; font-size: .95rem; }
+    .play-card span { font-size: .8rem; color: var(--muted); }
+
+    /* The duel bar under the header: one line when folded, the settings when open */
+    .duel-bar { margin: -4px 0 12px; border: 2px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .duel-bar summary { display: flex; align-items: center; gap: 8px; padding: 8px 12px; list-style: none; font-size: .85rem; font-weight: 600; cursor: pointer; }
+    .duel-bar summary::-webkit-details-marker { display: none; }
+    .duel-bar summary .room { color: var(--muted); font-weight: 400; }
+    .duel-bar summary::after { content: ""; margin-left: auto; width: 10px; height: 10px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%234531cc' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center / contain; }
+    .duel-bar[open] summary::after { transform: rotate(180deg); }
+    .duel-bar[open] summary { border-bottom: 1px solid var(--line); }
+    .duel-body { display: grid; gap: 12px; padding: 12px; }
+    .duel-bar .clocks { margin: 0; padding: 0 8px 8px; }
+  </style>
+</head>
+<body class="gallery">
+  <div class="intro-text">
+    <a class="back" href="index.html">← All options</a>
+    <h1>Option B · Choose the duel in the menu, settings drop down from a bar</h1>
+    <p class="lede">The one you described. The header stays exactly as on main. The drawer gets a "How you play" choice at the top: <i>Face to face</i> (the default) or <i>Duel clock</i>. Choosing the duel adds a bar under the header with a dropdown. Open, it holds the connection settings. Once you're connected it folds to one line, with the clocks under it.</p>
+  </div>
+
+  <div class="phones">
+    <figure class="shot">
+      <figcaption><b>1 · Default game</b>Exactly main's page. Nothing about the duel shows until you choose it.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game data-word="seat"></div>
+      </main></div></div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>2 · Tap the logo: "How you play" at the top of the drawer</b>The rules, example and dictionary below it are the same as on main.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game data-word="seat"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="menu"><div class="menu-body">
+          <div class="menu-head">
+            <div class="logo"><b class="unsure">W</b><b class="out">O</b><b>R</b><b class="in">D</b></div>
+            <h2>About the game</h2><button class="close">×</button>
+          </div>
+          <h3>How you play</h3>
+          <div class="play-cards">
+            <button class="play-card"><i class="radio"></i><div><b>Face to face</b><span>Say guesses and scores out loud.</span></div></button>
+            <button class="play-card on"><i class="radio"></i><div><b>Duel clock</b><span>The same, plus a chess clock shared by both phones.</span></div></button>
+          </div>
+          <h3>Rules</h3>
+          <ol class="rules">
+            <li>Each of you picks a secret word of 4 letters.</li>
+            <li>Take turns guessing the other's word.</li>
+            <li>The answer is how many of the guess's letters are in the word.</li>
+          </ol>
+        </div></div>
+      </div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>3 · Duel chosen: the bar opens with the settings</b>Pick a room, share the link, choose the minutes and start. Your name defaults to "Player one".</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game="empty" data-timer="off" data-before="setupBar"></div>
+      </main></div></div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>4 · Connected: the bar folds to one line</b>The green dot and the room name, with the clocks under it. Tap the line to open it again and Leave.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game data-before="liveBar" data-word="seat"></div>
+      </main></div></div>
+    </figure>
+  </div>
+
+  <div class="notes-box">
+    <h2>Trade-offs</h2>
+    <ul>
+      <li><span class="pro">+</span> The header is untouched and the Face to face page is identical to main. The duel only exists once you choose it.</li>
+      <li><span class="pro">+</span> One place for everything about the duel: the bar. Open, it's the settings; folded, it's the status. That replaces the status line, the menu card and the Leave button.</li>
+      <li><span class="pro">+</span> The drawer stops being a mix of "about" and "settings": the clock card leaves the middle of it.</li>
+      <li><span class="con">−</span> Turning the duel on takes two steps (logo, then card), but you do that once per session.</li>
+      <li><span class="con">−</span> The folded bar plus the clocks take about 120px above the guess box.</li>
+    </ul>
+  </div>
+
+  <script src="mock.js"></script>
+  <script>
+    window.setupBar = `
+      <details class="duel-bar" open>
+        <summary><i class="dot"></i>Duel clock<span class="room">· not connected</span></summary>
+        <div class="duel-body">
+          <label class="field"><span>Room</span><div class="row-flex"><input value="mint-owl-42"><button class="secondary">Share link</button></div></label>
+          <label class="field"><span>Your name</span><input placeholder="Player one"></label>
+          <div class="field"><span>Minutes each</span><div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div></div>
+          <button class="primary">Connect</button>
+          <p class="hint">Both phones need internet to find each other. Back to Face to face from the menu.</p>
+        </div>
+      </details>`;
+    window.liveBar = `
+      <details class="duel-bar">
+        <summary><i class="dot live"></i>Player two<span class="room">· mint-owl-42 · 10 min</span></summary>
+        <div class="duel-body"><button class="secondary danger">Leave duel</button></div>
+      </details>
+      ${clocks("mine")}`;
+  </script>
+</body>
+</html>
