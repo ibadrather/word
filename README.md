@@ -35,7 +35,7 @@ You play face to face, saying guesses and scores out loud. The app never checks 
   - **Basic Helper Mode:** every letter of a guess that scored 0 turns red.
   - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many dictionary words and letter sets are left, and the letters once only one set fits. It counts words but never shows one.
 - **New game** clears everything, including your word.
-- **Timer** (under the header, from the first New game): the time since New game, then the time since your last guess, as `12:34 | 0:45`. Each guess also shows when in the game it was noted.
+- **Timer** (from the first New game): under the header, the time since your last guess (since New game before the first one). Beside **Your guesses**, the number of guesses and the game time, as `Guesses: 3  Game Timer: 12:34`. Each guess also shows when in the game it was noted.
 
 Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. They belong to the exact address, so notes made on a local preview (below) don't show up on the live site, and the other way round. An installed app keeps its own, too.
 
