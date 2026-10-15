@@ -1,6 +1,7 @@
 // Word: notes and a colour-marking keyboard. Everything stays in this browser.
 
 import { WORD_COUNT, fittingSets, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
+import * as mode from "./clock.js"; // the two-player clock; `clock` below is the m:ss formatter
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -61,6 +62,7 @@ function addNote(count) {
   showMessage("");
   const at = state.startedAt ? Date.now() - state.startedAt : undefined;
   update(() => state.notes.push({ word, count, at }));
+  mode.press(); // in clock mode, my clock stops and the other player's starts
 }
 
 function deleteNote(note) {
@@ -73,6 +75,7 @@ function newGame() {
   if (confirm("Clear your word, guesses and key colours?")) {
     showSecret(false);
     update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now() }));
+    mode.newGame();
   }
 }
 
@@ -122,9 +125,23 @@ function clock(ms) {
   return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-// On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses"
+// On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
+// In clock mode the two players' clocks and who is connected take the top spot instead.
 function showTimer() {
-  $("timer").hidden = $("game-stats").hidden = !state.startedAt;
+  const v = mode.view();
+  $("status").hidden = $("clocks").hidden = !v.active;
+  $("timer").hidden = v.active || !state.startedAt;
+  $("game-stats").hidden = !state.startedAt;
+  if (v.active) {
+    $("status").classList.toggle("live", v.live);
+    $("status").lastElementChild.textContent = v.status;
+    for (const side of ["mine", "theirs"]) {
+      $(side).querySelector(".who").textContent = v[side].name;
+      $(side).querySelector("b").textContent = clock(v[side].left + 999); // rounded up: 0:00 only once the time is gone
+      $(side).classList.toggle("running", v[side].running);
+      $(side).classList.toggle("over", v[side].left === 0);
+    }
+  }
   if (!state.startedAt) return;
   const elapsed = Date.now() - state.startedAt;
   $("timer").textContent = clock(elapsed - (state.notes.at(-1)?.at ?? 0));
@@ -181,6 +198,14 @@ function buildControls() {
     if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
   });
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
+  // The two-player clock's settings in the menu
+  $("name").addEventListener("change", (event) => mode.edit("name", event.target.value));
+  $("room").addEventListener("change", (event) => mode.edit("room", event.target.value));
+  $("minutes").addEventListener("change", (event) => mode.setMinutes(Number(event.target.value)));
+  $("join").addEventListener("click", () => {
+    if (mode.view().active) mode.disconnect();
+    else mode.connect($("name").value, $("room").value);
+  });
   // The dictionary's size as tiles in the logo's colours
   const tile = (digit, i) => {
     const el = Object.assign(document.createElement("b"), { textContent: digit });
@@ -200,6 +225,13 @@ function render() {
   // The installed app's status or title bar follows the page into dark and back
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
   $("counts").classList.toggle("ready", $("word").value.length === 4);
+  const v = mode.view();
+  if ($("name").value !== v.name) $("name").value = v.name;
+  if ($("room").value !== v.room) $("room").value = v.room;
+  if (Number($("minutes").value) !== v.minutes) $("minutes").value = v.minutes;
+  $("name").disabled = $("room").disabled = v.active;
+  $("join").textContent = v.active ? "Leave" : "Connect";
+  $("room-status").textContent = v.note;
   const { known, fitting } = deduce();
   settled = known;
   $("clear").disabled = !Object.keys(state.colours).length;
@@ -230,6 +262,7 @@ function render() {
 }
 
 buildControls();
+mode.init(render); // rejoins a saved room; the clock calls render whenever it changes
 render();
 setInterval(showTimer, 1000);
 
