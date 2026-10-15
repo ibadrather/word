@@ -11,7 +11,7 @@ const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 
 const $ = (id) => document.getElementById(id);
 
-// --- State: { notes: [{ word, count }] oldest first, colours: { letter: "in" | "out" | "unsure" }, secret: my word,
+// --- State: { notes: [{ word, count, at }] oldest first, at being ms into the game (none before the first New game), colours: { letter: "in" | "out" | "unsure" }, secret: my word,
 //              helper: "" | "basic" | "advanced", how much to work out from the counts,
 //              startedAt: when New game was last pressed, in ms, or null before the first one } ---
 
@@ -59,7 +59,8 @@ function addNote(count) {
   $("word").value = "";
   $("word").blur();
   showMessage("");
-  update(() => state.notes.push({ word, count }));
+  const at = state.startedAt ? Date.now() - state.startedAt : undefined;
+  update(() => state.notes.push({ word, count, at }));
 }
 
 function deleteNote(note) {
@@ -113,14 +114,18 @@ function progress(fitting) {
   return `${words}, ${plural(fitting.length, "letter set")} left`;
 }
 
-// The time since New game as m:ss, or h:mm:ss past an hour
-function showTimer() {
-  $("timer").hidden = !state.startedAt;
-  if (!state.startedAt) return;
-  const seconds = Math.max(0, Math.floor((Date.now() - state.startedAt) / 1000));
+// A stretch of game time as m:ss, or h:mm:ss past an hour
+function clock(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
   const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
   const pad = (n) => String(n).padStart(2, "0");
-  $("timer").textContent = h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+// The time since New game
+function showTimer() {
+  $("timer").hidden = !state.startedAt;
+  if (state.startedAt) $("timer").textContent = clock(Date.now() - state.startedAt);
 }
 
 function showMessage(text) {
@@ -209,6 +214,7 @@ function render() {
     const li = document.createElement("li");
     li.append(
       ...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)),
+      Object.assign(document.createElement("span"), { className: "at", textContent: note.at == null ? "" : clock(note.at) }),
       Object.assign(document.createElement("span"), { className: "score", textContent: note.count }),
       button("×", "delete", () => deleteNote(note)),
     );

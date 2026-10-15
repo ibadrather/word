@@ -229,6 +229,9 @@ button, select {
 .notes li { display: flex; align-items: center; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .notes li:last-child { border-bottom: 0; }
 .notes .empty { padding: 12px 0; color: var(--muted); font-size: .9rem; }
+/* When in the game it was noted: small and quiet, pushed right next to the score */
+.notes .at { margin: 0 6px 0 auto; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.notes .at + .score { margin-left: 0; }
 .score {
   display: grid;
   place-items: center;
