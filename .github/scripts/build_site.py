@@ -1,12 +1,13 @@
-"""Build the GitHub Pages site: the latest release, and a staging copy of every branch.
+"""Build the GitHub Pages site: the latest release, the beta and the staging copies.
 
 Usage: build_site.py <out>
 
 The root of <out> is web/ as of the highest v* tag, with its version stamped
-into the menu, so only released versions are live. Every other branch on
+into the menu, so only released versions are live. The staging branch is the
+beta, at beta/ (https://ibadrather.github.io/word/beta/). Every other branch on
 origin (all but main) goes to staging/<slug>/, so feat/duel-sheet is at
 https://ibadrather.github.io/word/staging/feat-duel-sheet/, and staging/ lists
-them. A deleted branch drops out on the next deploy.
+them all, the beta too. A deleted branch drops out on the next deploy.
 
 All project pages on ibadrather.github.io share one browser origin, so a
 staging copy gets its own storage keys, offline cache and app name: testing it
@@ -27,35 +28,37 @@ import tarfile
 import tomllib
 
 DEFAULT_BRANCH = "main"
+BETA_BRANCH = "staging"  # its copy is the beta, at beta/ rather than staging/staging/
 VERSION_SLOT = '<span class="version">dev</span>'
 
 # What keeps a staging copy apart from the live game: (file, text, replacement).
-# {slug} and {branch} are filled in. The duel's app id keeps its rooms apart too,
-# so a staging phone only ever meets another phone on the same branch. A file
-# the branch doesn't have is skipped (main has no clock.js); one that has lost
-# its text stops the branch, as its copy would share the live game's storage.
+# {folder} (staging/<slug>, or beta) and {name} are filled in. The duel's app id
+# keeps its rooms apart too, so a staging phone only ever meets another phone on
+# the same branch. A file the branch doesn't have is skipped (main has no
+# clock.js); one that has lost its text stops the branch, as its copy would
+# share the live game's storage.
 SEPARATE = (
     (
         "app.js",
         'const STORAGE_KEY = "guess-word-v2"',
-        'const STORAGE_KEY = "guess-word-v2:staging/{slug}"',
+        'const STORAGE_KEY = "guess-word-v2:{folder}"',
     ),
     (
         "clock.js",
         'const STORAGE_KEY = "word-clock"',
-        'const STORAGE_KEY = "word-clock:staging/{slug}"',
+        'const STORAGE_KEY = "word-clock:{folder}"',
     ),
     (
         "clock.js",
         'const APP_ID = "ibadrather-word"',
-        'const APP_ID = "ibadrather-word:staging/{slug}"',
+        'const APP_ID = "ibadrather-word:{folder}"',
     ),
     (
         "sw.js",
         'const CACHE = "guess-word"',
-        'const CACHE = "guess-word:staging/{slug}"',
+        'const CACHE = "guess-word:{folder}"',
     ),
-    ("index.html", "<title>Word</title>", "<title>Word staging: {branch}</title>"),
+    ("index.html", "<title>Word</title>", "<title>{name}</title>"),
 )
 
 
@@ -108,18 +111,28 @@ def slug_of(branch: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", branch.lower()).strip("-")
 
 
+def folder_of(branch: str) -> str:
+    """Return where a branch's copy goes: beta for staging, else staging/<slug>."""
+    return "beta" if branch == BETA_BRANCH else f"staging/{slug_of(branch)}"
+
+
+def app_name(branch: str) -> str:
+    """Return the copy's title and installed-app name."""
+    return "Word beta" if branch == BETA_BRANCH else f"Word staging: {branch}"
+
+
 def separate(site: pathlib.Path, branch: str) -> None:
     """Give a staging copy its own storage, offline cache and app name."""
-    slug = slug_of(branch)
-    for name, old, new in SEPARATE:
-        path = site / name
+    folder, name = folder_of(branch), app_name(branch)
+    for file, old, new in SEPARATE:
+        path = site / file
         if path.is_file():
-            replace_once(path, old, new.format(slug=slug, branch=html.escape(branch)))
+            replace_once(path, old, new.format(folder=folder, name=html.escape(name)))
     manifest = site / "manifest.webmanifest"
     if manifest.is_file():
         data = json.loads(manifest.read_text())
-        data["name"] = f"Word staging: {branch}"
-        data["short_name"] = "Word test"
+        data["name"] = name
+        data["short_name"] = "Word beta" if branch == BETA_BRANCH else "Word test"
         manifest.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
@@ -130,31 +143,33 @@ def branches() -> list[str]:
 
 
 def stage(out: pathlib.Path, branch: str) -> str:
-    """Build branch's staging copy under out/staging and return its folder name."""
-    slug = slug_of(branch)
-    site = out / "staging" / slug
+    """Build branch's staging copy under out and return its folder."""
+    folder = folder_of(branch)
+    site = out / folder
     if site.exists():
-        message = f"its folder {slug} is taken by another branch"
+        message = f"its folder {folder} is taken by another branch"
         raise StageError(message)
     ref = f"origin/{branch}"
     site.mkdir(parents=True)
     try:
         export(ref, site)
         commit = git("rev-parse", "--short", ref)
-        label = f"v{version_at(ref)} · staging {branch} @ {commit}"
+        where = "beta" if branch == BETA_BRANCH else f"staging {branch}"
+        label = f"v{version_at(ref)} · {where} @ {commit}"
         stamp(site, html.escape(label))
         separate(site, branch)
     except Exception:
         shutil.rmtree(site, ignore_errors=True)
         raise
-    return slug
+    return folder
 
 
 def index(staged: dict[str, str]) -> str:
-    """List the staging copies on one plain page."""
+    """List the staging copies on one plain page, from inside staging/."""
     items = "".join(
-        f'<li><a href="{slug}/">{html.escape(branch)}</a></li>'
-        for branch, slug in staged.items()
+        f'<li><a href="{os.path.relpath(folder, "staging")}/">{html.escape(branch)}</a>'
+        f"{' (the beta)' if branch == BETA_BRANCH else ''}</li>"
+        for branch, folder in staged.items()
     )
     return (
         '<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n'
@@ -201,7 +216,7 @@ def main(argv: list[str]) -> int:
             detail = getattr(error, "stderr", None) or error
             print(f"::warning::Not staging {branch}: {str(detail).strip()}")
             continue
-        summary(f"Staging: {branch} at staging/{staged[branch]}/")
+        summary(f"Staging: {branch} at {staged[branch]}/")
     (out / "staging").mkdir(exist_ok=True)
     (out / "staging" / "index.html").write_text(index(staged))
     return 0
