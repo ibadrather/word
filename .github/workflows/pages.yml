@@ -21,9 +21,12 @@ permissions:
   pages: write
   id-token: write
 
+# Queue deploys instead of cancelling them: a cancelled run can leave its Pages
+# deployment going, and that older build then lands after the newer one. Only
+# the latest queued run is kept, so a burst of CI runs still deploys once more.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
