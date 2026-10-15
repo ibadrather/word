@@ -126,12 +126,11 @@ function clock(ms) {
 }
 
 // On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
-// In clock mode the two players' clocks and who is connected take the top spot instead.
+// In clock mode who is connected and the two players' clocks sit under it; the game's own times stay as they are.
 function showTimer() {
   const v = mode.view();
   $("status").hidden = $("clocks").hidden = !v.active;
-  $("timer").hidden = v.active || !state.startedAt;
-  $("game-stats").hidden = !state.startedAt;
+  $("timer").hidden = $("game-stats").hidden = !state.startedAt;
   if (v.active) {
     $("status").classList.toggle("live", v.live);
     $("status").lastElementChild.textContent = v.status;
