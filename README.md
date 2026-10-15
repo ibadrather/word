@@ -2,7 +2,7 @@
 
 # Word
 
-A notepad for **Asna** and **Ibad**'s 4-letter word guessing game, opened in the phone's browser.
+A notepad for a two-player 4-letter word guessing game (player one and player two), opened in the phone's browser.
 
 **Play: https://ibadrather.github.io/word**
 
