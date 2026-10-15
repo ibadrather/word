@@ -30,6 +30,17 @@ export const pressed = (view, now, by) => ({
   by,
 });
 
+// The other player left: both clocks stop where they are. It counts as a new view, so a phone that rejoins with a fresh
+// clock at seq 0 adopts it, and play goes on from the same times.
+export const paused = (view, now, by) => ({
+  mine: left(view, "mine", now),
+  theirs: left(view, "theirs", now),
+  running: null,
+  at: now,
+  seq: view.seq + 1,
+  by,
+});
+
 // Both clocks back to full and stopped
 export const reset = (view, minutes, now, by) => ({ ...fresh(minutes), at: now, seq: view.seq + 1, by });
 
@@ -66,8 +77,10 @@ export const mirrored = (data, now) => ({
 // Minutes each, 1 to 60; anything else (empty, 0, letters) keeps the old value
 export const clampMinutes = (value, old) => (value >= 1 ? Math.min(60, Math.round(value)) : old);
 
-// Whether either clock has started since the last reset: until then the first guess is free
-export const started = (view) => Boolean(view.running) || !view.mine || !view.theirs;
+// Whether either clock has started since the last reset: until then the first guess is free. Clocks stopped
+// by a player leaving after the game got going are not full, so they count as started.
+export const started = (view, minutes) =>
+  Boolean(view.running) || view.mine < minutes * MINUTE || view.theirs < minutes * MINUTE;
 
 // A room made up for you, like mint-owl-42: words that are easy to say across a table and to spell, and a number.
 // The longest result has 6 + 6 letters and 4 more, well inside the room's 20.
@@ -88,6 +101,20 @@ export function roomName(random = Math.random) {
   return `${pick(ADJECTIVES)}-${pick(NOUNS)}-${10 + Math.floor(random() * 90)}`;
 }
 
+// A room as typed or linked: trimmed, lowercase and at most 20 characters
+export const cleanRoom = (typed) => typed.trim().toLowerCase().slice(0, 20);
+
+// The link that opens this page on a room: the page's own address with ?room=, any other query or hash dropped
+export function shareLink(href, room) {
+  const url = new URL(href);
+  url.search = new URLSearchParams({ room }).toString();
+  url.hash = "";
+  return url.href;
+}
+
+// The room in a page's query string, as the link carries it; "" when there's none
+export const roomFromLink = (search) => cleanRoom(new URLSearchParams(search).get("room") ?? "");
+
 // A stretch of time as m:ss, or h:mm:ss past an hour
 export function formatTime(ms) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -104,9 +131,11 @@ let state = { name: "", room: "", madeUp: "", host: false, joined: false, minute
 let onChange = () => {};
 let room = null; // the Trystero room while joined
 let action = null; // the room's "clock" messages
+let farewell = null; // the room's "bye", sent when leaving so the other phone can tell it from a dropout
 let peer = ""; // the other player's peer id, "" while alone
 let names = {}; // peer id → name, for every phone in the room
 let gone = null; // the name of the player who dropped out ("" if they sent none), until someone connects
+let departed = null; // the name of the player who tapped Leave ("" if they sent none), until someone connects
 let joinedAt = 0; // when the other phone last arrived, for the dock's "joined" note
 let error = ""; // what went wrong, for duel.js to word: "room" (none typed), "https" or "join", "" when all is well
 const me = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
@@ -156,15 +185,16 @@ export function edit(field, value) {
   if (error) tell(""); // typing answers "Type a room name"
 }
 
-export function connect(name, typed) {
+// `joining`: from a shared link, which is always someone else's room to join
+export function connect(name, typed, joining = false) {
   name = name.trim().slice(0, 12);
-  typed = typed.trim().toLowerCase().slice(0, 20);
+  typed = cleanRoom(typed);
   if (!typed) return tell("room");
   leaveRoom(); // Try again comes here too, from whatever is left of the failed join
   error = "";
-  gone = null;
+  gone = departed = null;
   // The phone that set up its own made-up room hosts it; any other room is someone else's to join
-  const host = typed === state.madeUp;
+  const host = !joining && typed === state.madeUp;
   // A fresh clock, so an old one never carries into a new room; at seq 0 it gives way to any game in progress
   const clock = { ...fresh(state.minutes), at: Date.now(), by: phoneId(host, me) };
   state = { ...state, name, room: typed, host, joined: true, clock };
@@ -176,7 +206,7 @@ export function connect(name, typed) {
 export function disconnect() {
   leaveRoom();
   error = "";
-  gone = null;
+  gone = departed = null;
   state.joined = false;
   save();
   onChange();
@@ -223,20 +253,22 @@ export function view() {
     madeUp,
     host,
     minutes,
-    peerName: peer ? (names[peer] ?? "") : (gone ?? ""), // as their phone sent it; "" before it has
+    peerName: peer ? (names[peer] ?? "") : (departed ?? gone ?? ""), // as their phone sent it; "" before it has
     joinedAt,
-    started: started(clock),
+    started: started(clock, minutes),
     error,
     mine: side("mine"),
     theirs: side("theirs"),
   };
 }
 
-// off, waiting for the other phone, live with it, dropped (it went away and may come back), or error (couldn't join)
+// off, waiting for the other phone, live with it, dropped (it went away and may come back), left (its player tapped
+// Leave), or error (couldn't join)
 function phase() {
   if (!state.joined) return "off";
   if (error) return "error";
   if (peer) return "live";
+  if (departed !== null) return "left";
   return gone === null ? "waiting" : "dropped";
 }
 
@@ -267,6 +299,7 @@ async function join() {
     if (room || !state.joined) return; // left, or joined again, while the library loaded
     room = joinRoom({ appId: APP_ID }, state.room);
     action = room.makeAction("clock");
+    farewell = room.makeAction("bye"); // apart from "clock", so its seq order stays as it is
   } catch {
     return tell("join");
   }
@@ -279,7 +312,7 @@ async function join() {
     if (joined !== room) return;
     if (!peer) joinedAt = Date.now();
     peer = id;
-    gone = null;
+    gone = departed = null;
     share();
     onChange();
   };
@@ -296,7 +329,7 @@ async function join() {
     if (joined !== room || typeof data?.seq !== "number") return;
     if (!peer) joinedAt = Date.now();
     peer = peerId;
-    gone = null;
+    gone = departed = null;
     names[peerId] = String(data.name ?? "").slice(0, 12);
     const theirs = mirrored(data, Date.now());
     if (newer(theirs, state.clock)) {
@@ -308,13 +341,31 @@ async function join() {
     }
     onChange();
   };
+  // The other player tapped Leave: both clocks stop until they come back. Their phone's leave, which follows, finds
+  // no peer to drop, so it doesn't turn "left" into "dropped out".
+  farewell.onMessage = (data, { peerId }) => {
+    if (joined !== room || peerId !== peer) return;
+    state.clock = paused(state.clock, Date.now(), phoneId(state.host, me));
+    save();
+    departed = names[peerId] ?? "";
+    peer = "";
+    onChange();
+  };
 }
 
+// The page's state lets go of the room at once. The room itself is left in the background, after a goodbye to the
+// other phone has gone or half a second has passed: a send that fails or hangs never keeps it open.
 function leaveRoom() {
-  room?.leave().catch(() => {});
-  room = action = null;
+  const [old, to, bye] = [room, peer, farewell];
+  room = action = farewell = null;
   peer = "";
   names = {};
+  if (!old) return;
+  const sent = to ? Promise.resolve().then(() => bye.send(true, { target: to })) : Promise.resolve();
+  const halfSecond = new Promise((resolve) => setTimeout(resolve, 500));
+  Promise.race([sent, halfSecond])
+    .catch(() => {})
+    .finally(() => old.leave().catch(() => {}));
 }
 
 function rejoin() {

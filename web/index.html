@@ -134,7 +134,8 @@
     </div>
   </dialog>
 
-  <!-- The duel clock's sheet: duel.js shows the parts for setting up, waiting, connected or a failed join -->
+  <!-- The duel clock's sheet: duel.js shows the parts for setting up, joining from a link, waiting, connected or a
+       failed join -->
   <dialog id="duel" class="sheet" aria-labelledby="duel-title">
     <div class="sheet-body" tabindex="-1" autofocus>
       <div class="sheet-head">
@@ -142,28 +143,37 @@
         <button id="duel-close" class="close" type="button" aria-label="Close">×</button>
       </div>
       <p id="duel-intro" class="hint">A chess clock shared by both phones. Noting a guess stops your clock and starts theirs.</p>
+      <p id="duel-invite" class="hint">This link is for the room <b></b>. Join it and your phone shares a chess clock with the phone that sent it.</p>
       <p id="duel-error" class="err" role="alert" hidden></p>
       <div id="duel-wait" class="wait-box" hidden>
         <span class="waiting"><i class="dot wait" aria-hidden="true"></i><span></span></span>
         <span class="room-big"></span>
-        <p class="hint">Read the room out to them.</p>
+        <button class="secondary share" type="button">Share link</button>
+        <p class="hint">Send the link, or read the room out to them.</p>
       </div>
       <p id="duel-live" class="live-line" hidden><i class="dot" aria-hidden="true"></i><span></span><span class="room"></span></p>
-      <label id="duel-room-field" class="field">
-        <span>Room</span>
-        <input id="duel-room" maxlength="20" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
-      </label>
+      <div id="duel-room-field" class="field">
+        <label for="duel-room">Room</label>
+        <div class="row-flex">
+          <input id="duel-room" maxlength="20" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
+          <button class="secondary share" type="button">Share link</button>
+        </div>
+      </div>
       <p id="duel-room-hint" class="hint">Made up for you. Joining a friend? Type their room instead.</p>
       <label id="duel-name-field" class="field">
         <span>Your name <span class="opt">(optional)</span></span>
         <input id="duel-name" maxlength="12" autocomplete="off" enterkeyhint="done">
       </label>
-      <div class="field">
+      <div id="duel-minutes" class="field">
         <span id="minutes-label">Minutes each</span>
         <div id="chips" class="chips" role="group" aria-labelledby="minutes-label"></div>
       </div>
       <button id="duel-go" class="primary" type="button"></button>
-      <button id="duel-leave" class="secondary" type="button"></button>
+      <button id="duel-not-now" class="secondary" type="button">Not now, just play</button>
+      <div id="duel-end" class="row-flex">
+        <button id="duel-share" class="secondary grow share" type="button">Share link</button>
+        <button id="duel-leave" class="secondary grow" type="button"></button>
+      </div>
       <p id="duel-foot" class="hint foot"></p>
     </div>
   </dialog>

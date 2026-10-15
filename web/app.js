@@ -273,6 +273,7 @@ function render() {
 buildControls();
 mode.init(render); // rejoins a saved room; the clock calls render whenever it changes
 render();
+duel.openLink(); // a shared duel link asks to join
 setInterval(showTimer, 1000);
 
 // Keeps the files for offline use, which also lets the page be installed as an app (sw.js)

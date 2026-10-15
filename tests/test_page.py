@@ -73,6 +73,15 @@ def test_service_worker_keeps_every_file() -> None:
     assert files == served - NOT_SERVED_OFFLINE
 
 
+def test_service_worker_ignores_the_query() -> None:
+    """A shared duel link (?room=...) must open offline too.
+
+    The worker keeps the page without a query, so offline it has to look the
+    request up with ignoreSearch, or a link would find nothing.
+    """
+    assert "ignoreSearch: true" in (WEB / "sw.js").read_text()
+
+
 def png_size(path: Path) -> str:
     """Read a PNG's size from its header, written as the manifest writes it."""
     width, height = struct.unpack(">II", path.read_bytes()[16:24])

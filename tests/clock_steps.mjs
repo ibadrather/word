@@ -10,10 +10,13 @@ import {
   message,
   mirrored,
   newer,
+  paused,
   phoneId,
   pressed,
   reset,
+  roomFromLink,
   roomName,
+  shareLink,
   started,
   ticking,
 } from "../web/clock.js";
@@ -66,12 +69,15 @@ out.runOut = { before: ticking(late, 500), after: ticking(late, 1_000), left: le
 
 out.minutes = [clampMinutes(0, 10), clampMinutes(Number.NaN, 10), clampMinutes(100, 10), clampMinutes(7.4, 10), clampMinutes(60, 10)];
 
-// The first guess is free until either clock starts; a reset makes it free again, and a side at 0 counts as started
+// The first guess is free until either clock starts; a reset makes it free again, a side at 0 counts as started, and
+// so do clocks stopped by a player leaving once one has run
 out.started = {
-  fresh: started(fresh(10)),
-  pressed: started(pressed(fresh(10), 5_000, "one")),
-  reset: started(reset(pressed(fresh(10), 5_000, "one"), 10, 9_000, "one")),
-  runOut: started({ ...fresh(10), mine: 0 }),
+  fresh: started(fresh(10), 10),
+  pressed: started(pressed(fresh(10), 5_000, "one"), 10),
+  reset: started(reset(pressed(fresh(10), 5_000, "one"), 10, 9_000, "one"), 10),
+  runOut: started({ ...fresh(10), mine: 0 }, 10),
+  paused: started(paused(pressed(fresh(10), 5_000, "one"), 35_000, "one"), 10),
+  pausedFresh: started(paused(fresh(10), 35_000, "one"), 10),
 };
 
 // Times as the dock and the game show them: m:ss, h:mm:ss past an hour, never below 0:00
@@ -105,5 +111,37 @@ out.roomName = {
   words: [ADJECTIVES.length, NOUNS.length],
   unique: new Set([...ADJECTIVES, ...NOUNS]).size === ADJECTIVES.length + NOUNS.length,
 };
+
+// Player two taps Leave while player one's clock has run 30 s: player one's phone stops both clocks where they are
+const running = { mine: 7 * 60_000, theirs: 8 * 60_000, running: "mine", at: 100_000, seq: 4, by: "two" };
+const stopped = paused(running, 130_000, phoneId(true, "aa"));
+// Player two connects again later with a fresh clock at seq 0 and gets player one's message: it adopts the stopped
+// clocks, and player one keeps them
+const rejoiner = { ...fresh(10), at: ahead(200_000), by: phoneId(false, "zz") };
+const rejoinerSees = mirrored(message(stopped, 200_000, "Player one", 10), ahead(200_000));
+out.paused = {
+  mine: left(stopped, "mine", 200_000),
+  theirs: left(stopped, "theirs", 200_000),
+  running: stopped.running,
+  ticking: ticking(stopped, 200_000),
+  seq: stopped.seq,
+  newer: newer(stopped, running),
+  hostKeeps: newer(stopped, mirrored(message(rejoiner, ahead(200_000), "Player two", 10), 200_000)),
+  rejoinerAdopts: newer(rejoinerSees, rejoiner),
+  rejoinerShows: [left(rejoinerSees, "mine", ahead(260_000)), left(rejoinerSees, "theirs", ahead(260_000))],
+};
+
+// Share link: the page's own path with only ?room=, and a room that needs it encoded
+out.shareLink = [
+  shareLink("https://ibadrather.github.io/word/?x=1#a", "mint-owl-42"),
+  shareLink("http://localhost:8000/", "mint-owl-42"),
+  shareLink("https://ibadrather.github.io/word/staging/feat-duel/index.html", "a b&c"),
+];
+
+// A link's room, cleaned up as a typed one is; "" when there's none
+out.roomFromLink = ["?room=mint-owl-42", "?room=MINT-OWL-42", `?room=${"x".repeat(30)}`, "", "?x=1", "?room="].map(
+  roomFromLink,
+);
+out.roundTrip = roomFromLink(new URL(shareLink("https://ibadrather.github.io/word/", "a b&c")).search);
 
 console.log(JSON.stringify(out));

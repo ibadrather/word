@@ -483,12 +483,13 @@ body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .sheet h2 { flex: 1; margin: 0; font-size: 1.1rem; color: var(--heading); }
 .hint { margin: 0; font-size: .78rem; color: var(--muted); }
 #duel-room-hint { margin-top: -8px; } /* it belongs to the Room field above */
+#duel-invite b { color: var(--heading); }
 .hint.foot { text-align: center; }
 .err { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); font-size: .85rem; font-weight: 600; }
 
 /* Fields: a small label over a rounded box */
 .field { display: grid; gap: 4px; }
-.field > span { font-size: .75rem; font-weight: 600; color: var(--muted); }
+.field > span, .field > label { font-size: .75rem; font-weight: 600; color: var(--muted); }
 .field .opt { font-weight: 400; }
 .field input { width: 100%; padding: 9px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--bg); color: inherit; font: inherit; font-weight: 600; }
 .field input:focus { outline: none; border-color: var(--accent); }
@@ -504,6 +505,10 @@ body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .secondary { min-height: 40px; padding: 8px 14px; border: 2px solid var(--line); border-radius: 20px; background: var(--bg); color: var(--heading); font-size: .85rem; font-weight: 600; }
 .secondary:active { background: var(--line); }
 .secondary.danger { color: var(--error); }
+/* Side by side: a field and its button, or two buttons sharing the width */
+.row-flex { display: flex; gap: 8px; align-items: center; }
+.row-flex > input, .row-flex > .grow { flex: 1; min-width: 0; }
+.row-flex .secondary { white-space: nowrap; }
 .sheet button:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
 
 /* Waiting: the room in big letters, to read out across the table */
@@ -511,7 +516,8 @@ body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .wait-box .waiting { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; color: var(--muted); }
 .wait-box .room-big { font-size: 1.4rem; font-weight: 700; color: var(--heading); letter-spacing: .02em; overflow-wrap: anywhere; }
 
-/* Connected: who's there, with the room on the right; red while they're away */
+/* Connected: who's there, with the room on the right; red while they're away, grey once they've left */
 .live-line { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--in) 10%, var(--bg)); font-size: .9rem; font-weight: 600; }
 .live-line .room { margin-left: auto; color: var(--muted); font-size: .8rem; font-weight: 400; white-space: nowrap; }
 .live-line.dropped { background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); }
+.live-line.left { background: color-mix(in srgb, var(--heading) 8%, var(--bg)); color: var(--muted); }
