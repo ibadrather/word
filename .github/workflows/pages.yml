@@ -1,12 +1,20 @@
 name: Deploy to GitHub Pages
 
-# Publishes web/ with the version from pyproject.toml stamped into the side
-# menu. The Release workflow calls this once a new version is tagged, so only
-# released versions go live. Run it by hand to republish the current one.
+# Publishes the site with .github/scripts/build_site.py: the latest released
+# version at the root, and a staging copy of every other branch under
+# staging/<branch>/, each with its own notes and duel. The Release workflow
+# calls this once a new version is tagged, so only released versions go live.
+# It also runs after CI on any branch and when a branch is deleted, so the
+# staging copies follow their branches. These triggers always run from main,
+# the only branch allowed to deploy. Run it by hand to republish.
 
 on:
   workflow_call:
   workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  delete:
 
 permissions:
   contents: read
@@ -24,17 +32,19 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Every tag and branch, to build the live site and the staging copies from
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: Stamp the version into the page
-        run: |
-          version=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
-          sed -i "s|<span class=\"version\">dev</span>|<span class=\"version\">v$version</span>|" web/index.html
-          grep -q "<span class=\"version\">v$version</span>" web/index.html
+      - uses: astral-sh/setup-uv@v10.1.0
+
+      - name: Build the site
+        run: uv run --no-project python .github/scripts/build_site.py _site
 
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: web
+          path: _site
 
       - id: deployment
         uses: actions/deploy-pages@v5
