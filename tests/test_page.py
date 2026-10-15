@@ -14,7 +14,7 @@ def test_page_never_calls_the_server() -> None:
     """Once loaded, the page works on its own: no sockets, polling or requests.
 
     Two exceptions: the service worker fetches the page's own files to keep
-    copies for offline use, and the two-player clock reaches public relays
+    copies for offline use, and the duel clock reaches public relays
     through trystero.js, only once you join a room.
     """
     code = "".join(

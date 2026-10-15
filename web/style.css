@@ -102,7 +102,7 @@ body.dark .mode {
 @media (max-width: 420px) { .new-game .wide { display: none; } }
 /* Time since your last guess: centred under the header, digits that don't jiggle as they tick */
 .timer { margin: -6px 0 10px; text-align: center; font-size: 1.1rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
-/* Two-player clock: one quiet line once your own clock has run out */
+/* Duel clock: one quiet line once your own clock has run out */
 .times-up { margin: -4px 0 10px; text-align: center; font-size: .85rem; font-weight: 600; color: var(--out); }
 h2 { margin: 28px 0 8px; font-size: .95rem; }
 /* "Your guesses" on the left, the guess count and game time on the right of the same line */
@@ -285,7 +285,7 @@ button, select {
   overscroll-behavior: contain; /* scrolling the drawer doesn't scroll the page behind it */
 }
 .menu[open] { animation: slide-in .25s cubic-bezier(.2, .8, .2, 1); }
-.menu::backdrop { background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.menu::backdrop, .sheet::backdrop { background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
 @keyframes slide-in { from { transform: translateX(-100%); } }
 
 .menu-body {
@@ -361,22 +361,33 @@ button, select {
 .example p { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
 .dictionary-label { font-size: .95rem; font-weight: 600; white-space: nowrap; }
 
-/* The two-player clock's settings: name, room and minutes stacked, Connect or Leave, then the room's status */
-.mode-card { display: grid; gap: 8px; }
-.mode-card input { width: 100%; padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; background: var(--bg); color: inherit; font: inherit; }
-.mode-card input:focus { outline: none; border-color: var(--accent); }
-.mode-card input:disabled { opacity: .6; }
-.mode-card label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .9rem; font-weight: 600; }
-.mode-card label input { width: 72px; text-align: center; }
-.mode-card .pill { justify-self: start; color: var(--heading); }
-#room-status { font-weight: 600; color: var(--heading); }
-#room-status:empty { display: none; }
+/* "How you play": two cards, the chosen one outlined. Real radios, hidden but still focusable. */
+.play-cards { display: grid; gap: 8px; }
+.play-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: var(--bg);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.play-card input { position: absolute; opacity: 0; pointer-events: none; }
+.play-card:has(:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
+.play-card:has(:focus-visible) { outline: 2px solid var(--heading); outline-offset: 2px; }
+.play-card .radio { flex: none; width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--line); border-radius: 50%; }
+.play-card :checked + .radio { border: 6px solid var(--accent); }
+.play-card span { font-size: .8rem; color: var(--muted); }
+.play-card b { display: block; font-size: .95rem; color: var(--fg); }
 
 .menu-foot { margin: auto 0 0; padding-top: 24px; text-align: center; font-size: .8rem; color: var(--muted); }
 /* The release version, stamped in on deploy; a local preview shows dev */
 .version { display: block; margin-top: 4px; font-size: .7rem; }
 
-/* Two-player clock: the clocks in a dock pinned to the bottom, like a real chess clock. The side that's ticking grows
+/* Duel clock: the clocks in a dock pinned to the bottom, like a real chess clock. The side that's ticking grows
    and fills in, so whose turn it is shows from across the table. Its background spans the screen, its sides stay
    within main's column, and the page gets room underneath so the secret word scrolls clear of it. */
 body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
@@ -445,3 +456,62 @@ body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
   .dot.wait { animation: pulse 1.2s ease-in-out infinite; }
 }
 @keyframes pulse { 50% { opacity: .25; } }
+
+/* Duel clock: the sheet that drops from the top, centred and as wide as the page; tap outside or × to close */
+.sheet {
+  inset: 0 0 auto;
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0 0 24px 24px;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 10px 40px rgb(0 0 0 / .25);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet[open] { animation: drop .25s cubic-bezier(.2, .8, .2, 1); }
+}
+@keyframes drop { from { transform: translateY(-100%); } }
+.sheet-body { display: grid; gap: 14px; padding: max(22px, env(safe-area-inset-top)) 18px 18px; outline: none; }
+.sheet-body [hidden] { display: none; }
+.sheet-head { display: flex; align-items: center; gap: 10px; }
+.sheet h2 { flex: 1; margin: 0; font-size: 1.1rem; color: var(--heading); }
+.hint { margin: 0; font-size: .78rem; color: var(--muted); }
+#duel-room-hint { margin-top: -8px; } /* it belongs to the Room field above */
+.hint.foot { text-align: center; }
+.err { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); font-size: .85rem; font-weight: 600; }
+
+/* Fields: a small label over a rounded box */
+.field { display: grid; gap: 4px; }
+.field > span { font-size: .75rem; font-weight: 600; color: var(--muted); }
+.field .opt { font-weight: 400; }
+.field input { width: 100%; padding: 9px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--bg); color: inherit; font: inherit; font-weight: 600; }
+.field input:focus { outline: none; border-color: var(--accent); }
+.field input::placeholder { color: var(--muted); font-weight: 400; }
+
+/* Minutes each, as chips; the lit one is the clocks' minutes */
+.chips { display: flex; gap: 6px; }
+.chips button { flex: 1; min-width: 0; height: 40px; padding: 0; border: 2px solid var(--line); border-radius: 20px; background: var(--bg); font-size: .9rem; font-weight: 600; }
+.chips button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); color: var(--heading); }
+
+.primary { width: 100%; padding: 12px; border: 0; border-radius: 14px; background: var(--accent); color: #fff; font-size: 1rem; font-weight: 700; }
+.primary:active { filter: brightness(.85); }
+.secondary { min-height: 40px; padding: 8px 14px; border: 2px solid var(--line); border-radius: 20px; background: var(--bg); color: var(--heading); font-size: .85rem; font-weight: 600; }
+.secondary:active { background: var(--line); }
+.secondary.danger { color: var(--error); }
+.sheet button:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
+
+/* Waiting: the room in big letters, to read out across the table */
+.wait-box { display: grid; justify-items: center; gap: 8px; padding: 16px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); text-align: center; }
+.wait-box .waiting { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; color: var(--muted); }
+.wait-box .room-big { font-size: 1.4rem; font-weight: 700; color: var(--heading); letter-spacing: .02em; overflow-wrap: anywhere; }
+
+/* Connected: who's there, with the room on the right; red while they're away */
+.live-line { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--in) 10%, var(--bg)); font-size: .9rem; font-weight: 600; }
+.live-line .room { margin-left: auto; color: var(--muted); font-size: .8rem; font-weight: 400; white-space: nowrap; }
+.live-line.dropped { background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); }
