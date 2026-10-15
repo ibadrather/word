@@ -29,6 +29,7 @@ You play face to face, saying guesses and scores out loud. The app never checks 
 - **Note your guesses:** type the word, tap **0–4** for how many letters were correct. Tap **×** to remove one (asks first).
 - **Dictionary:** a guess or secret word that isn't one of its 4,983 four-letter words gets a red "Not in the dictionary". It's only a warning: you can still note the guess.
 - **Mark letters:** tap a key to cycle it grey → **red** (not in it) → **yellow** (not sure) → **green** (in the word) → grey. Red comes first because most letters end up red.
+- **Clear** (next to the colour key, asks first): wipes the colours you set on the keys, in any mode. Letters a helper set stay as they are.
 - **Mode** (next to New game, asks to confirm). Letters a helper sets get a dot and are locked: tapping them does nothing.
   - **Normal Mode:** you mark every letter yourself.
   - **Basic Helper Mode:** every letter of a guess that scored 0 turns red.
