@@ -45,6 +45,11 @@ function cycleColour(letter) {
   });
 }
 
+// Only your own marks: letters a helper set stay, as they come from the scores
+function clearColours() {
+  if (confirm("Clear the key colours you set?")) update(() => (state.colours = {}));
+}
+
 function addNote(count) {
   const word = $("word").value.toLowerCase();
   if (word.length !== 4) return showMessage("Type a 4-letter word first");
@@ -150,6 +155,7 @@ function buildControls() {
   });
   $("reveal").addEventListener("click", () => showSecret($("secret").type === "password"));
   $("reset").addEventListener("click", newGame);
+  $("clear").addEventListener("click", clearColours);
   $("logo").addEventListener("click", () => $("menu").showModal());
   $("close").addEventListener("click", () => $("menu").close());
   $("menu").addEventListener("click", (event) => {
@@ -177,6 +183,7 @@ function render() {
   $("counts").classList.toggle("ready", $("word").value.length === 4);
   const { known, fitting } = deduce();
   settled = known;
+  $("clear").disabled = !Object.keys(state.colours).length;
   $("progress").hidden = !fitting;
   if (fitting) $("progress").textContent = progress(fitting);
   const colour = (letter) => (known[letter] ? `${known[letter]} locked` : state.colours[letter] || "");
