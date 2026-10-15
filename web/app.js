@@ -11,14 +11,15 @@ const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 
 const $ = (id) => document.getElementById(id);
 
-// --- State: { notes: [{ word, count }] oldest first, colours: { letter: "in" | "out" | "unsure" }, secret: my word,
-//              helper: "" | "basic" | "advanced", how much to work out from the counts } ---
+// --- State: { notes: [{ word, count, at }] oldest first, at being ms into the game (none before the first New game), colours: { letter: "in" | "out" | "unsure" }, secret: my word,
+//              helper: "" | "basic" | "advanced", how much to work out from the counts,
+//              startedAt: when New game was last pressed, in ms, or null before the first one } ---
 
 let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
 
 function load() {
-  const empty = { notes: [], colours: {}, secret: "", helper: "" };
+  const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null };
   try {
     return { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
   } catch {
@@ -58,7 +59,8 @@ function addNote(count) {
   $("word").value = "";
   $("word").blur();
   showMessage("");
-  update(() => state.notes.push({ word, count }));
+  const at = state.startedAt ? Date.now() - state.startedAt : undefined;
+  update(() => state.notes.push({ word, count, at }));
 }
 
 function deleteNote(note) {
@@ -70,7 +72,7 @@ function deleteNote(note) {
 function newGame() {
   if (confirm("Clear your word, guesses and key colours?")) {
     showSecret(false);
-    update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper }));
+    update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now() }));
   }
 }
 
@@ -110,6 +112,20 @@ function progress(fitting) {
   const words = plural(wordsLeft(fitting, state.notes), "possible word");
   if (fitting.length === 1) return `Letters found: ${[...fitting[0].toUpperCase()].join(" ")}. ${words} left!`;
   return `${words}, ${plural(fitting.length, "letter set")} left`;
+}
+
+// A stretch of game time as m:ss, or h:mm:ss past an hour
+function clock(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
+  const pad = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+// The time since New game
+function showTimer() {
+  $("timer").hidden = !state.startedAt;
+  if (state.startedAt) $("timer").textContent = clock(Date.now() - state.startedAt);
 }
 
 function showMessage(text) {
@@ -184,6 +200,8 @@ function render() {
   const { known, fitting } = deduce();
   settled = known;
   $("clear").disabled = !Object.keys(state.colours).length;
+  $("guess-count").textContent = state.notes.length ? `(${state.notes.length})` : "";
+  showTimer();
   $("progress").hidden = !fitting;
   if (fitting) $("progress").textContent = progress(fitting);
   const colour = (letter) => (known[letter] ? `${known[letter]} locked` : state.colours[letter] || "");
@@ -196,6 +214,7 @@ function render() {
     const li = document.createElement("li");
     li.append(
       ...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)),
+      Object.assign(document.createElement("span"), { className: "at", textContent: note.at == null ? "" : clock(note.at) }),
       Object.assign(document.createElement("span"), { className: "score", textContent: note.count }),
       button("×", "delete", () => deleteNote(note)),
     );
@@ -209,6 +228,7 @@ function render() {
 
 buildControls();
 render();
+setInterval(showTimer, 1000);
 
 // Keeps the files for offline use, which also lets the page be installed as an app (sw.js)
 navigator.serviceWorker?.register("sw.js").catch(() => {});

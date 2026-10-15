@@ -1,6 +1,6 @@
 [project]
 name = "word"
-version = "1.3.0"
+version = "1.4.0"
 description = "Word notes and a colour-marking keyboard for Asna and Ibad's word guessing game"
 readme = "README.md"
 authors = [
