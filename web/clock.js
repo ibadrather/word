@@ -62,6 +62,17 @@ export const mirrored = (data, now) => ({
 // Minutes each, 1 to 60; anything else (empty, 0, letters) keeps the old value
 export const clampMinutes = (value, old) => (value >= 1 ? Math.min(60, Math.round(value)) : old);
 
+// Whether either clock has started since the last reset: until then the first guess is free
+export const started = (view) => Boolean(view.running) || !view.mine || !view.theirs;
+
+// A stretch of time as m:ss, or h:mm:ss past an hour
+export function formatTime(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
+  const pad = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
 // --- The mode in the browser ---
 // Saved: { name, room: as typed, joined: whether the mode is on (the room is rejoined on load), minutes, clock: a view }
 
@@ -71,8 +82,9 @@ let room = null; // the Trystero room while joined
 let action = null; // the room's "clock" messages
 let peer = ""; // the other player's peer id, "" while alone
 let names = {}; // peer id → name, for every phone in the room
-let gone = ""; // who left, shown until someone connects
-let note = ""; // a problem to show: validation before joining, a failed join after
+let gone = null; // the name of the player who dropped out ("" if they sent none), until someone connects
+let joinedAt = 0; // when the other phone last arrived, for the dock's "joined" note
+let error = ""; // a problem to show: validation before joining, a failed join after
 const me = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
 
 function load() {
@@ -116,7 +128,8 @@ export function connect(name, roomName) {
   roomName = roomName.trim().toLowerCase().slice(0, 20);
   if (!name || !roomName) return tell("Type your name and a room name");
   if (!isSecureContext) return tell("The clock needs the https site"); // the library's crypto isn't there on http
-  note = gone = "";
+  error = "";
+  gone = null;
   // A fresh clock, so an old one never carries into a new room; at seq 0 it gives way to any game in progress
   state = { ...state, name, room: roomName, joined: true, clock: { ...fresh(state.minutes), at: Date.now(), by: me } };
   save();
@@ -126,7 +139,8 @@ export function connect(name, roomName) {
 
 export function disconnect() {
   leaveRoom();
-  note = gone = "";
+  error = "";
+  gone = null;
   state.joined = false;
   save();
   onChange();
@@ -160,34 +174,36 @@ export function setMinutes(value) {
   onChange();
 }
 
-// Everything the page shows for the mode
+// Everything the page shows for the mode, as data: duel.js puts it into words
 export function view() {
   const now = Date.now();
   const { name, room: roomName, joined, minutes, clock } = state;
-  const side = (which, who) => ({ name: who, left: left(clock, which, now), running: ticking(clock, now) && clock.running === which });
+  const side = (which) => ({ left: left(clock, which, now), running: ticking(clock, now) && clock.running === which });
   return {
     active: joined,
+    phase: phase(),
     name,
     room: roomName,
     minutes,
-    live: Boolean(peer),
-    status: status(),
-    note: joined ? status() : note,
-    mine: side("mine", name || "You"),
-    theirs: side("theirs", names[peer] || "Other player"),
+    peerName: peer ? (names[peer] ?? "") : (gone ?? ""), // as their phone sent it; "" before it has
+    joinedAt,
+    started: started(clock),
+    error,
+    mine: side("mine"),
+    theirs: side("theirs"),
   };
 }
 
-function status() {
-  if (!state.joined) return "";
-  if (note) return note;
-  if (peer) return `${names[peer] || "Other player"} connected · ${state.room}`;
-  if (gone) return `${gone} left ${state.room} · waiting…`;
-  return `Waiting for a player in ${state.room}…`;
+// off, waiting for the other phone, live with it, dropped (it went away and may come back), or error (couldn't join)
+function phase() {
+  if (!state.joined) return "off";
+  if (error) return "error";
+  if (peer) return "live";
+  return gone === null ? "waiting" : "dropped";
 }
 
 function tell(text) {
-  note = text;
+  error = text;
   onChange();
 }
 
@@ -215,20 +231,22 @@ async function join() {
   } catch {
     return tell(`Couldn't join ${state.room}`);
   }
+  if (error) tell(""); // a rejoin that worked clears an earlier failure
   // The other player is whoever joined or spoke last: a phone that comes back after being locked gets a new id
   // while its old connection can take a while to be seen as gone, so neither a join nor a message waits for a leave.
   // A room we have left can still report leaves for a moment; those are not about the room we are in now.
   const joined = room;
   joined.onPeerJoin = (id) => {
     if (joined !== room) return;
+    if (!peer) joinedAt = Date.now();
     peer = id;
-    gone = "";
+    gone = null;
     share();
     onChange();
   };
   joined.onPeerLeave = (id) => {
     if (joined !== room) return;
-    const name = names[id] || "The other player";
+    const name = names[id] ?? "";
     delete names[id];
     if (id !== peer) return;
     peer = Object.keys(joined.getPeers()).find((other) => other !== id) ?? "";
@@ -237,8 +255,9 @@ async function join() {
   };
   action.onMessage = (data, { peerId }) => {
     if (joined !== room || typeof data?.seq !== "number") return;
+    if (!peer) joinedAt = Date.now();
     peer = peerId;
-    gone = "";
+    gone = null;
     names[peerId] = String(data.name ?? "").slice(0, 12);
     const theirs = mirrored(data, Date.now());
     if (newer(theirs, state.clock)) {

@@ -11,6 +11,7 @@ const FILES = [
   "helpers.js",
   "words.js",
   "clock.js",
+  "duel.js",
   "trystero.js",
   "manifest.webmanifest",
   "icon.png",
