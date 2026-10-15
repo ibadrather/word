@@ -1,6 +1,7 @@
-"""The two-player clock's logic agrees on both phones, whatever their clocks say."""
+"""The duel clock's logic agrees on both phones, whatever their clocks say."""
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -21,7 +22,10 @@ def test_clock_steps() -> None:
         check=True,
         text=True,
     )
-    assert json.loads(result.stdout) == {
+    steps = json.loads(result.stdout)
+    # A made-up room: two lowercase words and a number from 10 to 99
+    assert re.fullmatch(r"[a-z]+-[a-z]+-[1-9][0-9]", steps["roomName"].pop("random"))
+    assert steps == {
         "fresh": {
             "mine": 10 * MINUTE,
             "theirs": 10 * MINUTE,
@@ -61,4 +65,22 @@ def test_clock_steps() -> None:
         "minutes": [10, 10, 60, 7, 60],
         "started": {"fresh": False, "pressed": True, "reset": False, "runOut": True},
         "formatTime": ["0:00", "0:59", "1:00", "59:59", "1:00:00", "0:00"],
+        # The host's fresh clock wins from both sides, so the joiner takes its
+        # 10 minutes; the joiner's next press is seq 1 and wins as usual
+        "host": {
+            "hostKeeps": True,
+            "joinerKeeps": False,
+            "joinerAdopts": True,
+            "minutes": 10 * MINUTE,
+            "pressWins": True,
+            "pressSeq": 1,
+        },
+        "roomName": {
+            "first": "amber-acorn-10",
+            "last": "zesty-zebra-99",
+            "middle": "misty-panda-41",
+            "longest": 16,  # within the room's 20 characters
+            "words": [51, 53],
+            "unique": True,
+        },
     }

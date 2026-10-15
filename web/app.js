@@ -1,9 +1,9 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { WORD_COUNT, fittingSets, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
-import * as mode from "./clock.js"; // the two-player clock's logic and room
+import * as mode from "./clock.js"; // the duel clock's logic and room
 import { formatTime } from "./clock.js";
-import * as duel from "./duel.js"; // the two-player clock's dock
+import * as duel from "./duel.js"; // the duel clock's screens: the dock, the sheet and the menu's choice
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -80,7 +80,7 @@ function addNote(count) {
   setGuess("");
   const at = state.startedAt ? Date.now() - state.startedAt : undefined;
   update(() => state.notes.push({ word, count, at }));
-  mode.press(); // in clock mode, my clock stops and the other player's starts
+  mode.press(); // in a duel, my clock stops and the other player's starts
 }
 
 function deleteNote(note) {
@@ -136,7 +136,7 @@ function progress(fitting) {
 }
 
 // On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
-// In clock mode the two players' clocks tick in the dock at the bottom; the game's own times stay as they are.
+// In a duel the two players' clocks tick in the dock at the bottom; the game's own times stay as they are.
 function showTimer() {
   duel.tick();
   $("timer").hidden = $("game-stats").hidden = !state.startedAt;
@@ -220,14 +220,6 @@ function buildControls() {
     if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
   });
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
-  // The two-player clock's settings in the menu
-  $("name").addEventListener("change", (event) => mode.edit("name", event.target.value));
-  $("room").addEventListener("change", (event) => mode.edit("room", event.target.value));
-  $("minutes").addEventListener("change", (event) => mode.setMinutes(Number(event.target.value)));
-  $("join").addEventListener("click", () => {
-    if (mode.view().active) mode.disconnect();
-    else mode.connect($("name").value, $("room").value);
-  });
   duel.init();
   // The dictionary's size as tiles in the logo's colours
   const tile = (digit, i) => {
@@ -248,13 +240,6 @@ function render() {
   // The installed app's status or title bar follows the page into dark and back
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
   showGuess();
-  const v = mode.view();
-  if ($("name").value !== v.name) $("name").value = v.name;
-  if ($("room").value !== v.room) $("room").value = v.room;
-  if (Number($("minutes").value) !== v.minutes) $("minutes").value = v.minutes;
-  $("name").disabled = $("room").disabled = v.active;
-  $("join").textContent = v.active ? "Leave" : "Connect";
-  $("room-status").textContent = v.error;
   duel.render();
   const { known, fitting } = deduce();
   settled = known;

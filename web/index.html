@@ -79,24 +79,23 @@
         <button id="close" class="close" type="button" aria-label="Close">×</button>
       </div>
 
+      <h3 id="play-label">How you play</h3>
+      <div class="play-cards" role="radiogroup" aria-labelledby="play-label">
+        <label class="play-card">
+          <input id="play-face" type="radio" name="play" value="face"><i class="radio" aria-hidden="true"></i>
+          <span><b>Face to face</b>Say guesses and scores out loud.</span>
+        </label>
+        <label class="play-card">
+          <input id="play-duel" type="radio" name="play" value="duel"><i class="radio" aria-hidden="true"></i>
+          <span><b>Duel clock</b>The same, plus a chess clock shared by both phones.</span>
+        </label>
+      </div>
+
       <p class="intro">
         <b>Play it face to face.</b> Say your guesses and scores out loud to each other.
         This page only helps you keep track of letters.
         It tells you when a word isn't in its dictionary, but never checks a score.
       </p>
-
-      <h3 id="clock-settings">Two-player clock</h3>
-      <div class="example mode-card">
-        <input id="name" maxlength="12" placeholder="Your name" autocomplete="off" enterkeyhint="done">
-        <input id="room" maxlength="20" placeholder="Room name" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
-        <label>Minutes each <input id="minutes" type="number" min="1" max="60" inputmode="numeric"></label>
-        <button id="join" class="pill" type="button">Connect</button>
-        <p id="room-status"></p>
-        <p>A chess clock shared between your two phones. Type the same room name on both (pick one nobody else would) and connect.
-          Noting a guess stops your clock and starts the other player's; the first guess is free.
-          New game before the first guess restarts both clocks, and so does changing the minutes.
-          Both phones need internet to find each other; after that they talk directly.</p>
-      </div>
 
       <h3>Rules</h3>
       <ol class="rules">
@@ -132,6 +131,40 @@
       </div>
 
       <p class="menu-foot">Built by Asna and Ibad for you ❤️<span class="version">dev</span></p>
+    </div>
+  </dialog>
+
+  <!-- The duel clock's sheet: duel.js shows the parts for setting up, waiting, connected or a failed join -->
+  <dialog id="duel" class="sheet" aria-labelledby="duel-title">
+    <div class="sheet-body" tabindex="-1" autofocus>
+      <div class="sheet-head">
+        <h2 id="duel-title">Duel clock</h2>
+        <button id="duel-close" class="close" type="button" aria-label="Close">×</button>
+      </div>
+      <p id="duel-intro" class="hint">A chess clock shared by both phones. Noting a guess stops your clock and starts theirs.</p>
+      <p id="duel-error" class="err" role="alert" hidden></p>
+      <div id="duel-wait" class="wait-box" hidden>
+        <span class="waiting"><i class="dot wait" aria-hidden="true"></i><span></span></span>
+        <span class="room-big"></span>
+        <p class="hint">Read the room out to them.</p>
+      </div>
+      <p id="duel-live" class="live-line" hidden><i class="dot" aria-hidden="true"></i><span></span><span class="room"></span></p>
+      <label id="duel-room-field" class="field">
+        <span>Room</span>
+        <input id="duel-room" maxlength="20" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
+      </label>
+      <p id="duel-room-hint" class="hint">Made up for you. Joining a friend? Type their room instead.</p>
+      <label id="duel-name-field" class="field">
+        <span>Your name <span class="opt">(optional)</span></span>
+        <input id="duel-name" maxlength="12" autocomplete="off" enterkeyhint="done">
+      </label>
+      <div class="field">
+        <span id="minutes-label">Minutes each</span>
+        <div id="chips" class="chips" role="group" aria-labelledby="minutes-label"></div>
+      </div>
+      <button id="duel-go" class="primary" type="button"></button>
+      <button id="duel-leave" class="secondary" type="button"></button>
+      <p id="duel-foot" class="hint foot"></p>
     </div>
   </dialog>
 </body>

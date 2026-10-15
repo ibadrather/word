@@ -1,6 +1,22 @@
-// Plays the two-player clock's pure logic through a game and prints what each step showed: node clock_steps.mjs
+// Plays the duel clock's pure logic through a game and prints what each step showed: node clock_steps.mjs
 // Times are ms on each phone's own clock; player two's phone runs 7 seconds ahead of player one's throughout.
-import { clampMinutes, formatTime, fresh, left, message, mirrored, newer, pressed, reset, started, ticking } from "../web/clock.js";
+import {
+  ADJECTIVES,
+  NOUNS,
+  clampMinutes,
+  formatTime,
+  fresh,
+  left,
+  message,
+  mirrored,
+  newer,
+  phoneId,
+  pressed,
+  reset,
+  roomName,
+  started,
+  ticking,
+} from "../web/clock.js";
 
 const out = {};
 const ahead = (oneTime) => oneTime + 7_000; // the same moment on player two's phone
@@ -60,5 +76,34 @@ out.started = {
 
 // Times as the dock and the game show them: m:ss, h:mm:ss past an hour, never below 0:00
 out.formatTime = [0, 59_999, 60_000, 3_599_000, 3_600_000, -5_000].map(formatTime);
+
+// Player two types player one's room and picked 5 minutes: both start fresh at seq 0, and the host's view wins on both
+// phones, though player two's own id ("zz") would beat player one's ("aa") on its own
+const host = { ...fresh(10), at: 1_000, by: phoneId(true, "aa") };
+const joiner = { ...fresh(5), at: ahead(2_000), by: phoneId(false, "zz") };
+const joinerSees = mirrored(message(host, 3_000, "Player one", 10), ahead(3_000));
+out.host = {
+  hostKeeps: newer(host, mirrored(message(joiner, ahead(3_000), "Player two", 5), 3_000)),
+  joinerKeeps: newer(joiner, joinerSees),
+  joinerAdopts: newer(joinerSees, joiner),
+  minutes: left(joinerSees, "mine", ahead(3_000)),
+};
+// Once adopted, the joiner's first press is seq 1 and wins on the host's phone as any press does
+const joinerPress = pressed(joinerSees, ahead(10_000), phoneId(false, "zz"));
+out.host.pressWins = newer(mirrored(message(joinerPress, ahead(10_000), "Player two", 10), 10_000), host);
+out.host.pressSeq = joinerPress.seq;
+
+// Made-up rooms: the same draws give the same room, the first and last words and numbers are in reach,
+// and even the two longest words with the number fit the room's 20 characters
+const draws = (...values) => () => values.shift();
+out.roomName = {
+  first: roomName(draws(0, 0, 0)),
+  last: roomName(draws(0.999_999, 0.999_999, 0.999_999)),
+  middle: roomName(draws(0.6, 0.66, 0.35)),
+  random: roomName(),
+  longest: Math.max(...ADJECTIVES.map((word) => word.length)) + Math.max(...NOUNS.map((word) => word.length)) + "--99".length,
+  words: [ADJECTIVES.length, NOUNS.length],
+  unique: new Set([...ADJECTIVES, ...NOUNS]).size === ADJECTIVES.length + NOUNS.length,
+};
 
 console.log(JSON.stringify(out));

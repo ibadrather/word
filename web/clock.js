@@ -1,4 +1,4 @@
-// The two-player clock: a chess clock shared between the two phones. Trystero (trystero.js) finds the other phone
+// The duel clock: a chess clock shared between the two phones. Trystero (trystero.js) finds the other phone
 // through public Nostr relays, then the phones talk directly over WebRTC. Its saved state lives under its own key,
 // apart from the game's, so the normal game is never affected. The pure functions at the top are what
 // tests/test_clock.py runs in Node; everything below them touches the browser and the room.
@@ -33,6 +33,10 @@ export const pressed = (view, now, by) => ({
 // Both clocks back to full and stopped
 export const reset = (view, minutes, now, by) => ({ ...fresh(minutes), at: now, seq: view.seq + 1, by });
 
+// A phone's id in the views it makes: the host's starts higher, so at the same seq its view wins on both phones.
+// That's how a joining phone's fresh clock gives way to the host's, minutes and all.
+export const phoneId = (host, id) => (host ? "1" : "0") + id;
+
 // Whether view a was made after view b: the later press or reset wins, and the phone id settles a tie
 export const newer = (a, b) => a.seq > b.seq || (a.seq === b.seq && a.by > b.by);
 
@@ -65,6 +69,25 @@ export const clampMinutes = (value, old) => (value >= 1 ? Math.min(60, Math.roun
 // Whether either clock has started since the last reset: until then the first guess is free
 export const started = (view) => Boolean(view.running) || !view.mine || !view.theirs;
 
+// A room made up for you, like mint-owl-42: words that are easy to say across a table and to spell, and a number.
+// The longest result has 6 + 6 letters and 4 more, well inside the room's 20.
+export const ADJECTIVES = [
+  "amber", "brave", "breezy", "bright", "calm", "cheery", "clever", "cosmic", "crisp", "eager", "fancy", "fluffy", "fresh",
+  "frosty", "fuzzy", "gentle", "giddy", "glad", "golden", "green", "happy", "jazzy", "jolly", "keen", "kind", "lively",
+  "lucky", "mellow", "mighty", "mint", "misty", "nimble", "olive", "peachy", "polite", "proud", "quick", "royal", "rusty",
+  "shiny", "silver", "sleepy", "smart", "snowy", "snug", "steady", "swift", "tidy", "velvet", "witty", "zesty",
+];
+export const NOUNS = [
+  "acorn", "badger", "bison", "camel", "cedar", "cobra", "comet", "crab", "daisy", "duck", "eagle", "falcon", "finch",
+  "fox", "frog", "gecko", "goose", "hippo", "kitten", "kiwi", "koala", "lark", "lemur", "lion", "lotus", "mango", "maple",
+  "melon", "mole", "moth", "mouse", "newt", "otter", "owl", "panda", "parrot", "pony", "puffin", "rabbit", "raven",
+  "rhino", "robin", "shark", "sloth", "squid", "swan", "tiger", "tulip", "turtle", "vole", "walrus", "yak", "zebra",
+];
+export function roomName(random = Math.random) {
+  const pick = (words) => words[Math.floor(random() * words.length)];
+  return `${pick(ADJECTIVES)}-${pick(NOUNS)}-${10 + Math.floor(random() * 90)}`;
+}
+
 // A stretch of time as m:ss, or h:mm:ss past an hour
 export function formatTime(ms) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
@@ -74,9 +97,10 @@ export function formatTime(ms) {
 }
 
 // --- The mode in the browser ---
-// Saved: { name, room: as typed, joined: whether the mode is on (the room is rejoined on load), minutes, clock: a view }
+// Saved: { name, room: as typed, madeUp: the room made up for this phone, host: whether it joined its made-up room,
+//         joined: whether the duel is on (the room is rejoined on load), minutes, clock: a view }
 
-let state = { name: "", room: "", joined: false, minutes: 10, clock: fresh(10) };
+let state = { name: "", room: "", madeUp: "", host: false, joined: false, minutes: 10, clock: fresh(10) };
 let onChange = () => {};
 let room = null; // the Trystero room while joined
 let action = null; // the room's "clock" messages
@@ -84,11 +108,12 @@ let peer = ""; // the other player's peer id, "" while alone
 let names = {}; // peer id → name, for every phone in the room
 let gone = null; // the name of the player who dropped out ("" if they sent none), until someone connects
 let joinedAt = 0; // when the other phone last arrived, for the dock's "joined" note
-let error = ""; // a problem to show: validation before joining, a failed join after
+let error = ""; // what went wrong, for duel.js to word: "room" (none typed), "https" or "join", "" when all is well
 const me = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
 
+// An older save lacks the newer fields, so the defaults fill them in
 function load() {
-  const empty = { name: "", room: "", joined: false, minutes: 10, clock: fresh(10) };
+  const empty = { name: "", room: "", madeUp: "", host: false, joined: false, minutes: 10, clock: fresh(10) };
   try {
     const saved = { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
     return { ...saved, clock: { ...empty.clock, ...saved.clock } };
@@ -116,22 +141,33 @@ export function init(change) {
   });
 }
 
-// Typed into the menu before connecting; kept so they're there next time
+// The setup screen opened: the room is made up the first time and kept from then on, and an old complaint goes
+export function setUp() {
+  if (!state.madeUp) state.madeUp = roomName();
+  if (!state.joined) error = "";
+  save();
+}
+
+// Typed into the sheet before connecting; kept so they're there next time
 export function edit(field, value) {
   if (state.joined || !["name", "room"].includes(field)) return;
   state[field] = value;
   save();
+  if (error) tell(""); // typing answers "Type a room name"
 }
 
-export function connect(name, roomName) {
+export function connect(name, typed) {
   name = name.trim().slice(0, 12);
-  roomName = roomName.trim().toLowerCase().slice(0, 20);
-  if (!name || !roomName) return tell("Type your name and a room name");
-  if (!isSecureContext) return tell("The clock needs the https site"); // the library's crypto isn't there on http
+  typed = typed.trim().toLowerCase().slice(0, 20);
+  if (!typed) return tell("room");
+  leaveRoom(); // Try again comes here too, from whatever is left of the failed join
   error = "";
   gone = null;
+  // The phone that set up its own made-up room hosts it; any other room is someone else's to join
+  const host = typed === state.madeUp;
   // A fresh clock, so an old one never carries into a new room; at seq 0 it gives way to any game in progress
-  state = { ...state, name, room: roomName, joined: true, clock: { ...fresh(state.minutes), at: Date.now(), by: me } };
+  const clock = { ...fresh(state.minutes), at: Date.now(), by: phoneId(host, me) };
+  state = { ...state, name, room: typed, host, joined: true, clock };
   save();
   join();
   onChange();
@@ -149,7 +185,7 @@ export function disconnect() {
 // A guess was noted
 export function press() {
   if (!state.joined) return;
-  state.clock = pressed(state.clock, Date.now(), me);
+  state.clock = pressed(state.clock, Date.now(), phoneId(state.host, me));
   save();
   share();
   onChange();
@@ -177,13 +213,15 @@ export function setMinutes(value) {
 // Everything the page shows for the mode, as data: duel.js puts it into words
 export function view() {
   const now = Date.now();
-  const { name, room: roomName, joined, minutes, clock } = state;
+  const { name, room: typed, madeUp, host, joined, minutes, clock } = state;
   const side = (which) => ({ left: left(clock, which, now), running: ticking(clock, now) && clock.running === which });
   return {
     active: joined,
     phase: phase(),
     name,
-    room: roomName,
+    room: typed,
+    madeUp,
+    host,
     minutes,
     peerName: peer ? (names[peer] ?? "") : (gone ?? ""), // as their phone sent it; "" before it has
     joinedAt,
@@ -202,13 +240,13 @@ function phase() {
   return gone === null ? "waiting" : "dropped";
 }
 
-function tell(text) {
-  error = text;
+function tell(problem) {
+  error = problem;
   onChange();
 }
 
 function restart() {
-  state.clock = reset(state.clock, state.minutes, Date.now(), me);
+  state.clock = reset(state.clock, state.minutes, Date.now(), phoneId(state.host, me));
   save();
   share();
   onChange();
@@ -216,20 +254,21 @@ function restart() {
 
 function share() {
   if (!action || !peer) return;
-  action.send(message(state.clock, Date.now(), state.name, state.minutes), { target: peer }).catch(() => {});
+  const name = state.name || (state.host ? "Player one" : "Player two"); // what the other phone calls this one
+  action.send(message(state.clock, Date.now(), name, state.minutes), { target: peer }).catch(() => {});
 }
 
 // The library is loaded only here, so a problem in it can never reach the normal game
 async function join() {
   if (room) return;
-  if (!isSecureContext) return tell("The clock needs the https site");
+  if (!isSecureContext) return tell("https"); // the library's crypto isn't there on plain http
   try {
     const { joinRoom } = await import("./trystero.js");
     if (room || !state.joined) return; // left, or joined again, while the library loaded
     room = joinRoom({ appId: APP_ID }, state.room);
     action = room.makeAction("clock");
   } catch {
-    return tell(`Couldn't join ${state.room}`);
+    return tell("join");
   }
   if (error) tell(""); // a rejoin that worked clears an earlier failure
   // The other player is whoever joined or spoke last: a phone that comes back after being locked gets a new id
