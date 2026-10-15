@@ -122,13 +122,13 @@ function clock(ms) {
   return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-// The time since New game, then since your last guess once there is one: "12:34 | 0:45"
+// On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses"
 function showTimer() {
-  $("timer").hidden = !state.startedAt;
+  $("timer").hidden = $("game-stats").hidden = !state.startedAt;
   if (!state.startedAt) return;
   const elapsed = Date.now() - state.startedAt;
-  const lastAt = state.notes.at(-1)?.at;
-  $("timer").textContent = lastAt == null ? clock(elapsed) : `${clock(elapsed)} | ${clock(elapsed - lastAt)}`;
+  $("timer").textContent = clock(elapsed - (state.notes.at(-1)?.at ?? 0));
+  $("game-time").textContent = clock(elapsed);
 }
 
 function showMessage(text) {
@@ -203,7 +203,7 @@ function render() {
   const { known, fitting } = deduce();
   settled = known;
   $("clear").disabled = !Object.keys(state.colours).length;
-  $("guess-count").textContent = state.notes.length ? `(${state.notes.length})` : "";
+  $("guess-count").textContent = state.notes.length;
   showTimer();
   $("progress").hidden = !fitting;
   if (fitting) $("progress").textContent = progress(fitting);
