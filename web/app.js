@@ -1,8 +1,7 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
-import { WORD_COUNT, fittingSets, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
-import { formatTime } from "./clock.js";
 import * as duel from "./duel.js"; // the duel clock's screens: the dock, the sheet and the menu's choice
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
@@ -79,8 +78,10 @@ function addNote(count) {
 
   setGuess("");
   const at = state.startedAt ? Date.now() - state.startedAt : undefined;
-  update(() => state.notes.push({ word, count, at }));
-  mode.press(); // in a duel, my clock stops and the other player's starts
+  update(() => {
+    state.notes.push({ word, count, at });
+    mode.press(); // in a duel, my clock stops and the other player's starts
+  });
 }
 
 function deleteNote(note) {
@@ -92,8 +93,10 @@ function deleteNote(note) {
 function newGame() {
   if (confirm("Clear your word, guesses and key colours?")) {
     showSecret(false);
-    update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now() }));
-    mode.newGame();
+    update(() => {
+      state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now() };
+      mode.newGame(); // in a duel, both clocks back to full too
+    });
   }
 }
 
@@ -136,9 +139,8 @@ function progress(fitting) {
 }
 
 // On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
-// In a duel the two players' clocks tick in the dock at the bottom; the game's own times stay as they are.
+// In a duel the two players' clocks tick in the dock at the bottom (duel.js); the game's own times stay as they are.
 function showTimer() {
-  duel.tick();
   $("timer").hidden = $("game-stats").hidden = !state.startedAt;
   if (!state.startedAt) return;
   const elapsed = Date.now() - state.startedAt;
@@ -220,7 +222,6 @@ function buildControls() {
     if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
   });
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
-  duel.init();
   // The dictionary's size as tiles in the logo's colours
   const tile = (digit, i) => {
     const el = Object.assign(document.createElement("b"), { textContent: digit });
@@ -271,10 +272,14 @@ function render() {
 }
 
 buildControls();
+duel.init();
 mode.init(render); // rejoins a saved room; the clock calls render whenever it changes
 render();
 duel.openLink(); // a shared duel link asks to join
-setInterval(showTimer, 1000);
+setInterval(() => {
+  showTimer();
+  duel.tick();
+}, 1000);
 
 // Keeps the files for offline use, which also lets the page be installed as an app (sw.js)
 navigator.serviceWorker?.register("sw.js").catch(() => {});

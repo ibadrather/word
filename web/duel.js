@@ -4,6 +4,7 @@
 // change and tick() every second, and openLink() once on load.
 
 import * as mode from "./clock.js";
+import { formatTime } from "./helpers.js";
 
 const $ = (id) => document.getElementById(id);
 const JOINED_NOTE = 4_000; // how long "… joined" stays on the dock's edge, in ms
@@ -11,6 +12,13 @@ const SIDES = ["mine", "theirs"];
 const MINUTES = [3, 5, 10, 15, 30]; // the chips; minutes off this list (an older save, or sent) light none and are kept
 const SCREENS = { off: "setup", waiting: "waiting", live: "connected", dropped: "connected", left: "connected", error: "error" };
 const DOTS = { live: "live", left: "" }; // the dot for each phase: green, hollow and still, or else hollow and pulsing
+const dotFor = (phase) => DOTS[phase] ?? "wait";
+// What the dock's edge and the sheet say about the other player, by phase
+const STATUS = {
+  live: (who) => `${who} is connected`,
+  dropped: (who) => `${who} dropped out · reconnecting…`,
+  left: (who) => `${who} left the duel`,
+};
 const COPIED = 2_000; // how long a Share link button says "Link copied", in ms
 
 let labelled = ""; // what the clocks' labels were last written for, so they change with the turn, not every tick
@@ -89,17 +97,19 @@ function typeRoom(event) {
 // say so
 function showJoining() {
   const joining = Boolean(invite) || $("duel-room").value.trim() !== mode.view().madeUp;
-  $("duel-name").placeholder = joining ? "Player two" : "Player one";
+  $("duel-name").placeholder = mode.playerName(!joining);
   $("duel-foot").textContent = joining
     ? "Joining? Your minutes give way to the other phone's."
     : "Both phones need internet to find each other.";
 }
 
 function connect() {
-  const room = invite || $("duel-room").value;
-  const joining = Boolean(invite);
+  const [room, joining] = [invite || $("duel-room").value, Boolean(invite)];
   invite = "";
   mode.connect($("duel-name").value, room, joining); // a link's room is joined, never hosted
+  // The room box shows the room just tried, a link's too, so Try again and Share link on the error screen use it
+  const v = mode.view();
+  if (v.active) $("duel-room").value = v.room;
   if ($("duel-go").hidden) $("duel").firstElementChild.focus(); // the button is gone, so focus stays in the sheet
 }
 
@@ -133,22 +143,20 @@ async function share(event) {
   button.copied = setTimeout(() => (button.textContent = "Share link"), COPIED);
 }
 
-export function render() {
-  const v = mode.view();
+export function render(v = mode.view()) {
   document.body.classList.toggle("duel", v.active); // makes room under the page for the dock
   $("dock").hidden = !v.active;
   const idle = ["waiting", "error", "left"].includes(v.phase); // nobody there to play against
   for (const which of SIDES) $(which).classList.toggle("idle", idle);
   $("theirs").firstElementChild.textContent = otherName(v);
-  $("dock-menu").lastElementChild.className = `dot ${DOTS[v.phase] ?? "wait"}`;
+  $("dock-menu").lastElementChild.className = `dot ${dotFor(v.phase)}`;
   showChoice(v);
   showSheet(v);
-  tick();
+  tick(v);
 }
 
 // The times, which side runs or has run out, and the note on the dock's edge
-export function tick() {
-  const v = mode.view();
+export function tick(v = mode.view()) {
   $("times-up").hidden = !v.active || v.mine.left > 0; // when theirs runs out, the dock alone shows it
   if (!v.active) return;
   for (const which of SIDES) {
@@ -161,8 +169,8 @@ export function tick() {
 }
 
 // The host's other player is player two, and the other way round, until their phone sends a name
-const otherName = (v) => v.peerName || (v.host ? "Player two" : "Player one");
-const waitingFor = (v) => `Waiting for ${v.host ? "player two" : "player one"}…`;
+const otherName = (v) => v.peerName || mode.playerName(!v.host);
+const waitingFor = (v) => `Waiting for ${mode.playerName(!v.host).toLowerCase()}…`;
 
 // What went wrong, in the sheet's words
 const problem = (v) =>
@@ -173,7 +181,7 @@ const problem = (v) =>
   })[v.error] ?? "";
 
 // Rounded up: 0:00 only once the time is really gone
-const time = (ms) => mode.formatTime(ms + 999);
+const time = (ms) => formatTime(ms + 999);
 
 // What a screen reader hears for each clock, written again when the turn, a stopped time or a name changes
 function label(v) {
@@ -189,8 +197,8 @@ function label(v) {
 function note(v, now) {
   if (v.phase === "waiting") return { text: waitingFor(v), dot: "wait" };
   if (v.phase === "error") return { text: v.error === "join" ? `Couldn't join ${v.room}` : problem(v), warn: true };
-  if (v.phase === "dropped") return { text: `${otherName(v)} dropped out · reconnecting…`, dot: "wait", warn: true };
-  if (v.phase === "left") return { text: `${otherName(v)} left the duel` };
+  if (v.phase === "dropped") return { text: STATUS.dropped(otherName(v)), dot: "wait", warn: true };
+  if (v.phase === "left") return { text: STATUS.left(otherName(v)) };
   if (now - v.joinedAt < JOINED_NOTE) {
     return { text: `${otherName(v)} joined${v.started ? "" : " · first guess is free"}`, dot: "live" };
   }
@@ -244,10 +252,8 @@ function showSheet(v) {
   const [dot, who, liveRoom] = $("duel-live").children;
   $("duel-live").classList.toggle("dropped", v.phase === "dropped");
   $("duel-live").classList.toggle("left", v.phase === "left");
-  dot.className = `dot ${DOTS[v.phase] ?? "wait"}`;
-  who.textContent =
-    { dropped: `${otherName(v)} dropped out · reconnecting…`, left: `${otherName(v)} left the duel` }[v.phase] ??
-    `${otherName(v)} is connected`;
+  dot.className = `dot ${dotFor(v.phase)}`;
+  who.textContent = STATUS[v.phase]?.(otherName(v)) ?? ""; // shown only while live, dropped or left
   liveRoom.textContent = v.room;
   for (const chip of $("chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
 }

@@ -20,26 +20,22 @@ export const left = (view, side, now) => Math.max(0, view[side] - (view.running 
 // Whether a clock is ticking; one that has run out counts as stopped
 export const ticking = (view, now) => Boolean(view.running) && left(view, view.running, now) > 0;
 
-// After a guess is noted at `now`: my clock stops where it is, the other player's starts
-export const pressed = (view, now, by) => ({
+// Both clocks stopped where they are at `now`, then `running` started: a new view
+const stopAt = (view, now, by, running) => ({
   mine: left(view, "mine", now),
   theirs: left(view, "theirs", now),
-  running: "theirs",
+  running,
   at: now,
   seq: view.seq + 1,
   by,
 });
 
+// After a guess is noted at `now`: my clock stops where it is, the other player's starts
+export const pressed = (view, now, by) => stopAt(view, now, by, "theirs");
+
 // The other player left: both clocks stop where they are. It counts as a new view, so a phone that rejoins with a fresh
 // clock at seq 0 adopts it, and play goes on from the same times.
-export const paused = (view, now, by) => ({
-  mine: left(view, "mine", now),
-  theirs: left(view, "theirs", now),
-  running: null,
-  at: now,
-  seq: view.seq + 1,
-  by,
-});
+export const paused = (view, now, by) => stopAt(view, now, by, null);
 
 // Both clocks back to full and stopped
 export const reset = (view, minutes, now, by) => ({ ...fresh(minutes), at: now, seq: view.seq + 1, by });
@@ -82,6 +78,14 @@ export const clampMinutes = (value, old) => (value >= 1 ? Math.min(60, Math.roun
 export const started = (view, minutes) =>
   Boolean(view.running) || view.mine < minutes * MINUTE || view.theirs < minutes * MINUTE;
 
+// Whether a game is going on the clocks: started, and neither has run out. Ticking or stopped by a player leaving,
+// those are times worth asking about before they're reset; once one has run out, the game on them is over.
+export const inPlay = (view, minutes, now) =>
+  started(view, minutes) && left(view, "mine", now) > 0 && left(view, "theirs", now) > 0;
+
+// What a player is called until their phone sends a name: the host is player one
+export const playerName = (host) => (host ? "Player one" : "Player two");
+
 // A room made up for you, like mint-owl-42: words that are easy to say across a table and to spell, and a number.
 // The longest result has 6 + 6 letters and 4 more, well inside the room's 20.
 export const ADJECTIVES = [
@@ -115,39 +119,34 @@ export function shareLink(href, room) {
 // The room in a page's query string, as the link carries it; "" when there's none
 export const roomFromLink = (search) => cleanRoom(new URLSearchParams(search).get("room") ?? "");
 
-// A stretch of time as m:ss, or h:mm:ss past an hour
-export function formatTime(ms) {
-  const seconds = Math.max(0, Math.floor(ms / 1000));
-  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
-  const pad = (n) => String(n).padStart(2, "0");
-  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
-}
-
 // --- The mode in the browser ---
-// Saved: { name, room: as typed, madeUp: the room made up for this phone, host: whether it joined its made-up room,
-//         joined: whether the duel is on (the room is rejoined on load), minutes, clock: a view }
+// Saved: { id: this phone's, kept for good, name, room: as typed, madeUp: the room made up for this phone,
+//         host: whether it joined its made-up room, joined: whether the duel is on (the room is rejoined on load),
+//         opponent: { id, host } of the phone playing this one, null until it speaks, minutes, clock: a view }
 
-let state = { name: "", room: "", madeUp: "", host: false, joined: false, minutes: 10, clock: fresh(10) };
+const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10) };
+const REJOIN_AFTER = 60_000; // back after this long away, a phone still waiting rejoins: its connection may be gone
+
+let state = { ...EMPTY };
 let onChange = () => {};
 let room = null; // the Trystero room while joined
 let action = null; // the room's "clock" messages
 let farewell = null; // the room's "bye", sent when leaving so the other phone can tell it from a dropout
-let peer = ""; // the other player's peer id, "" while alone
+let peer = ""; // the opponent's peer id, "" while it isn't here
 let names = {}; // peer id → name, for every phone in the room
 let gone = null; // the name of the player who dropped out ("" if they sent none), until someone connects
 let departed = null; // the name of the player who tapped Leave ("" if they sent none), until someone connects
 let joinedAt = 0; // when the other phone last arrived, for the dock's "joined" note
+let hiddenAt = 0; // when the page last went out of view
 let error = ""; // what went wrong, for duel.js to word: "room" (none typed), "https" or "join", "" when all is well
-const me = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
 
 // An older save lacks the newer fields, so the defaults fill them in
 function load() {
-  const empty = { name: "", room: "", madeUp: "", host: false, joined: false, minutes: 10, clock: fresh(10) };
   try {
-    const saved = { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
-    return { ...saved, clock: { ...empty.clock, ...saved.clock } };
+    const saved = { ...EMPTY, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
+    return { ...saved, clock: { ...EMPTY.clock, ...saved.clock } };
   } catch {
-    return empty;
+    return { ...EMPTY };
   }
 }
 
@@ -160,12 +159,16 @@ function save() {
 export function init(change) {
   onChange = change;
   state = load();
+  if (!state.id) state.id = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
   if (state.joined) join();
-  // Back from a locked phone or another app: a message may have been missed, or the connection dropped
+  // Back from a locked phone or another app: a message may have been missed, or the connection dropped. A quick trip
+  // away, like the share sheet while sending the link, keeps a waiting phone's room as it is, so a friend joining
+  // just then isn't missed.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible" || !state.joined) return;
+    if (document.visibilityState !== "visible") return void (hiddenAt = Date.now());
+    if (!state.joined) return;
     if (peer) share();
-    else rejoin();
+    else if (gone !== null || Date.now() - hiddenAt > REJOIN_AFTER) rejoin();
     onChange();
   });
 }
@@ -196,8 +199,8 @@ export function connect(name, typed, joining = false) {
   // The phone that set up its own made-up room hosts it; any other room is someone else's to join
   const host = !joining && typed === state.madeUp;
   // A fresh clock, so an old one never carries into a new room; at seq 0 it gives way to any game in progress
-  const clock = { ...fresh(state.minutes), at: Date.now(), by: phoneId(host, me) };
-  state = { ...state, name, room: typed, host, joined: true, clock };
+  const clock = { ...fresh(state.minutes), at: Date.now(), by: phoneId(host, state.id) };
+  state = { ...state, name, room: typed, host, joined: true, opponent: null, clock };
   save();
   join();
   onChange();
@@ -212,38 +215,36 @@ export function disconnect() {
   onChange();
 }
 
-// A guess was noted
+// A guess was noted. app.js renders the page after it.
 export function press() {
-  if (!state.joined) return;
-  state.clock = pressed(state.clock, Date.now(), phoneId(state.host, me));
-  save();
-  share();
-  onChange();
+  if (state.joined) commit(pressed(state.clock, Date.now(), myId()));
 }
 
-// New game was confirmed: both clocks back to full, unless one is ticking and the player wants to keep it
+// New game was confirmed: both clocks back to full, unless a game is going on them and the player wants to keep it.
+// app.js renders the page after it.
 export function newGame() {
   if (!state.joined) return;
-  if (ticking(state.clock, Date.now()) && !confirm("Also restart both clocks?")) return;
-  restart();
+  if (inPlay(state.clock, state.minutes, Date.now()) && !confirm("Also restart both clocks?")) return;
+  commit(reset(state.clock, state.minutes, Date.now(), myId()));
 }
 
 export function setMinutes(value) {
   const minutes = clampMinutes(value, state.minutes);
   if (minutes === state.minutes) return onChange(); // puts a rejected value back
-  if (state.joined && ticking(state.clock, Date.now()) && !confirm(`Restart both clocks with ${minutes} minutes?`)) {
+  const now = Date.now();
+  if (state.joined && inPlay(state.clock, state.minutes, now) && !confirm(`Restart both clocks with ${minutes} minutes?`)) {
     return onChange();
   }
   state.minutes = minutes;
-  if (state.joined) return restart();
-  save();
+  if (state.joined) commit(reset(state.clock, minutes, now, myId()));
+  else save();
   onChange();
 }
 
 // Everything the page shows for the mode, as data: duel.js puts it into words
 export function view() {
   const now = Date.now();
-  const { name, room: typed, madeUp, host, joined, minutes, clock } = state;
+  const { name, room: typed, madeUp, joined, minutes, clock } = state;
   const side = (which) => ({ left: left(clock, which, now), running: ticking(clock, now) && clock.running === which });
   return {
     active: joined,
@@ -251,7 +252,7 @@ export function view() {
     name,
     room: typed,
     madeUp,
-    host,
+    host: isHost(),
     minutes,
     peerName: peer ? (names[peer] ?? "") : (departed ?? gone ?? ""), // as their phone sent it; "" before it has
     joinedAt,
@@ -272,22 +273,33 @@ function phase() {
   return gone === null ? "waiting" : "dropped";
 }
 
+// Whether this phone is player one: the one that hosts its made-up room, or when both or neither do (both typed
+// "family"), the one with the higher id, which is also the one whose fresh clock wins the tie at seq 0
+function isHost() {
+  const other = state.opponent;
+  return other && other.host === state.host ? state.id > other.id : state.host;
+}
+
+const myId = () => phoneId(state.host, state.id);
+
 function tell(problem) {
   error = problem;
   onChange();
 }
 
-function restart() {
-  state.clock = reset(state.clock, state.minutes, Date.now(), phoneId(state.host, me));
+// A press or reset made on this phone: kept, and sent to the other one
+function commit(clock) {
+  state.clock = clock;
   save();
   share();
-  onChange();
 }
 
-function share() {
-  if (!action || !peer) return;
-  const name = state.name || (state.host ? "Player one" : "Player two"); // what the other phone calls this one
-  action.send(message(state.clock, Date.now(), name, state.minutes), { target: peer }).catch(() => {});
+// This phone's view, to the opponent or to a phone that has just joined. The name goes as typed: when it's empty the
+// other phone works out the default itself, once it knows which of the two is player one.
+function share(to = peer) {
+  if (!action || !to) return;
+  const data = { ...message(state.clock, Date.now(), state.name, state.minutes), id: state.id, host: state.host };
+  action.send(data, { target: to }).catch(() => {});
 }
 
 // The library is loaded only here, so a problem in it can never reach the normal game
@@ -304,48 +316,50 @@ async function join() {
     return tell("join");
   }
   if (error) tell(""); // a rejoin that worked clears an earlier failure
-  // The other player is whoever joined or spoke last: a phone that comes back after being locked gets a new id
-  // while its old connection can take a while to be seen as gone, so neither a join nor a message waits for a leave.
-  // A room we have left can still report leaves for a moment; those are not about the room we are in now.
+  // A phone that joins is told this one's view, and becomes the opponent once it answers. The opponent is whichever
+  // phone spoke first, by its own saved id: a third phone that opened the same link is ignored, and the opponent's
+  // phone coming back with a new peer id (after being locked, while its old connection can take a while to be seen
+  // as gone) takes its place at once. A room we have left can still report events for a moment; those are not about
+  // the room we are in now.
   const joined = room;
   joined.onPeerJoin = (id) => {
-    if (joined !== room) return;
-    if (!peer) joinedAt = Date.now();
-    peer = id;
-    gone = departed = null;
-    share();
-    onChange();
+    if (joined === room) share(id);
   };
   joined.onPeerLeave = (id) => {
     if (joined !== room) return;
     const name = names[id] ?? "";
     delete names[id];
     if (id !== peer) return;
-    peer = Object.keys(joined.getPeers()).find((other) => other !== id) ?? "";
-    if (!peer) gone = name;
+    peer = "";
+    gone = name;
     onChange();
   };
   action.onMessage = (data, { peerId }) => {
     if (joined !== room || typeof data?.seq !== "number") return;
+    const from = { id: String(data.id ?? peerId), host: Boolean(data.host) };
+    if (state.opponent && state.opponent.id !== from.id) return;
+    const arrived = peerId !== peer;
     if (!peer) joinedAt = Date.now();
     peer = peerId;
     gone = departed = null;
     names[peerId] = String(data.name ?? "").slice(0, 12);
+    state.opponent = from;
     const theirs = mirrored(data, Date.now());
     if (newer(theirs, state.clock)) {
       state.clock = theirs;
       state.minutes = clampMinutes(data.minutes, state.minutes);
-      save();
-    } else if (newer(state.clock, theirs)) {
-      share(); // they missed a press or reset: send it again (they adopt it, so this can't go back and forth)
     }
+    save();
+    // A phone that has just arrived needs this one's id; one that missed a press or reset needs it again (it adopts
+    // it, so this can't go back and forth)
+    if (arrived || newer(state.clock, theirs)) share();
     onChange();
   };
   // The other player tapped Leave: both clocks stop until they come back. Their phone's leave, which follows, finds
   // no peer to drop, so it doesn't turn "left" into "dropped out".
   farewell.onMessage = (data, { peerId }) => {
     if (joined !== room || peerId !== peer) return;
-    state.clock = paused(state.clock, Date.now(), phoneId(state.host, me));
+    state.clock = paused(state.clock, Date.now(), myId());
     save();
     departed = names[peerId] ?? "";
     peer = "";

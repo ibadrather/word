@@ -4,14 +4,15 @@ import {
   ADJECTIVES,
   NOUNS,
   clampMinutes,
-  formatTime,
   fresh,
+  inPlay,
   left,
   message,
   mirrored,
   newer,
   paused,
   phoneId,
+  playerName,
   pressed,
   reset,
   roomFromLink,
@@ -20,6 +21,7 @@ import {
   started,
   ticking,
 } from "../web/clock.js";
+import { formatTime } from "../web/helpers.js";
 
 const out = {};
 const ahead = (oneTime) => oneTime + 7_000; // the same moment on player two's phone
@@ -79,6 +81,19 @@ out.started = {
   paused: started(paused(pressed(fresh(10), 5_000, "one"), 35_000, "one"), 10),
   pausedFresh: started(paused(fresh(10), 35_000, "one"), 10),
 };
+
+// Restarting the clocks asks first while a game is going on them: ticking, or stopped by a player leaving. Not
+// before the first guess, and not once a clock has run out, as the game on them is over.
+const inGame = pressed(fresh(10), 5_000, "one");
+out.inPlay = {
+  fresh: inPlay(fresh(10), 10, 9_000),
+  ticking: inPlay(inGame, 10, 9_000),
+  paused: inPlay(paused(inGame, 9_000, "one"), 10, 20_000),
+  runOut: inPlay(inGame, 10, 5_000 + 10 * 60_000),
+  pausedAtZero: inPlay(paused({ ...inGame, theirs: 1_000 }, 9_000, "one"), 10, 20_000),
+};
+
+out.playerName = [playerName(true), playerName(false)];
 
 // Times as the dock and the game show them: m:ss, h:mm:ss past an hour, never below 0:00
 out.formatTime = [0, 59_999, 60_000, 3_599_000, 3_600_000, -5_000].map(formatTime);
