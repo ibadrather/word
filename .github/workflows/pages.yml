@@ -1,8 +1,8 @@
 name: Deploy to GitHub Pages
 
 # Publishes the site with .github/scripts/build_site.py: the latest released
-# version at the root, and a staging copy of every other branch under
-# staging/<branch>/, each with its own notes and duel. The Release workflow
+# version at the root, the staging branch at beta/, and a staging copy of every
+# other branch under staging/<branch>/, each with its own notes and duel. The Release workflow
 # calls this once a new version is tagged, so only released versions go live.
 # It also runs after CI on any branch and when a branch is deleted, so the
 # staging copies follow their branches. These triggers always run from main,
