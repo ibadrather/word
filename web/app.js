@@ -122,10 +122,13 @@ function clock(ms) {
   return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-// The time since New game
+// The time since New game, then since your last guess once there is one: "12:34 | 0:45"
 function showTimer() {
   $("timer").hidden = !state.startedAt;
-  if (state.startedAt) $("timer").textContent = clock(Date.now() - state.startedAt);
+  if (!state.startedAt) return;
+  const elapsed = Date.now() - state.startedAt;
+  const lastAt = state.notes.at(-1)?.at;
+  $("timer").textContent = lastAt == null ? clock(elapsed) : `${clock(elapsed)} | ${clock(elapsed - lastAt)}`;
 }
 
 function showMessage(text) {
