@@ -26,11 +26,7 @@
       </button>
     </header>
     <p id="timer" class="timer" aria-label="Time since your last guess" hidden></p>
-    <p id="status" class="status" hidden><i aria-hidden="true"></i><span></span></p>
-    <div id="clocks" class="clocks" hidden>
-      <div id="mine" class="clock"><span class="who"></span><b></b></div>
-      <div id="theirs" class="clock"><span class="who"></span><b></b></div>
-    </div>
+    <p id="times-up" class="times-up" hidden>Your time is up. Play on if you like.</p>
 
     <p id="word" class="slots" role="status" aria-label="Your guess"><span></span><span></span><span></span><span></span></p>
     <p class="label">How many letters are right?</p>
@@ -65,6 +61,16 @@
     <p id="secret-msg" class="msg"></p>
   </main>
 
+  <div id="dock" class="dock" role="group" aria-label="Duel clock" hidden>
+    <span id="dock-note" class="note" hidden><i class="dot" aria-hidden="true"></i><span></span></span>
+    <div id="mine" class="side" role="timer"><span>You</span><b></b></div>
+    <button id="dock-menu" class="mid" type="button" aria-label="Duel clock settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>
+      <i class="dot" aria-hidden="true"></i>
+    </button>
+    <div id="theirs" class="side" role="timer"><span></span><b></b></div>
+  </div>
+
   <dialog id="menu" class="menu" aria-labelledby="about">
     <div class="menu-body" tabindex="-1" autofocus>
       <div class="menu-head">
@@ -79,7 +85,7 @@
         It tells you when a word isn't in its dictionary, but never checks a score.
       </p>
 
-      <h3>Two-player clock</h3>
+      <h3 id="clock-settings">Two-player clock</h3>
       <div class="example mode-card">
         <input id="name" maxlength="12" placeholder="Your name" autocomplete="off" enterkeyhint="done">
         <input id="room" maxlength="20" placeholder="Room name" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">

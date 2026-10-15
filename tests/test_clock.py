@@ -13,7 +13,7 @@ MINUTE = 60_000
 
 @pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
 def test_clock_steps() -> None:
-    """Press, mirror, reorder and reset the clocks as clock_steps.mjs plays them."""
+    """Press, mirror, reorder, reset and show the clocks as clock_steps.mjs does."""
     assert NODE is not None
     result = subprocess.run(  # noqa: S603 - our own script, run with the local node
         [NODE, Path(__file__).parent / "clock_steps.mjs"],
@@ -59,4 +59,6 @@ def test_clock_steps() -> None:
         },
         "runOut": {"before": True, "after": False, "left": 0},
         "minutes": [10, 10, 60, 7, 60],
+        "started": {"fresh": False, "pressed": True, "reset": False, "runOut": True},
+        "formatTime": ["0:00", "0:59", "1:00", "59:59", "1:00:00", "0:00"],
     }

@@ -1,6 +1,6 @@
 // Plays the two-player clock's pure logic through a game and prints what each step showed: node clock_steps.mjs
 // Times are ms on each phone's own clock; player two's phone runs 7 seconds ahead of player one's throughout.
-import { clampMinutes, fresh, left, message, mirrored, newer, pressed, reset, ticking } from "../web/clock.js";
+import { clampMinutes, formatTime, fresh, left, message, mirrored, newer, pressed, reset, started, ticking } from "../web/clock.js";
 
 const out = {};
 const ahead = (oneTime) => oneTime + 7_000; // the same moment on player two's phone
@@ -49,5 +49,16 @@ const late = { mine: 1_000, theirs: 1_000, running: "mine", at: 0, seq: 1, by: "
 out.runOut = { before: ticking(late, 500), after: ticking(late, 1_000), left: left(late, "mine", 5_000) };
 
 out.minutes = [clampMinutes(0, 10), clampMinutes(Number.NaN, 10), clampMinutes(100, 10), clampMinutes(7.4, 10), clampMinutes(60, 10)];
+
+// The first guess is free until either clock starts; a reset makes it free again, and a side at 0 counts as started
+out.started = {
+  fresh: started(fresh(10)),
+  pressed: started(pressed(fresh(10), 5_000, "one")),
+  reset: started(reset(pressed(fresh(10), 5_000, "one"), 10, 9_000, "one")),
+  runOut: started({ ...fresh(10), mine: 0 }),
+};
+
+// Times as the dock and the game show them: m:ss, h:mm:ss past an hour, never below 0:00
+out.formatTime = [0, 59_999, 60_000, 3_599_000, 3_600_000, -5_000].map(formatTime);
 
 console.log(JSON.stringify(out));

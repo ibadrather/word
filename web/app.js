@@ -1,7 +1,9 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { WORD_COUNT, fittingSets, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
-import * as mode from "./clock.js"; // the two-player clock; `clock` below is the m:ss formatter
+import * as mode from "./clock.js"; // the two-player clock's logic and room
+import { formatTime } from "./clock.js";
+import * as duel from "./duel.js"; // the two-player clock's dock
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -133,34 +135,15 @@ function progress(fitting) {
   return `${words}, ${plural(fitting.length, "letter set")} left`;
 }
 
-// A stretch of game time as m:ss, or h:mm:ss past an hour
-function clock(ms) {
-  const seconds = Math.max(0, Math.floor(ms / 1000));
-  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
-  const pad = (n) => String(n).padStart(2, "0");
-  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
-}
-
 // On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
-// In clock mode who is connected and the two players' clocks sit under it; the game's own times stay as they are.
+// In clock mode the two players' clocks tick in the dock at the bottom; the game's own times stay as they are.
 function showTimer() {
-  const v = mode.view();
-  $("status").hidden = $("clocks").hidden = !v.active;
+  duel.tick();
   $("timer").hidden = $("game-stats").hidden = !state.startedAt;
-  if (v.active) {
-    $("status").classList.toggle("live", v.live);
-    $("status").lastElementChild.textContent = v.status;
-    for (const side of ["mine", "theirs"]) {
-      $(side).querySelector(".who").textContent = v[side].name;
-      $(side).querySelector("b").textContent = clock(v[side].left + 999); // rounded up: 0:00 only once the time is gone
-      $(side).classList.toggle("running", v[side].running);
-      $(side).classList.toggle("over", v[side].left === 0);
-    }
-  }
   if (!state.startedAt) return;
   const elapsed = Date.now() - state.startedAt;
-  $("timer").textContent = clock(elapsed - (state.notes.at(-1)?.at ?? 0));
-  $("game-time").textContent = clock(elapsed);
+  $("timer").textContent = formatTime(elapsed - (state.notes.at(-1)?.at ?? 0));
+  $("game-time").textContent = formatTime(elapsed);
 }
 
 function showMessage(text) {
@@ -215,9 +198,9 @@ function buildControls() {
   for (let count = 0; count <= 4; count++) {
     $("counts").append(button(count, "", () => addNote(count)));
   }
-  // A computer's own keyboard types too, unless you're typing in a box or the menu is open
+  // A computer's own keyboard types too, unless you're typing in a box or a dialog is open
   document.addEventListener("keydown", (event) => {
-    if (event.ctrlKey || event.metaKey || event.altKey || $("menu").open) return;
+    if (event.ctrlKey || event.metaKey || event.altKey || document.querySelector("dialog[open]")) return;
     if (event.target.closest("input, select, textarea")) return;
     if (/^[a-z]$/i.test(event.key)) type(event.key.toLowerCase());
     else if (event.key === "Backspace") backspace();
@@ -245,6 +228,7 @@ function buildControls() {
     if (mode.view().active) mode.disconnect();
     else mode.connect($("name").value, $("room").value);
   });
+  duel.init();
   // The dictionary's size as tiles in the logo's colours
   const tile = (digit, i) => {
     const el = Object.assign(document.createElement("b"), { textContent: digit });
@@ -270,7 +254,8 @@ function render() {
   if (Number($("minutes").value) !== v.minutes) $("minutes").value = v.minutes;
   $("name").disabled = $("room").disabled = v.active;
   $("join").textContent = v.active ? "Leave" : "Connect";
-  $("room-status").textContent = v.note;
+  $("room-status").textContent = v.error;
+  duel.render();
   const { known, fitting } = deduce();
   settled = known;
   $("clear").disabled = !Object.keys(state.colours).length;
@@ -288,7 +273,7 @@ function render() {
     const li = document.createElement("li");
     li.append(
       ...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)),
-      Object.assign(document.createElement("span"), { className: "at", textContent: note.at == null ? "" : clock(note.at) }),
+      Object.assign(document.createElement("span"), { className: "at", textContent: note.at == null ? "" : formatTime(note.at) }),
       Object.assign(document.createElement("span"), { className: "score", textContent: note.count }),
       button("×", "delete", () => deleteNote(note)),
     );
