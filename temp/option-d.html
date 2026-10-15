@@ -49,16 +49,6 @@
     .tap { position: relative; }
     .tap::after { content: ""; position: absolute; right: 18px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%; background: rgb(69 49 204 / .25); box-shadow: 0 0 0 6px rgb(69 49 204 / .12); }
 
-    /* The phone's own keyboard, for typing a guess */
-    .os-kb { position: absolute; left: 0; right: 0; bottom: 0; height: 236px; display: grid; align-content: start; gap: 10px; padding: 8px 3px 0; background: #d1d4db; }
-    .os-kb .r { display: flex; justify-content: center; gap: 4px; }
-    .os-kb i { display: grid; place-items: center; width: 29px; height: 40px; border-radius: 5px; background: #fff; box-shadow: 0 1px 0 #898a8d; font-style: normal; font-size: 1.05rem; color: #000; }
-    .os-kb i.wide { width: 170px; font-size: .8rem; }
-    .os-kb i.done { width: 70px; background: #4531cc; color: #fff; font-size: .8rem; }
-    .kb-strip { position: absolute; left: 0; right: 0; bottom: 236px; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--accent); color: #fff; font-size: .8rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .kb-strip b { font-size: 1.05rem; }
-    .kb-strip .theirs { margin-left: auto; opacity: .75; font-weight: 400; }
-    .typing-page #word { border-color: var(--accent); }
 
     /* The phone's own confirm box, which the code uses today */
     .alert { position: absolute; left: 44px; right: 44px; top: 36%; overflow: hidden; border-radius: 14px; background: rgb(242 242 247 / .97); color: #000; text-align: center; }
@@ -105,7 +95,7 @@
 <body class="gallery">
   <div class="intro-text">
     <h1>Option D · A chess clock pinned to the bottom</h1>
-    <p class="lede">The top of the page stays as on main, even while you play: the timer, the guess box and the keyboard don't move down. The clocks sit in a dock at the bottom, where your thumb already is. The side that's ticking grows and fills in, so whose turn it is shows from across the table. This page walks through the whole duel on both phones: turning it on, joining, playing, the awkward moments and leaving.</p>
+    <p class="lede">The top of the page stays as on main, even while you play: the timer, the guess and the keyboard don't move down. The clocks sit in a dock at the bottom, where your thumb already is. The side that's ticking grows and fills in, so whose turn it is shows from across the table. This page walks through the whole duel on both phones: turning it on, joining, playing, the awkward moments and leaving.</p>
   </div>
 
   <!-- ===== How a duel is made, in words ===== -->
@@ -122,7 +112,7 @@
     <div class="explain">
       <div><b>What a "room" is</b>Only a shared name. Two phones that connect with the same name find each other. There are no accounts and no server of ours. That's why the app makes up a name nobody else would pick, and why the link carries it, so nobody has to type it.</div>
       <div><b>How the phones find each other</b>Both phones say "I'm in mint-owl-42" to a few public relays, swap a few KB of encrypted connection offers, then talk to each other directly. After that, each guess sends one tiny message. It's what <code>clock.js</code> does today, unchanged.</div>
-      <div><b>What's new in Option D</b>Only where the duel shows up: "How you play" in the drawer, a made-up room with a Share link, minutes as chips, the dock at the bottom and its sheet. The game itself, the scoring and the helpers stay as they are.</div>
+      <div><b>What's new in Option D</b>Where the duel shows up: "How you play" in the drawer, a made-up room with a Share link, minutes as chips, the dock at the bottom and its sheet. And one change to the game: guesses are typed on the page's own keyboard into four slots, so the phone's keyboard never opens and never covers the dock. Letters are marked by tapping them in your guesses. The scoring and the helpers stay as they are.</div>
     </div>
   </div>
 
@@ -318,13 +308,12 @@
   </div>
   <div class="phones">
     <figure class="shot" id="v10">
-      <figcaption><b>10 · Typing a guess</b>The phone's keyboard covers the dock. A slim strip rides on top of the keyboard with your clock, since this is when the seconds matter. (Or hide the dock completely while typing.)</figcaption>
-      <div class="phone"><div class="screen typing-page"><main>
+      <figcaption><b>10 · Typing a guess</b>The guess is typed on the page's own keyboard and fills the four slots, so the phone's keyboard never opens. The dock stays in view, with your clock ticking, the whole time you type. Every key types, red ones too.</figcaption>
+      <div class="phone"><div class="screen"><main>
         <div data-header></div>
         <div data-game data-word="sea"></div>
       </main></div>
-        <div class="kb-strip"><span>Your turn</span><b>7:42</b><span class="theirs">Player two 8:15</span></div>
-        <div class="os-kb" data-oskb></div>
+        <div data-dock='{"mine":"7:42","theirs":"8:15","run":"mine"}'></div>
       </div>
     </figure>
 
@@ -464,12 +453,11 @@
       <li><span class="pro">+</span> It reads like a real chess clock: big, at the bottom, and you can tell whose turn it is from across the table.</li>
       <li><span class="pro">+</span> Setting up is three taps for the first phone (logo, Duel clock, Connect) and two for the second (the link, then Join duel). Nobody has to invent a room name.</li>
       <li><span class="con">−</span> The dock covers about 90px of the bottom, so the guess list and secret word need that much more scrolling.</li>
-      <li><span class="con">−</span> A fixed bar needs care with the iPhone home indicator and the phone's keyboard (view 10).</li>
+      <li><span class="con">−</span> A fixed bar needs care with the iPhone home indicator. (The phone's keyboard is no worry: guesses are typed on the page's own, view 10.)</li>
       <li><span class="con">−</span> New code beyond what's there now: the made-up room name, reading <code>?room=</code> from the link, the "Join the duel?" sheet, the joining phone taking the other's minutes, and stopping the clocks when the other player leaves.</li>
     </ul>
     <h2>Open questions for you</h2>
     <ul>
-      <li>While typing a guess (view 10): a slim clock strip above the keyboard, or hide the duel entirely?</li>
       <li>Room names: word-word-number like <b>mint-owl-42</b>, or a 4-letter word like <b>MINT</b>, which is easier to say across the table but needs a hidden suffix so two tables never clash?</li>
       <li>When the other player leaves (view 18), should your phone leave the duel on its own after a while?</li>
     </ul>
@@ -490,12 +478,6 @@
     };
     document.querySelectorAll("[data-dock]").forEach((el) => (el.outerHTML = dock(JSON.parse(el.dataset.dock))));
     document.querySelectorAll("[data-adv-header]").forEach((el) => (el.outerHTML = header("", "Advanced Helper Mode")));
-
-    // The phone's own keyboard
-    document.querySelectorAll("[data-oskb]").forEach((el) => {
-      el.innerHTML = ["qwertyuiop", "asdfghjkl", "zxcvbnm"].map((row) => `<div class="r">${[...row].map((l) => `<i>${l}</i>`).join("")}</div>`).join("")
-        + `<div class="r"><i class="wide">space</i><i class="done">done</i></div>`;
-    });
 
     // Views that show the page scrolled to the bottom
     addEventListener("load", () => document.querySelectorAll("[data-scroll=bottom]").forEach((el) => (el.scrollTop = el.scrollHeight)));

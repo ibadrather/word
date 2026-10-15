@@ -26,11 +26,11 @@ You play face to face, saying guesses and scores out loud. The app never checks 
 - **Menu:** tap the logo for a short intro, the rules and how many words the dictionary knows. Tap × or outside to close it.
 
 - **Your word:** type your secret word at the bottom of the page. It's hidden as dots; tap **Show** to reveal it to the other player.
-- **Note your guesses:** type the word, tap **0–4** for how many letters were correct. Tap **×** to remove one (asks first).
+- **Note your guesses:** type the word on the page's keyboard (a computer's keyboard works too); it fills the four slots at the top. Then tap **0–4** for how many letters were correct. Tap **×** to remove one (asks first).
 - **Dictionary:** a guess or secret word that isn't one of its 4,983 four-letter words gets a red "Not in the dictionary". It's only a warning: you can still note the guess.
-- **Mark letters:** tap a key to cycle it grey → **red** (not in it) → **yellow** (not sure) → **green** (in the word) → grey. Red comes first because most letters end up red.
-- **Clear** (next to the colour key, asks first): wipes the colours you set on the keys, in any mode. Letters a helper set stay as they are.
-- **Mode** (next to New game, asks to confirm). Letters a helper sets get a dot and are locked: tapping them does nothing.
+- **Mark letters:** tap a letter in your guesses to cycle it grey → **red** (not in it) → **yellow** (not sure) → **green** (in the word) → grey. Red comes first because most letters end up red. The keyboard shows the same colours, and every key still types, red ones too.
+- **Clear** (next to the colour key, asks first): wipes the colours you set, in any mode. Letters a helper set stay as they are.
+- **Mode** (next to New game, asks to confirm). Letters a helper sets get a dot and are locked: tapping them in your guesses does nothing, and Clear leaves them.
   - **Normal Mode:** you mark every letter yourself.
   - **Basic Helper Mode:** every letter of a guess that scored 0 turns red.
   - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many dictionary words and letter sets are left, and the letters once only one set fits. It counts words but never shows one.
