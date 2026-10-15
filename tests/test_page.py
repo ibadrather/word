@@ -26,6 +26,22 @@ def test_page_never_calls_the_server() -> None:
         assert call not in code
 
 
+def test_only_the_clock_imports_the_library() -> None:
+    """trystero.js reaches the network, so only the clock loads it, and only on demand.
+
+    Its first line pins the version it was built from.
+    """
+    importers = sorted(
+        path.name
+        for path in WEB.rglob("*")
+        if path.suffix in {".js", ".html"}
+        and re.search(r"import\b.*trystero\.js", path.read_text())
+    )
+    assert importers == ["clock.js"]
+    assert 'import("./trystero.js")' in (WEB / "clock.js").read_text()
+    assert "Trystero 0.26.0" in (WEB / "trystero.js").read_text().splitlines()[0]
+
+
 def test_page_has_a_version_slot() -> None:
     """The deploy swaps this placeholder for the release version; keep it as is."""
     assert (WEB / "index.html").read_text().count(

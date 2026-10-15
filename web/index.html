@@ -26,6 +26,11 @@
       </button>
     </header>
     <p id="timer" class="timer" aria-label="Time since your last guess" hidden></p>
+    <p id="status" class="status" hidden><i aria-hidden="true"></i><span></span></p>
+    <div id="clocks" class="clocks" hidden>
+      <div id="mine" class="clock"><span class="who"></span><b></b></div>
+      <div id="theirs" class="clock"><span class="who"></span><b></b></div>
+    </div>
 
     <input id="word" maxlength="4" placeholder="Guess" aria-label="Your guess"
            autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
@@ -74,6 +79,19 @@
         This page only helps you keep track of letters.
         It tells you when a word isn't in its dictionary, but never checks a score.
       </p>
+
+      <h3>Two-player clock</h3>
+      <div class="example mode-card">
+        <input id="name" maxlength="12" placeholder="Your name" autocomplete="off" enterkeyhint="done">
+        <input id="room" maxlength="20" placeholder="Room name" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
+        <label>Minutes each <input id="minutes" type="number" min="1" max="60" inputmode="numeric"></label>
+        <button id="join" class="pill" type="button">Connect</button>
+        <p id="room-status"></p>
+        <p>A chess clock shared between your two phones. Type the same room name on both (pick one nobody else would) and connect.
+          Noting a guess stops your clock and starts the other player's; the first guess is free.
+          New game before the first guess restarts both clocks, and so does changing the minutes.
+          Both phones need internet to find each other; after that they talk directly.</p>
+      </div>
 
       <h3>Rules</h3>
       <ol class="rules">

@@ -102,6 +102,17 @@ body.dark .mode {
 @media (max-width: 420px) { .new-game .wide { display: none; } }
 /* Time since your last guess: centred under the header, digits that don't jiggle as they tick */
 .timer { margin: -6px 0 10px; text-align: center; font-size: 1.1rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Two-player clock: who is connected, with a dot that fills in green, then the two clocks side by side */
+.status { display: flex; justify-content: center; align-items: center; gap: 6px; margin: -6px 0 10px; font-size: .8rem; color: var(--muted); }
+.status[hidden], .clocks[hidden] { display: none; }
+.status i { flex: none; width: 8px; height: 8px; border: 2px solid var(--muted); border-radius: 50%; }
+.status.live i { border-color: var(--in); background: var(--in); }
+.clocks { display: flex; gap: 8px; margin-bottom: 14px; }
+.clock { flex: 1; min-width: 0; padding: 8px 10px; border: 2px solid var(--line); border-radius: 12px; text-align: center; }
+.clock .who { display: block; overflow: hidden; font-size: .75rem; font-weight: 600; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.clock b { display: block; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.clock.running { border-color: var(--heading); color: var(--heading); }
+.clock.over { border-color: var(--out); color: var(--out); }
 h2 { margin: 28px 0 8px; font-size: .95rem; }
 /* "Your guesses" on the left, the guess count and game time on the right of the same line */
 .guesses-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 28px 0 8px; }
@@ -342,6 +353,17 @@ button, select {
 .example .score { width: 30px; height: 30px; font-size: .95rem; }
 .example p { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
 .dictionary-label { font-size: .95rem; font-weight: 600; white-space: nowrap; }
+
+/* The two-player clock's settings: name, room and minutes stacked, Connect or Leave, then the room's status */
+.mode-card { display: grid; gap: 8px; }
+.mode-card input { width: 100%; padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; background: var(--bg); color: inherit; font: inherit; }
+.mode-card input:focus { outline: none; border-color: var(--accent); }
+.mode-card input:disabled { opacity: .6; }
+.mode-card label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .9rem; font-weight: 600; }
+.mode-card label input { width: 72px; text-align: center; }
+.mode-card .pill { justify-self: start; color: var(--heading); }
+#room-status { font-weight: 600; color: var(--heading); }
+#room-status:empty { display: none; }
 
 .menu-foot { margin: auto 0 0; padding-top: 24px; text-align: center; font-size: .8rem; color: var(--muted); }
 /* The release version, stamped in on deploy; a local preview shows dev */
