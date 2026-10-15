@@ -13,11 +13,14 @@ NOT_SERVED_OFFLINE = {"sw.js", "fonts/OFL.txt"}
 def test_page_never_calls_the_server() -> None:
     """Once loaded, the page works on its own: no sockets, polling or requests.
 
-    The service worker is the one exception: it fetches the page's own files to
-    keep copies for offline use.
+    Two exceptions: the service worker fetches the page's own files to keep
+    copies for offline use, and the two-player clock reaches public relays
+    through trystero.js, only once you join a room.
     """
     code = "".join(
-        path.read_text() for path in WEB.glob("*.js") if path.name != "sw.js"
+        path.read_text()
+        for path in WEB.glob("*.js")
+        if path.name not in {"sw.js", "trystero.js"}
     )
     for call in ("fetch(", "WebSocket", "XMLHttpRequest", "EventSource", "sendBeacon"):
         assert call not in code
