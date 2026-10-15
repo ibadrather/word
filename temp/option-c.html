@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Option C · Duel lobby</title>
+  <link rel="stylesheet" href="mock.css">
+  <style>
+    .start-duel { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 16px; padding: 14px; border: 0; border-radius: 16px; background: var(--accent); color: #fff; text-align: left; }
+    .start-duel svg { flex: none; width: 28px; height: 28px; }
+    .start-duel b { display: block; font-size: 1rem; }
+    .start-duel span { font-size: .8rem; opacity: .85; }
+
+    /* The lobby: its own screen, back arrow to the game */
+    .lobby { display: grid; gap: 18px; }
+    .lobby-head { display: flex; align-items: center; gap: 10px; }
+    .lobby-head h2 { margin: 0; font-size: 1.15rem; color: var(--heading); }
+    .back-btn { width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--key); font-size: 1.1rem; }
+    .tabs { display: flex; padding: 4px; border-radius: 14px; background: var(--key); }
+    .tabs button { flex: 1; padding: 8px; border: 0; border-radius: 10px; background: none; font-size: .9rem; font-weight: 600; color: var(--muted); }
+    .tabs button.on { background: var(--bg); color: var(--fg); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
+    .code-box { display: grid; justify-items: center; gap: 10px; padding: 18px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); }
+    .code-box .hint { text-align: center; }
+    .waiting { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: .9rem; font-weight: 600; color: var(--muted); }
+    .code-input { display: flex; gap: 8px; justify-content: center; }
+    .code-input b { display: grid; place-items: center; width: 52px; height: 56px; border: 2px solid var(--line); border-radius: 12px; font-size: 1.5rem; }
+    .code-input b.cur { border-color: var(--accent); }
+
+    /* In the game: one slim bar, my side left, theirs right, the room in the middle */
+    .strip { display: flex; align-items: stretch; margin: -4px 0 12px; border-radius: 14px; overflow: hidden; border: 2px solid var(--line); font-variant-numeric: tabular-nums; }
+    .strip .side { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 8px 6px; }
+    .strip .side span { font-size: .75rem; font-weight: 600; color: var(--muted); }
+    .strip .side b { font-size: 1.35rem; }
+    .strip .side.running { background: var(--accent); color: #fff; }
+    .strip .side.running span { color: rgb(255 255 255 / .8); }
+    .strip .mid { display: grid; place-items: center; gap: 2px; padding: 0 8px; font-size: .62rem; font-weight: 700; letter-spacing: .06em; color: var(--muted); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+  </style>
+</head>
+<body class="gallery">
+  <div class="intro-text">
+    <a class="back" href="index.html">← All options</a>
+    <h1>Option C · A separate lobby screen</h1>
+    <p class="lede">The duel gets its own screen, so the game page is never cluttered with settings. Start it from the drawer. One phone makes a room and shows a 4-letter code as tiles in the logo's colours. The other phone types it in, the way you'd type a guess, or opens the shared link. In the game a single slim bar holds both clocks.</p>
+  </div>
+
+  <div class="phones">
+    <figure class="shot">
+      <figcaption><b>1 · Drawer: "Start a duel" at the top</b>The game page itself is exactly main's. The drawer gets one button, and the rules follow as before.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game data-word="seat"></div>
+      </main></div>
+        <div class="scrim"></div>
+        <div class="menu"><div class="menu-body">
+          <div class="menu-head">
+            <div class="logo"><b class="unsure">W</b><b class="out">O</b><b>R</b><b class="in">D</b></div>
+            <h2>About the game</h2><button class="close">×</button>
+          </div>
+          <button class="start-duel"><span class="ic"></span><div><b>Start a duel</b><span>A chess clock shared by both phones</span></div></button>
+          <p class="intro"><b>Play it face to face.</b> Say your guesses and scores out loud to each other. This page only helps you keep track of letters.</p>
+          <h3>Rules</h3>
+          <ol class="rules">
+            <li>Each of you picks a secret word of 4 letters.</li>
+            <li>Take turns guessing the other's word.</li>
+          </ol>
+        </div></div>
+      </div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>2 · Lobby: make a room</b>The code is a random dictionary word. Read it out or share the link. The phone waits here until the other one joins.</figcaption>
+      <div class="phone"><div class="screen"><main class="lobby">
+        <div class="lobby-head"><button class="back-btn">←</button><h2>Duel clock</h2></div>
+        <div class="tabs"><button class="on">Make a room</button><button>Join a room</button></div>
+        <div class="code-box">
+          <span class="hint">Room code</span>
+          <div class="code-tiles"><b class="unsure">M</b><b class="out">I</b><b>N</b><b class="in">T</b></div>
+          <button class="secondary">Share link</button>
+        </div>
+        <label class="field"><span>Your name</span><input placeholder="Player one"></label>
+        <div class="field"><span>Minutes each</span><div class="chips"><button>3</button><button>5</button><button class="on">10</button><button>15</button><button>30</button></div></div>
+        <p class="waiting"><i class="dot"></i>Waiting for player two…</p>
+        <p class="hint" style="text-align:center">Both phones need internet to find each other.</p>
+      </main></div></div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>3 · Lobby on the other phone: join</b>Type the 4 letters you were told. The minutes come from the room's maker, so there's nothing else to set.</figcaption>
+      <div class="phone"><div class="screen"><main class="lobby">
+        <div class="lobby-head"><button class="back-btn">←</button><h2>Duel clock</h2></div>
+        <div class="tabs"><button>Make a room</button><button class="on">Join a room</button></div>
+        <div class="code-box">
+          <span class="hint">Type the room code</span>
+          <div class="code-input"><b>M</b><b>I</b><b class="cur"></b><b></b></div>
+        </div>
+        <label class="field"><span>Your name</span><input placeholder="Player two"></label>
+        <button class="primary">Join</button>
+      </main></div></div>
+    </figure>
+
+    <figure class="shot">
+      <figcaption><b>4 · Playing: one slim clock bar</b>Both clocks on one line, the room in the middle with a green dot. Tap the bar for the room, the minutes and Leave.</figcaption>
+      <div class="phone"><div class="screen"><main>
+        <div data-header></div>
+        <div data-game data-before="strip" data-word="seat"></div>
+      </main></div></div>
+    </figure>
+  </div>
+
+  <div class="notes-box">
+    <h2>Trade-offs</h2>
+    <ul>
+      <li><span class="pro">+</span> The cleanest split. Duel settings live on their own screen, the game page gets one slim bar, and the drawer gets one button.</li>
+      <li><span class="pro">+</span> A 4-letter room code fits the game. It's easy to say across a table, and the join screen is "type a word", like a guess.</li>
+      <li><span class="pro">+</span> Making and joining are separate, so the joining phone has nothing to choose. No more "both of you type the same room name".</li>
+      <li><span class="con">−</span> The most new UI to build: a second screen, and making vs joining. The room code needs a hidden suffix (or a second word) so two tables never collide.</li>
+      <li><span class="con">−</span> A screen change feels heavier than a dropdown for something you set once per game.</li>
+    </ul>
+  </div>
+
+  <script src="mock.js"></script>
+  <script>
+    document.querySelector(".start-duel .ic").outerHTML = CLOCK_ICON;
+    window.strip = `
+      <div class="strip">
+        <div class="side running"><span>You</span><b>7:42</b></div>
+        <div class="mid"><i class="dot live"></i>MINT</div>
+        <div class="side"><b>8:15</b><span>Player two</span></div>
+      </div>`;
+  </script>
+</body>
+</html>
