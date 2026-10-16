@@ -1,88 +1,27 @@
 <img src="web/icon.png" alt="WORD logo" width="96">
 
-# Word
-
-A notepad for a two-player 4-letter word guessing game (player one and player two), opened in the phone's browser, with an optional chess clock shared between the two phones.
+A phone notepad for a two-player 4-letter word guessing game, with an optional chess clock shared between two phones.
 
 **Play: https://ibadrather.github.io/word**
 
-## Install it as an app
-Installed, it gets its own icon, opens full-screen without the browser bar, and works with no connection.
-- **Android** (Chrome): open the page, then tap **Install app** when offered, or ⋮ → **Add to Home screen** → **Install**.
-- **iPhone** (Safari, or Chrome on iOS 16.4+): Share → **Add to Home Screen**.
-- **Mac**: in Safari (macOS Sonoma or later), File → **Add to Dock**; in Chrome or Edge, the install icon at the right of the address bar. Firefox can't install it.
-
-The installed app keeps its own notes, apart from the browser's, so a game in progress in the browser doesn't carry over. On iPhone that's a plus: Safari may clear a site's notes after 7 days without a visit, but not a home-screen app's.
+Install it from the browser (**Add to Home Screen**, or **Install app** on Android) to get an icon and offline play.
 
 ## Rules
-1. Each of you picks a secret 4-letter word.
-2. Take turns guessing the other's word with any 4-letter word.
-3. The other says how many letters of the guess are in their word. Where a letter sits doesn't matter, and a repeated letter counts once: against CART, TART scores 3 (T, A and R; the second T doesn't count again).
+1. Each player picks a secret 4-letter word.
+2. Take turns guessing the other's word.
+3. The other says how many letters of the guess are in their word. Position doesn't matter, and a repeated letter counts once.
 4. First to guess the other's word wins.
 
-## What it does
-You play face to face, saying guesses and scores out loud. The app never checks the scores or shows anyone's word, and talks to no server of ours. It just helps you keep track:
-
-- **Menu:** tap the logo for how you play (face to face, or with the duel clock below), a short intro, the rules and how many words the dictionary knows. Tap × or outside to close it.
-
-- **Your word:** type your secret word at the bottom of the page. It's hidden as dots; tap **Show** to reveal it to the other player.
-- **Note your guesses:** type the word on the page's keyboard (a computer's keyboard works too); it fills the four slots at the top. Then tap **0–4** for how many letters were correct. Tap **×** to remove one (asks first).
-- **Dictionary:** a guess or secret word that isn't one of its 4,983 four-letter words gets a red "Not in the dictionary". It's only a warning: you can still note the guess.
-- **Mark letters:** tap a letter in your guesses to cycle it grey → **red** (not in it) → **yellow** (not sure) → **green** (in the word) → grey. Red comes first because most letters end up red. The keyboard shows the same colours, and every key still types, red ones too.
-- **Clear** (next to the colour key, asks first): wipes the colours you set, in any mode. Letters a helper set stay as they are.
-- **Mode** (next to New game, asks to confirm). Letters a helper sets get a dot and are locked: tapping them in your guesses does nothing, and Clear leaves them.
-  - **Normal Mode:** you mark every letter yourself.
-  - **Basic Helper Mode:** every letter of a guess that scored 0 turns red.
-  - **Advanced Helper Mode** (dark): works out letters from all your guesses' counts together. It tries every set of up to 4 letters the secret word could use; a letter in every set that fits is green, in none of them red. A line above the keyboard shows how many dictionary words and letter sets are left, and the letters once only one set fits. It counts words but never shows one.
-- **New game** clears everything, including your word.
-- **Timer** (from the first New game): under the header, the time since your last guess (since New game before the first one). Beside **Your guesses**, the number of guesses and the game time, as `Guesses: 3  Game Timer: 12:34`. Each guess also shows when in the game it was noted.
-- **Duel clock** (menu → **How you play** → **Duel clock**; **Face to face**, the default, is the plain game): a chess clock shared between the two phones. A sheet drops from the top with a room name made up for you, like `mint-owl-42`, an optional name (Player one if you leave it empty) and the minutes each as chips: 3, 5, 10 (the default), 15 or 30. Tap **Share link** to send the page's address with the room, like `…/word/?room=mint-owl-42` (the phone's share sheet, or the link is copied where there's none), and **Connect**. The other phone opens the link and is asked **Join the duel?**: **Join duel**, with an optional name (Player two if you leave it empty), or **Not now, just play**, which changes nothing. The address loses the room once opened, so a refresh doesn't ask again. No link? Read the room out: the other phone opens the same sheet, types that room over its own made-up one (the name then defaults to Player two) and connects. Either way the joining phone takes the first phone's minutes. If both phones type the same room of their own instead (say `family`), one of them is still player one, and both phones agree which. The first phone to answer is the opponent for the rest of the duel: a third phone that opens the same link is ignored, while the opponent's own phone can always come back. A link opened in the browser joins there, not in the installed app, which keeps its own storage. If a phone can't join (no internet, or the page was opened over plain http), the sheet says so, with **Try again** and **Back to face to face**. The clocks sit in a dock pinned to the bottom of the screen, so nothing in the game moves: your side is always on the left, and the side that's ticking is the wide, filled one. The dot in the dock's middle turns green once the other phone is there, and a small line on the dock's edge says when it joins, drops out or leaves. The middle button opens the sheet again, with who's connected, the room, the minutes, **Share link** and **Leave duel**; while you wait for the other phone it shows the room in big letters and Share link, and it folds away by itself once they arrive. Noting a guess stops your clock and starts the other player's; the first guess is free, so both clocks sit at the full time until it. A clock that runs out shows a red `0:00`, and when yours does, "Your time is up" shows above the guess; nothing stops you playing on. **New game** before the first guess, or once a clock has run out, restarts both clocks; while a game is going on them (a clock running, or both stopped because the other player left) it asks whether to restart them too. Changing the minutes restarts both, and asks first in the same cases. The room is remembered, so it's one tap to set up again next time, and a refresh, a locked phone or a dropped connection rejoins on its own and the phones agree again within a moment. **Leave duel**, or choosing Face to face in the menu, switches the duel off on that phone and tells the other one: its clocks stop where they are, its dock dims and says "Player one left the duel", and it waits until you come back (connecting to the same room carries on from the stopped times) or it leaves too, which ends that duel: the next one in the room starts with full clocks. A phone that drops out instead (locked, closed or out of signal) is different: the other phone says "dropped out · reconnecting…" in red, the clocks keep counting, and both agree again once it's back. Both phones need internet to find each other; after that they talk directly, even on the same Wi-Fi.
-
-Notes stay on each phone (browser storage), so a refresh or locked screen keeps them. They belong to the exact address, so notes made on a local preview (below) don't show up on the live site, and the other way round. An installed app keeps its own, too.
-
-## How it works
-The page is a few static files in `web/`, served by GitHub Pages. Everything happens on the phone; the page never talks back to a server of ours, and loads nothing from other sites.
-- `web/`: `index.html`, `style.css`, `app.js` (the page, saved in the browser's `localStorage`), `helpers.js` (the helper logic and the times' m:ss), `words.js` (the dictionary) `clock.js` (the duel clock's logic and room, with its own saved state apart from the game's) and `duel.js` (the duel's screens: the dock, the sheet and the menu's How you play).
-- The duel clock is the one thing that goes online. Joining a room talks to a handful of public [Nostr](https://nostr.com) relays to find the other phone (a few KB of encrypted connection offers; the relays see each phone's address and the phones keep a socket to them while in the room), then the phones talk to each other directly over WebRTC's encrypted data channel, through public STUN servers to get past home routers. One message of about 100 bytes per guess, reset or reconnection, and one tiny `bye` when leaving, so the other phone can tell a goodbye from a dropout. `trystero.js` is [Trystero](https://github.com/dmotz/trystero) 0.26.0 (MIT) bundled once with the command in its first line; the relay list is fixed inside it, so if those relays shut down the clock stops finding phones until the file is rebuilt. Clocks run on wall-clock time from the last press, each phone counting elapsed time with its own clock, so the phones' clocks don't need to agree and a dropout changes nothing.
-- `fonts/`: Poppins (Latin letters only), from Google Fonts under the Open Font License in `fonts/OFL.txt`.
-- Installing: `manifest.webmanifest` names the app and its icons. `icon.png` is the iPhone and Mac icon; `icon-192.png` and `icon-512.png` are Android's, and `icon-maskable.png` has room around the tiles for Android to crop it to a circle or any other shape. The favicon is inline in `index.html`.
-- `sw.js`, the service worker, keeps a copy of every file so the page opens offline, a shared duel link (`?room=…`) included. It still fetches each file from the network when it can, so updates arrive as before and the copies are only used offline. Its `FILES` list must name every file in `web/`; a test checks it.
-
-## The dictionary
-`web/words.js` holds every 4-letter word the page accepts, about 13 KB once compressed. It comes from [SCOWL](http://wordlist.aspell.net) 2020.12.07, the word lists behind most English spellcheckers. It keeps sizes up to 80 ("words found in larger dictionaries") in British (including Oxford's -ize spelling) and American spellings, and drops names, abbreviations and accented words. The file's header lists the exact lists used and carries SCOWL's copyright notice, which its licence asks to keep. Oxford's own dictionary isn't openly licensed, so this is the closest open stand-in.
-
-## Versions and releases
-The version lives in `pyproject.toml` and shows at the bottom of the menu (a local preview shows `dev`). Any change to `web/` needs a higher version, or the **Version bump** check fails. Bump it with:
-```sh
-uv version --bump patch   # 1.0.0 -> 1.0.1: fixes; minor for new features, major for big changes
-```
-Pushing a new version to `main` runs **Release** (`.github/workflows/release.yml`): CI, then a `v<version>` tag and GitHub release with notes, then the deploy of that version to https://ibadrather.github.io/word, live within a minute or so. Phones may keep the old files for up to 10 minutes; a refresh after that (or, for the installed app, closing and reopening it) picks up the update. To republish without a new version, run **Deploy to GitHub Pages** by hand from the Actions tab.
-
-**Beta:** the `staging` branch is the beta, at https://ibadrather.github.io/word/beta/. Merge or push what you want to try into `staging`, and it's there a minute or so after CI runs on it, before it's released. It's a staging copy like those below, with its own notes and duel rooms, and installs as **Word beta**; its menu shows something like `v1.6.0 · beta @ ff0585a`.
-
-**Staging:** every other branch apart from `main` also gets a test copy at `https://ibadrather.github.io/word/staging/<branch>/`, with `/` turned into `-` (so `feat/duel-sheet` is at https://ibadrather.github.io/word/staging/feat-duel-sheet/). https://ibadrather.github.io/word/staging/ lists them all, the beta too. A copy updates a minute or so after CI runs on its branch, and goes away when the branch is deleted. Its menu shows its version, branch and commit, like `v1.9.0 · staging feat/duel-sheet @ ff0585a`. Each copy keeps its own notes, duel rooms, offline files and installed-app name, apart from the live game's, so testing on your own phone never touches a game in progress, and staging phones only ever meet other phones on the same branch. The duel works there too, since it's https. `.github/scripts/build_site.py` builds the whole site, the latest release at the root, the beta under `beta/` and the copies under `staging/`, and the **Deploy to GitHub Pages** workflow runs it after a release, after CI on any branch, when a branch is deleted, or by hand. These all run from `main`, the only branch allowed to deploy, so a branch can never change the live game.
-
-**CI** (`.github/workflows/ci.yml`) runs the checks below on every push and pull request that touches the page, tests or tooling.
+## Features
+- Note your guesses and their scores, and colour letters red, yellow or green as you work them out.
+- A dictionary of 4,983 words warns about guesses it doesn't know.
+- Helper modes mark letters for you: **Basic** reds out letters from 0-score guesses, **Advanced** works out letters from all your guesses.
+- **Duel clock**: a chess clock across two phones. Share a room link, and each guess passes the clock to the other player.
+- Everything stays on your phone. The duel clock is the only part that goes online, connecting the two phones directly.
 
 ## Dev
-Preview changes before pushing (`app.js` is a module, so opening `index.html` as a file doesn't work):
 ```sh
-python3 -m http.server -d web 8000
+python3 -m http.server -d web 8000   # preview at http://localhost:8000
+uv run ruff format . && uv run ruff check . && uv run mypy tests .github/scripts && uv run pytest
 ```
-Open http://localhost:8000, or `http://<mac-ip>:8000` on a phone on the same Wi-Fi (`ipconfig getifaddr en0`). This server doesn't stop the browser caching, so after an edit hard-refresh (Cmd+Shift+R) or tick DevTools → Network → Disable cache.
-
-The duel clock needs https or `localhost` (its library uses the browser's crypto, which plain http pages don't get), so test it in two `localhost` windows (Safari and Chrome, or two Chrome profiles), or on phones via the live site. On `http://<mac-ip>:8000` the sheet says the duel clock needs the https site and the rest works as usual.
-
-Checks need Python 3.14+ and the dev tools in `pyproject.toml`. [uv](https://docs.astral.sh/uv/) is recommended: it fetches the right Python and the tools on the first run.
-```sh
-uv run ruff format . && uv run ruff check .   # all ruff rules enabled
-uv run mypy tests .github/scripts             # strict typing
-uv run pytest                                 # the helper and clock tests need Node; they're skipped without it
-```
-Without uv, make a venv with Python 3.14 (the Mac's built-in `python3` is older) and drop the `uv run` prefix:
-```sh
-python3.14 -m venv .venv && source .venv/bin/activate
-pip install --group dev                       # pip 25.1+, which Python 3.14 ships with
-ruff format . && ruff check . && mypy tests .github/scripts && pytest
-```
-`tests/games/` holds real games as JSON: the secret word, then each guess with its score and what the advanced helper should show after it (`green` letters, `letterSetsLeft` and `wordsLeft`). Add a file there to test another game. `tests/clock_steps.mjs` plays the clock's logic through a game between two phones whose clocks differ by 7 seconds; `tests/test_clock.py` checks what each step shows.
+Any change to `web/` needs a version bump (`uv version --bump patch`). Pushing a new version to `main` releases and deploys it. The `staging` branch is the beta at https://ibadrather.github.io/word/beta/, and other branches get a test copy under `/word/staging/<branch>/`.
