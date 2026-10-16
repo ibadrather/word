@@ -71,6 +71,14 @@ def test_clock_steps() -> None:
             "paused": True,
             "pausedFresh": False,  # nobody had pressed: the first guess is still free
         },
+        "inPlay": {
+            "fresh": False,
+            "ticking": True,
+            "paused": True,
+            "runOut": False,
+            "pausedAtZero": False,
+        },
+        "playerName": ["Player one", "Player two"],
         "formatTime": ["0:00", "0:59", "1:00", "59:59", "1:00:00", "0:00"],
         # The host's fresh clock wins from both sides, so the joiner takes its
         # 10 minutes; the joiner's next press is seq 1 and wins as usual

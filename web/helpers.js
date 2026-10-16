@@ -1,4 +1,4 @@
-// Word: the helpers. Plain functions of the guesses (and your marks), so tests can run them in Node.
+// Word: the helpers. Plain functions of the guesses (and your marks), and of times, so tests can run them in Node.
 // Notes are [{ word, count }]; a result is { letter: "in" | "out" }. Repeated letters in a guess count once.
 
 import { WORDS } from "./words.js";
@@ -70,4 +70,13 @@ export function wordsLeft(fitting, notes) {
     if (!guessed.has(word) && sets.has([...new Set(word)].sort().join(""))) count++;
   }
   return count;
+}
+
+// --- Times: a stretch of time as m:ss, or h:mm:ss past an hour, for the game's timers and the duel's clocks. ---
+
+export function formatTime(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1000));
+  const [h, m, s] = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60];
+  const pad = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
