@@ -13,14 +13,33 @@ NOT_SERVED_OFFLINE = {"sw.js", "fonts/OFL.txt"}
 def test_page_never_calls_the_server() -> None:
     """Once loaded, the page works on its own: no sockets, polling or requests.
 
-    The service worker is the one exception: it fetches the page's own files to
-    keep copies for offline use.
+    Two exceptions: the service worker fetches the page's own files to keep
+    copies for offline use, and the duel clock reaches public relays
+    through trystero.js, only once you join a room.
     """
     code = "".join(
-        path.read_text() for path in WEB.glob("*.js") if path.name != "sw.js"
+        path.read_text()
+        for path in WEB.glob("*.js")
+        if path.name not in {"sw.js", "trystero.js"}
     )
     for call in ("fetch(", "WebSocket", "XMLHttpRequest", "EventSource", "sendBeacon"):
         assert call not in code
+
+
+def test_only_the_clock_imports_the_library() -> None:
+    """trystero.js reaches the network, so only the clock loads it, and only on demand.
+
+    Its first line pins the version it was built from.
+    """
+    importers = sorted(
+        path.name
+        for path in WEB.rglob("*")
+        if path.suffix in {".js", ".html"}
+        and re.search(r"import\b.*trystero\.js", path.read_text())
+    )
+    assert importers == ["clock.js"]
+    assert 'import("./trystero.js")' in (WEB / "clock.js").read_text()
+    assert "Trystero 0.26.0" in (WEB / "trystero.js").read_text().splitlines()[0]
 
 
 def test_page_has_a_version_slot() -> None:
@@ -52,6 +71,15 @@ def test_service_worker_keeps_every_file() -> None:
         if path.is_file() and not path.name.startswith(".")  # not .DS_Store
     }
     assert files == served - NOT_SERVED_OFFLINE
+
+
+def test_service_worker_ignores_the_query() -> None:
+    """A shared duel link (?room=...) must open offline too.
+
+    The worker keeps the page without a query, so offline it has to look the
+    request up with ignoreSearch, or a link would find nothing.
+    """
+    assert "ignoreSearch: true" in (WEB / "sw.js").read_text()
 
 
 def png_size(path: Path) -> str:
