@@ -10,6 +10,7 @@ import pytest
 
 GAMES = sorted((Path(__file__).parent / "games").glob("*.json"))
 NODE = shutil.which("node")
+LEARN_WORDS = 10  # how many the Learn words sheet shows
 
 
 class Guess(TypedDict):
@@ -65,3 +66,24 @@ def test_advanced_helper(path: Path) -> None:
         for g in load(path)["guesses"]
     ]
     assert json.loads(result.stdout) == expected
+
+
+@pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
+def test_learn_words_are_ten_different_dictionary_words() -> None:
+    """The Learn words sheet shows ten words, all different, all in the dictionary."""
+    assert NODE is not None
+    script = (
+        'import { isWord, randomWords } from "./web/helpers.js";'
+        f"const words = randomWords({LEARN_WORDS});"
+        "console.log(JSON.stringify(words.map((w) => [w, isWord(w)])));"
+    )
+    result = subprocess.run(  # noqa: S603 - our own code, run with the local node
+        [NODE, "--input-type=module", "-e", script],
+        capture_output=True,
+        check=True,
+        text=True,
+        cwd=Path(__file__).parent.parent,
+    )
+    words = json.loads(result.stdout)
+    assert len({word for word, _ in words}) == LEARN_WORDS
+    assert all(known for _, known in words)

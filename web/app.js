@@ -1,6 +1,6 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
-import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock, the sheet and the menu's choice
 
@@ -98,6 +98,18 @@ function newGame() {
       mode.newGame(); // in a duel, both clocks back to full too
     });
   }
+}
+
+// Learn words: ten dictionary words at random as tiles, each a moment after the last
+function showLearnWords() {
+  const items = randomWords(10).map((word, i) => {
+    const li = document.createElement("li");
+    li.ariaLabel = word;
+    li.style.animationDelay = `${i * 30}ms`;
+    li.append(...[...word].map((letter) => Object.assign(document.createElement("b"), { textContent: letter, ariaHidden: "true" })));
+    return li;
+  });
+  $("learn-words").replaceChildren(...items);
 }
 
 function showSecret(show) {
@@ -220,6 +232,16 @@ function buildControls() {
   $("close").addEventListener("click", () => $("menu").close());
   $("menu").addEventListener("click", (event) => {
     if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
+  });
+  $("learn-open").addEventListener("click", () => {
+    $("menu").close();
+    showLearnWords();
+    $("learn").showModal();
+  });
+  $("learn-more").addEventListener("click", showLearnWords);
+  $("learn-close").addEventListener("click", () => $("learn").close());
+  $("learn").addEventListener("click", (event) => {
+    if (event.target === $("learn")) $("learn").close(); // a tap on the dimmed page below the sheet
   });
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
   // The dictionary's size as tiles in the logo's colours

@@ -5,12 +5,22 @@ import { WORDS } from "./words.js";
 
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
-// --- The dictionary: only ever asked about a word or for a count, so the page never shows one. ---
+// --- The dictionary: asked about a word or for a count, and for a few words at random to learn from. ---
 
 export const WORD_COUNT = WORDS.size;
 
 export function isWord(word) {
   return WORDS.has(word);
+}
+
+// Some different words picked at random (a partial shuffle), for the Learn words sheet
+export function randomWords(count, random = Math.random) {
+  const words = [...WORDS];
+  for (let i = 0; i < count; i++) {
+    const j = i + Math.floor(random() * (words.length - i));
+    [words[i], words[j]] = [words[j], words[i]];
+  }
+  return words.slice(0, count);
 }
 
 // --- Basic helper: a guess that scored 0 has none of its letters in the word. ---
