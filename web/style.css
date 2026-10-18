@@ -488,6 +488,12 @@ body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 #duel-room-hint { margin-top: -8px; } /* it belongs to the Room field above */
 #duel-invite b { color: var(--heading); }
 .hint.foot { text-align: center; }
+/* The room's wins: one box a player, like the dock's clocks */
+.wins { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.wins > span { grid-column: 1 / -1; font-size: .75rem; font-weight: 600; color: var(--muted); }
+.wins p { display: grid; justify-items: center; min-width: 0; margin: 0; padding: 6px 4px; border-radius: 14px; background: var(--key); color: var(--muted); }
+.wins p span { max-width: 100%; overflow: hidden; font-size: .7rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.wins b { font-size: 1.25rem; line-height: 1.2; color: var(--heading); font-variant-numeric: tabular-nums; }
 .err { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); font-size: .85rem; font-weight: 600; }
 
 /* Fields: a small label over a rounded box */

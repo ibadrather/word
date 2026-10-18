@@ -239,6 +239,7 @@ function showSheet(v) {
   showOn("duel-invite", "join");
   showOn("duel-wait", "waiting");
   showOn("duel-live", "connected");
+  showOn("duel-wins", "waiting", "connected");
   showOn("duel-room-field", "setup", "error");
   showOn("duel-room-hint", "setup");
   showOn("duel-name-field", "setup", "join");
@@ -264,5 +265,9 @@ function showSheet(v) {
   dot.className = `dot ${dotFor(v.phase)}`;
   who.textContent = STATUS[v.phase]?.(otherName(v)) ?? ""; // shown only while live, dropped or left
   liveRoom.textContent = v.room;
+  const [, mine, theirs] = $("duel-wins").children;
+  mine.lastElementChild.textContent = v.wins.mine;
+  theirs.firstElementChild.textContent = otherName(v);
+  theirs.lastElementChild.textContent = v.wins.theirs;
   for (const chip of $("chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
 }
