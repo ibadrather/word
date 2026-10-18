@@ -20,14 +20,15 @@ const BACKSPACE_ICON =
 
 // --- State: { notes: [{ word, count, at }] oldest first, at being ms into the game (none before the first New game), colours: { letter: "in" | "out" | "unsure" }, secret: my word,
 //              helper: "" | "basic" | "advanced", how much to work out from the counts,
-//              startedAt: when New game was last pressed, in ms, or null before the first one } ---
+//              startedAt: when New game was last pressed, in ms, or null before the first one,
+//              held: in a duel, the other player's claim waiting for my last guess, or null } ---
 
 let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
 let guess = ""; // the guess being typed on the page's keyboard, up to 4 letters
 
 function load() {
-  const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null };
+  const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null, held: null };
   try {
     return { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
   } catch {
@@ -86,10 +87,18 @@ async function addNote(count) {
     mode.press(); // in a duel, my clock stops and the other player's starts
   });
   // All four letters in could be their word: in a duel, the other player is asked to say so (heard() below)
+  if (mode.view().phase !== "live") return;
   const claim = `All four letters are in. Is ${word.toUpperCase()} their word?`;
-  if (count === 4 && mode.view().phase === "live" && (await ask(claim, { yes: "Yes, I won", no: "No" }))) {
-    mode.send({ type: "claim", guess: word, secret: state.secret });
+  const gotIt = count === 4 && (await ask(claim, { yes: "Yes, I won", no: "No" }));
+  // This was the last guess after their claim: only now is it answered. Both right is a draw.
+  const held = state.held;
+  if (held) {
+    update(() => (state.held = null));
+    const right = await confirm(held, gotIt ? "Yes" : "Yes, they won");
+    if (gotIt && right) return mode.send({ type: "claim", guess: word, secret: state.secret, draw: true });
+    answer(held, right);
   }
+  if (gotIt) mode.send({ type: "claim", guess: word, secret: state.secret, guesses: state.notes.length });
 }
 
 async function deleteNote(note) {
@@ -109,32 +118,66 @@ async function newGame() {
 
 function clearGame() {
   showSecret(false);
-  update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now() }));
+  update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now(), held: null }));
 }
 
-// The other phone's "game" messages in a duel: a claimed win, its answer, and a New game. A claim carries the
-// claimer's word, shown only once the win is confirmed; the answer carries the other word back.
+// The other phone's "game" messages in a duel: a claimed win, its answer, "last" and a New game. A claim carries the
+// claimer's word, shown only once the win is confirmed; the answer carries the other word back. A claim made with
+// fewer guesses here waits for this phone's last guess (addNote), which can still draw; "last" tells the claimer.
 async function heard(data) {
   const them = duel.otherName(mode.view());
-  const word = (value) => String(value ?? "").slice(0, 4);
-  if (data.type === "claim") {
-    const right = await ask(`${them} says your word is ${word(data.guess).toUpperCase()}. Are they right?`, {
-      yes: "Yes, they won",
-      no: "No",
-    });
-    mode.send({ type: "answer", right, guess: data.guess, secret: right ? state.secret : "" });
-    if (!right) return;
+  if (data.type === "claim" && data.draw) {
+    // Their last guess also got it, and they said ours was right: a draw, unless theirs is wrong
+    const right = await confirm(data, "Yes, it's a draw");
+    mode.send({ type: "answer", right, draw: true, guess: data.guess, secret: state.secret });
     mode.stop();
-    const secret = word(data.secret);
-    ask(secret ? `${them} wins! Their word was` : `${them} wins!`, { no: null, word: secret });
+    if (right) ask(`It's a draw! ${them}'s word was`, { no: null, word: cleanWord(data.secret) });
+    else won(data.secret);
+  } else if (data.type === "claim" && state.notes.length < Number(data.guesses)) {
+    update(() => (state.held = data));
+    mode.send({ type: "last" });
+  } else if (data.type === "claim") {
+    answer(data, await confirm(data, "Yes, they won"));
+  } else if (data.type === "answer" && data.draw) {
+    if (data.right) ask(`It's a draw! ${them}'s word was`, { no: null, word: cleanWord(data.secret) });
+    else lost(data.secret, `${them} says ${cleanWord(data.guess).toUpperCase()} isn't their word. ${them} wins!`);
   } else if (data.type === "answer") {
-    const secret = word(data.secret);
-    if (data.right) ask(secret ? `You won! ${them}'s word was` : "You won!", { no: null, word: secret });
-    else ask(`${them} says ${word(data.guess).toUpperCase()} isn't their word. Play on.`, { no: null });
+    if (data.right) won(data.secret);
+    else ask(`${them} says ${cleanWord(data.guess).toUpperCase()} isn't their word. Play on.`, { no: null });
+  } else if (data.type === "last") {
+    ask(`${them} gets one last guess to draw.`, { no: null });
   } else if (data.type === "new") {
+    update(() => (state.held = null));
     const question = `${them} started a new game, and both clocks restarted. Start a new game too?`;
     if (await ask(question, { yes: "New game", no: "Not now" })) clearGame();
   }
+}
+
+const cleanWord = (value) => String(value ?? "").slice(0, 4);
+
+// Their claim on this phone's word, asked here; answer() sends the reply and ends the game if they were right
+function confirm(claim, yes) {
+  const them = duel.otherName(mode.view());
+  return ask(`${them} says your word is ${cleanWord(claim.guess).toUpperCase()}. Are they right?`, { yes, no: "No" });
+}
+
+function answer(claim, right) {
+  mode.send({ type: "answer", right, guess: claim.guess, secret: right ? state.secret : "" });
+  if (!right) return;
+  mode.stop();
+  lost(claim.secret, `${duel.otherName(mode.view())} wins!`);
+}
+
+// A game's end, counted in the room's wins, with the other player's word if it came
+function won(secret) {
+  mode.win("mine");
+  const them = duel.otherName(mode.view());
+  ask(cleanWord(secret) ? `You won! ${them}'s word was` : "You won!", { no: null, word: cleanWord(secret) });
+}
+
+function lost(secret, text) {
+  mode.win("theirs");
+  ask(cleanWord(secret) ? `${text} Their word was` : text, { no: null, word: cleanWord(secret) });
 }
 
 // Learn words: ten dictionary words at random as tiles, each a moment after the last
