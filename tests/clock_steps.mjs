@@ -24,6 +24,7 @@ import {
   shareLink,
   started,
   ticking,
+  uncounted,
 } from "../web/clock.js";
 import { formatTime } from "../web/helpers.js";
 
@@ -175,5 +176,14 @@ out.latestWins = {
 let wins = counted(ours, ["Cleo", "Ben"], "Cleo", 6_000);
 out.counted = { won: wins, drawn: counted(wins, ["Asha", "Dev"], undefined, 7_000), first: counted(NO_WINS, ["P1", "P2"], "P2", 1) };
 out.board = board(wins);
+// Both players agree to undo Cleo's win: one fewer, and later than the tally even on a phone whose clock is behind,
+// so the other phone adopts it. A name with no wins (or none at all) stays at 0.
+const undone = uncounted(wins, "Cleo", 9_000);
+out.uncounted = {
+  undone,
+  behind: uncounted(wins, "Cleo", 1_000).at,
+  adopted: latestWins(wins, undone),
+  none: uncounted(wins, "Dev", 9_000).players,
+};
 
 console.log(JSON.stringify(out));

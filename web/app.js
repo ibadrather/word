@@ -121,9 +121,9 @@ function clearGame() {
   update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now(), held: null }));
 }
 
-// The other phone's "game" messages in a duel: a claimed win, its answer, "last" and a New game. A claim carries the
-// claimer's word, shown only once the win is confirmed; the answer carries the other word back. A claim made with
-// fewer guesses here waits for this phone's last guess (addNote), which can still draw; "last" tells the claimer.
+// The other phone's "game" messages in a duel: a claimed win, its answer, "last", a New game and undoing a win. A claim
+// carries the claimer's word, shown only once the win is confirmed; the answer carries the other word back. A claim made
+// with fewer guesses here waits for this phone's last guess (addNote), which can still draw; "last" tells the claimer.
 async function heard(data) {
   const them = duel.otherName(mode.view());
   if (data.type === "claim" && data.draw) {
@@ -150,6 +150,16 @@ async function heard(data) {
     update(() => (state.held = null));
     const question = `${them} started a new game, and both clocks restarted. Start a new game too?`;
     if (await ask(question, { yes: "New game", no: "Not now" })) clearGame();
+  } else if (data.type === "undo") {
+    // They asked to undo the last win (duel.undoWin): it's undone here only if this player agrees
+    const v = mode.view();
+    const question = v.last && `${them} asks to undo ${duel.lastWin(v, "their win")}, so it doesn't count. Agree?`;
+    const agree = Boolean(question) && (await ask(question, { yes: "Undo it", no: "Keep it" }));
+    mode.send({ type: "undone", agree });
+    if (agree) mode.undo();
+  } else if (data.type === "undone") {
+    if (data.agree) mode.forget();
+    ask(data.agree ? `${them} agreed. The win is undone and doesn't count.` : `${them} said no. The win still counts.`, { no: null });
   }
 }
 
@@ -172,7 +182,7 @@ function answer(claim, right) {
 function won(secret) {
   mode.ended("mine");
   const them = duel.otherName(mode.view());
-  ask(cleanWord(secret) ? `You won! ${them}'s word was` : "You won!", { no: null, word: cleanWord(secret) });
+  showWin(cleanWord(secret) ? `You won! ${them}'s word was` : "You won!", secret);
 }
 
 function drew(secret) {
@@ -182,7 +192,12 @@ function drew(secret) {
 
 function lost(secret, text) {
   mode.ended("theirs");
-  ask(cleanWord(secret) ? `${text} Their word was` : text, { no: null, word: cleanWord(secret) });
+  showWin(cleanWord(secret) ? `${text} Their word was` : text, secret);
+}
+
+// A won game's note offers to undo the win, now the words are out and a mistake shows. The duel sheet offers it too.
+async function showWin(text, secret) {
+  if (!(await ask(text, { yes: "OK", no: "Undo win", word: cleanWord(secret) }))) duel.undoWin();
 }
 
 // Learn words: ten dictionary words at random as tiles, each a moment after the last

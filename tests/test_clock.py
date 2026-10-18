@@ -138,4 +138,12 @@ def test_clock_steps() -> None:
             {"name": "Ben", "won": 1},
             {"name": "Cleo", "won": 1},
         ],
+        # Undoing a win takes one off, and its time is past the tally's even
+        # when this phone's clock reads earlier, so the other phone adopts it
+        "uncounted": {
+            "undone": {"players": {"Asha": 2, "Ben": 1, "Cleo": 0}, "at": 9_000},
+            "behind": 6_001,
+            "adopted": {"players": {"Asha": 2, "Ben": 1, "Cleo": 0}, "at": 9_000},
+            "none": {"Asha": 2, "Ben": 1, "Cleo": 1},
+        },
     }

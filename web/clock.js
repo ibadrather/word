@@ -102,6 +102,14 @@ export function counted(wins, players, winner, at) {
   return { players: tally, at };
 }
 
+// A win both players agreed to undo: one fewer for the winner. It counts as later than the tally it changes, even on a
+// phone whose clock is behind the other's, so the other phone adopts it.
+export function uncounted(wins, winner, now) {
+  const tally = { ...wins.players };
+  if (tally[winner]) tally[winner] -= 1;
+  return { players: tally, at: Math.max(now, wins.at + 1) };
+}
+
 // The room's players, most wins first, then by name
 export const board = (wins) =>
   Object.entries(wins.players)
@@ -148,9 +156,10 @@ export const roomFromLink = (search) => cleanRoom(new URLSearchParams(search).ge
 // Saved: { id: this phone's, kept for good, name, room: as typed, madeUp: the room made up for this phone,
 //         host: whether it joined its made-up room, joined: whether the duel is on (the room is rejoined on load),
 //         opponent: { id, host } of the phone playing this one, null until it speaks, minutes, clock: a view,
-//         wins: { room: { players: { name: games won }, at } }, the games each player has won in each room }
+//         wins: { room: { players: { name: games won }, at } }, the games each player has won in each room,
+//         last: { winner: name, side: "mine" | "theirs" }, this room's last game if it was won, until it's undone }
 
-const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10), wins: {} };
+const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10), wins: {}, last: null };
 const REJOIN_AFTER = 60_000; // back after this long away, a phone still waiting rejoins: its connection may be gone
 
 let state = { ...EMPTY };
@@ -158,7 +167,7 @@ let onChange = () => {};
 let onGame = () => {}; // app.js's handler for the other phone's "game" messages
 let room = null; // the Trystero room while joined
 let action = null; // the room's "clock" messages
-let game = null; // the room's "game" messages: a claimed win, its answer and a New game (app.js words them)
+let game = null; // the room's "game" messages: a claimed win, its answer, a New game and undoing a win (app.js words them)
 let farewell = null; // the room's "bye", sent when leaving so the other phone can tell it from a dropout
 let peer = ""; // the opponent's peer id, "" while it isn't here
 let names = {}; // peer id → name, for every phone in the room
@@ -229,7 +238,7 @@ export function connect(name, typed, joining = false) {
   const host = !joining && typed === state.madeUp;
   // A fresh clock, so an old one never carries into a new room; at seq 0 it gives way to any game in progress
   const clock = { ...fresh(state.minutes), at: Date.now(), by: phoneId(host, state.id) };
-  state = { ...state, name, room: typed, host, joined: true, opponent: null, clock };
+  state = { ...state, name, room: typed, host, joined: true, opponent: null, clock, last: null };
   save();
   join();
   onChange();
@@ -269,8 +278,27 @@ export function ended(winner) {
   const players = { mine: myName(), theirs: theirName() };
   const tally = counted(roomWins(), Object.values(players), players[winner], Date.now());
   state.wins = { ...state.wins, [state.room]: tally };
+  state.last = winner ? { winner: players[winner], side: winner } : null;
   save();
   share();
+  onChange();
+}
+
+// This phone's player agreed to undo the last win: one fewer for the winner, sent to the other phone with the clock.
+// Only the agreeing phone changes the tally, so the win is never taken off twice.
+export function undo() {
+  if (!state.last) return;
+  state.wins = { ...state.wins, [state.room]: uncounted(roomWins(), state.last.winner, Date.now()) };
+  state.last = null;
+  save();
+  share();
+  onChange();
+}
+
+// The other player agreed to undo the last win: their phone's tally, without it, comes with their clock
+export function forget() {
+  state.last = null;
+  save();
   onChange();
 }
 
@@ -312,6 +340,7 @@ export function view() {
     me: myName(),
     board: board(roomWins()),
     playedAt: roomWins().at,
+    last: state.last,
   };
 }
 

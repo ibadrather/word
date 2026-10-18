@@ -39,6 +39,7 @@ export function init() {
   $("duel-name").addEventListener("input", (event) => mode.edit("name", event.target.value));
   $("duel-go").addEventListener("click", connect);
   $("duel-leave").addEventListener("click", leave);
+  $("wins-undo").addEventListener("click", undoWin);
   for (const button of document.querySelectorAll("#duel .share")) button.addEventListener("click", share);
   for (const minutes of MINUTES) {
     const chip = Object.assign(document.createElement("button"), { type: "button", textContent: minutes });
@@ -179,6 +180,20 @@ export function tick(v = mode.view()) {
 
 // The host's other player is player two, and the other way round, until their phone sends a name
 export const otherName = (v) => v.peerName || mode.playerName(!v.host);
+
+// The last win in this room, from this phone's side: `theirs` words the other player's
+export const lastWin = (v, theirs = `${otherName(v)}'s win`) => (v.last.side === "mine" ? "your win" : theirs);
+
+// A win can be undone after a mistake, like a wrong score or a "Yes" tapped by accident, but only if the other player
+// agrees on their phone (app.js asks them)
+export async function undoWin() {
+  const v = mode.view();
+  if (!v.last || v.phase !== "live") return;
+  const them = otherName(v);
+  if (await ask(`Undo ${lastWin(v)} so it doesn't count? ${them} has to agree on their phone.`, { yes: `Ask ${them}` })) {
+    mode.send({ type: "undo" });
+  }
+}
 const waitingFor = (v) => `Waiting for ${mode.playerName(!v.host).toLowerCase()}…`;
 
 // What went wrong, in the sheet's words
@@ -243,6 +258,7 @@ function showWins(v) {
   });
   $("wins-list").replaceChildren(...rows);
   $("wins-when").textContent = v.playedAt ? `Last played ${utc(v.playedAt)}` : "No games played here yet";
+  $("wins-undo").hidden = !v.last || v.phase !== "live"; // the other player has to be there to agree
 }
 
 // The sheet shows one of five screens. It folds away by itself when the other phone arrives while it shows Waiting,
