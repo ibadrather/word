@@ -131,7 +131,7 @@ async function heard(data) {
     const right = await confirm(data, "Yes, it's a draw");
     mode.send({ type: "answer", right, draw: true, guess: data.guess, secret: state.secret });
     mode.stop();
-    if (right) ask(`It's a draw! ${them}'s word was`, { no: null, word: cleanWord(data.secret) });
+    if (right) drew(data.secret);
     else won(data.secret);
   } else if (data.type === "claim" && state.notes.length < Number(data.guesses)) {
     update(() => (state.held = data));
@@ -139,7 +139,7 @@ async function heard(data) {
   } else if (data.type === "claim") {
     answer(data, await confirm(data, "Yes, they won"));
   } else if (data.type === "answer" && data.draw) {
-    if (data.right) ask(`It's a draw! ${them}'s word was`, { no: null, word: cleanWord(data.secret) });
+    if (data.right) drew(data.secret);
     else lost(data.secret, `${them} says ${cleanWord(data.guess).toUpperCase()} isn't their word. ${them} wins!`);
   } else if (data.type === "answer") {
     if (data.right) won(data.secret);
@@ -170,13 +170,18 @@ function answer(claim, right) {
 
 // A game's end, counted in the room's wins, with the other player's word if it came
 function won(secret) {
-  mode.win("mine");
+  mode.ended("mine");
   const them = duel.otherName(mode.view());
   ask(cleanWord(secret) ? `You won! ${them}'s word was` : "You won!", { no: null, word: cleanWord(secret) });
 }
 
+function drew(secret) {
+  mode.ended(null);
+  ask(`It's a draw! ${duel.otherName(mode.view())}'s word was`, { no: null, word: cleanWord(secret) });
+}
+
 function lost(secret, text) {
-  mode.win("theirs");
+  mode.ended("theirs");
   ask(cleanWord(secret) ? `${text} Their word was` : text, { no: null, word: cleanWord(secret) });
 }
 
