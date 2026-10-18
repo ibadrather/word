@@ -1,11 +1,12 @@
 // Word: the helpers. Plain functions of the guesses (and your marks), and of times, so tests can run them in Node.
 // Notes are [{ word, count }]; a result is { letter: "in" | "out" }. Repeated letters in a guess count once.
 
+import { COMMON } from "./common.js";
 import { WORDS } from "./words.js";
 
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
-// --- The dictionary: asked about a word or for a count, and for a few words at random to learn from. ---
+// --- The dictionary: asked about a word or for a count. Learn words picks from the common ones (common.js). ---
 
 export const WORD_COUNT = WORDS.size;
 
@@ -13,9 +14,9 @@ export function isWord(word) {
   return WORDS.has(word);
 }
 
-// Some different words picked at random (a partial shuffle), for the Learn words sheet
+// Some different common words picked at random (a partial shuffle), for the Learn words view
 export function randomWords(count, random = Math.random) {
-  const words = [...WORDS];
+  const words = [...COMMON];
   for (let i = 0; i < count; i++) {
     const j = i + Math.floor(random() * (words.length - i));
     [words[i], words[j]] = [words[j], words[i]];

@@ -112,6 +112,26 @@ function showLearnWords() {
   $("learn-words").replaceChildren(...items);
 }
 
+// Learn words is a view of its own at #learn, so the phone's back button returns to the game
+let openedHere = false; // opened from the menu, so going back leaves the page where it was
+
+function showView() {
+  const learning = location.hash === "#learn";
+  if (learning === document.body.classList.contains("learning")) return;
+  document.body.classList.toggle("learning", learning);
+  $("learn").hidden = !learning;
+  if (learning) {
+    showLearnWords();
+    scrollTo(0, 0);
+  }
+}
+
+function leaveLearn() {
+  if (openedHere) return history.back();
+  history.replaceState(null, "", location.pathname + location.search); // opened straight from a #learn link
+  showView();
+}
+
 function showSecret(show) {
   $("secret").type = show ? "text" : "password";
   $("reveal").textContent = show ? "Hide" : "Show";
@@ -215,6 +235,7 @@ function buildControls() {
   // A computer's own keyboard types too, unless you're typing in a box or a dialog is open
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey || document.querySelector("dialog[open]")) return;
+    if (document.body.classList.contains("learning")) return;
     if (event.target.closest("input, select, textarea")) return;
     if (/^[a-z]$/i.test(event.key)) type(event.key.toLowerCase());
     else if (event.key === "Backspace") backspace();
@@ -235,14 +256,12 @@ function buildControls() {
   });
   $("learn-open").addEventListener("click", () => {
     $("menu").close();
-    showLearnWords();
-    $("learn").showModal();
+    openedHere = true;
+    location.hash = "learn";
   });
   $("learn-more").addEventListener("click", showLearnWords);
-  $("learn-close").addEventListener("click", () => $("learn").close());
-  $("learn").addEventListener("click", (event) => {
-    if (event.target === $("learn")) $("learn").close(); // a tap on the dimmed page below the sheet
-  });
+  $("learn-back").addEventListener("click", leaveLearn);
+  addEventListener("hashchange", showView);
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
   // The dictionary's size as tiles in the logo's colours
   const tile = (digit, i) => {
@@ -297,6 +316,7 @@ buildControls();
 duel.init();
 mode.init(render); // rejoins a saved room; the clock calls render whenever it changes
 render();
+showView();
 duel.openLink(); // a shared duel link asks to join
 setInterval(() => {
   showTimer();

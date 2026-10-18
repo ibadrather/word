@@ -15,7 +15,7 @@ Install it from the browser (**Add to Home Screen**, or **Install app** on Andro
 ## Features
 - Note your guesses and their scores, and colour letters red, yellow or green as you work them out.
 - A dictionary of 4,983 words warns about guesses it doesn't know.
-- **Learn words** (in the menu) shows ten dictionary words at random, with a button for ten more.
+- **Learn words** (in the menu) shows ten common dictionary words at random, with a button for ten more.
 - Helper modes mark letters for you: **Basic** reds out letters from 0-score guesses, **Advanced** works out letters from all your guesses.
 - **Duel clock**: a chess clock across two phones. Share a room link, and each guess passes the clock to the other player.
 - Everything stays on your phone. The duel clock is the only part that goes online, connecting the two phones directly.

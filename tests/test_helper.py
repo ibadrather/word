@@ -70,12 +70,14 @@ def test_advanced_helper(path: Path) -> None:
 
 @pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
 def test_learn_words_are_ten_different_dictionary_words() -> None:
-    """The Learn words sheet shows ten words, all different, all in the dictionary."""
+    """Learn words shows ten words, all different, all common dictionary words."""
     assert NODE is not None
     script = (
         'import { isWord, randomWords } from "./web/helpers.js";'
+        'import { COMMON } from "./web/common.js";'
         f"const words = randomWords({LEARN_WORDS});"
-        "console.log(JSON.stringify(words.map((w) => [w, isWord(w)])));"
+        "const known = (w) => isWord(w) && COMMON.includes(w);"
+        "console.log(JSON.stringify(words.map((w) => [w, known(w)])));"
     )
     result = subprocess.run(  # noqa: S603 - our own code, run with the local node
         [NODE, "--input-type=module", "-e", script],
