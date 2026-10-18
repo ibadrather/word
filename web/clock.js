@@ -83,6 +83,31 @@ export const started = (view, minutes) =>
 export const inPlay = (view, minutes, now) =>
   started(view, minutes) && left(view, "mine", now) > 0 && left(view, "theirs", now) > 0;
 
+// A room's wins: { players: { name: games won }, at: when its last game ended, in UTC ms }. Everyone who has played
+// in the room is listed, whoever they played. When the two phones' tallies differ, the one whose last game ended
+// later is kept on both.
+export const NO_WINS = { players: {}, at: 0 };
+export function latestWins(ours, sent) {
+  const at = Number(sent?.at) || 0;
+  if (at <= (ours?.at ?? 0)) return ours;
+  const players = Object.entries(sent.players ?? {}).map(([name, won]) => [String(name).slice(0, 12), Number(won) || 0]);
+  return { players: Object.fromEntries(players), at };
+}
+
+// After a game between two players: both listed, the winner (if it wasn't a draw) with one more win
+export function counted(wins, players, winner, at) {
+  const tally = { ...wins.players };
+  for (const name of players) tally[name] ??= 0;
+  if (winner) tally[winner] += 1;
+  return { players: tally, at };
+}
+
+// The room's players, most wins first, then by name
+export const board = (wins) =>
+  Object.entries(wins.players)
+    .map(([name, won]) => ({ name, won }))
+    .sort((a, b) => b.won - a.won || a.name.localeCompare(b.name));
+
 // What a player is called until their phone sends a name: the host is player one
 export const playerName = (host) => (host ? "Player one" : "Player two");
 
@@ -123,7 +148,7 @@ export const roomFromLink = (search) => cleanRoom(new URLSearchParams(search).ge
 // Saved: { id: this phone's, kept for good, name, room: as typed, madeUp: the room made up for this phone,
 //         host: whether it joined its made-up room, joined: whether the duel is on (the room is rejoined on load),
 //         opponent: { id, host } of the phone playing this one, null until it speaks, minutes, clock: a view,
-//         wins: { room: { mine, theirs } }, the games each player has won in each room }
+//         wins: { room: { players: { name: games won }, at } }, the games each player has won in each room }
 
 const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10), wins: {} };
 const REJOIN_AFTER = 60_000; // back after this long away, a phone still waiting rejoins: its connection may be gone
@@ -238,11 +263,14 @@ export function stop() {
   onChange();
 }
 
-// A game was won, by "mine" or "theirs": one more win for them in this room
-export function win(side) {
-  const tally = { mine: 0, theirs: 0, ...state.wins[state.room] };
-  state.wins = { ...state.wins, [state.room]: { ...tally, [side]: tally[side] + 1 } };
+// A game ended, won by "mine" or "theirs", or drawn (null): one more win for the winner in this room, by name, the
+// time it was played, and the other phone is told
+export function ended(winner) {
+  const players = { mine: myName(), theirs: theirName() };
+  const tally = counted(roomWins(), Object.values(players), players[winner], Date.now());
+  state.wins = { ...state.wins, [state.room]: tally };
   save();
+  share();
   onChange();
 }
 
@@ -281,7 +309,9 @@ export function view() {
     error,
     mine: side("mine"),
     theirs: side("theirs"),
-    wins: { mine: 0, theirs: 0, ...state.wins[typed] },
+    me: myName(),
+    board: board(roomWins()),
+    playedAt: roomWins().at,
   };
 }
 
@@ -304,6 +334,13 @@ function isHost() {
 
 const myId = () => phoneId(state.host, state.id);
 
+// The names the room's wins are kept under: as typed, or player one and two
+const myName = () => state.name || playerName(isHost());
+const theirName = () => (peer ? names[peer] : (departed ?? gone)) || playerName(!isHost());
+
+// This room's wins; an older save's two-sided tally starts again
+const roomWins = () => (state.wins[state.room]?.players ? state.wins[state.room] : NO_WINS);
+
 function tell(problem) {
   error = problem;
   onChange();
@@ -321,6 +358,7 @@ function commit(clock) {
 function share(to = peer) {
   if (!action || !to) return;
   const data = { ...message(state.clock, Date.now(), state.name, state.minutes), id: state.id, host: state.host };
+  data.wins = roomWins();
   action.send(data, { target: to }).catch(() => {});
 }
 
@@ -372,10 +410,12 @@ async function join() {
       state.clock = theirs;
       state.minutes = clampMinutes(data.minutes, state.minutes);
     }
+    const wins = roomWins();
+    state.wins = { ...state.wins, [state.room]: latestWins(wins, data.wins) };
     save();
-    // A phone that has just arrived needs this one's id; one that missed a press or reset needs it again (it adopts
-    // it, so this can't go back and forth)
-    if (arrived || newer(state.clock, theirs)) share();
+    // A phone that has just arrived needs this one's id; one that missed a press, a reset or a win needs it again
+    // (it adopts it, so this can't go back and forth)
+    if (arrived || newer(state.clock, theirs) || wins.at > (Number(data.wins?.at) || 0)) share();
     onChange();
   };
   game.onMessage = (data, { peerId }) => {
