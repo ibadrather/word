@@ -3,9 +3,13 @@
 import {
   ADJECTIVES,
   NOUNS,
+  NO_WINS,
+  board,
   clampMinutes,
+  counted,
   fresh,
   inPlay,
+  latestWins,
   left,
   message,
   mirrored,
@@ -158,5 +162,18 @@ out.roomFromLink = ["?room=mint-owl-42", "?room=MINT-OWL-42", `?room=${"x".repea
   roomFromLink,
 );
 out.roundTrip = roomFromLink(new URL(shareLink("https://ibadrather.github.io/word/", "a b&c")).search);
+
+// The room's wins, by name: the tally whose last game ended later is kept on both phones
+const ours = { players: { Asha: 2, Ben: 1 }, at: 5_000 };
+out.latestWins = {
+  theirsLater: latestWins(ours, { players: { Asha: 2, Ben: 2, Cleo: 1 }, at: 9_000 }),
+  oursLater: latestWins(ours, { players: {}, at: 1_000 }),
+  same: latestWins(ours, { players: { Ben: 9 }, at: 5_000 }),
+  olderPhone: latestWins(ours, undefined),
+};
+// A new player joins the room later: listed after their first game, a draw adds no win
+let wins = counted(ours, ["Cleo", "Ben"], "Cleo", 6_000);
+out.counted = { won: wins, drawn: counted(wins, ["Asha", "Dev"], undefined, 7_000), first: counted(NO_WINS, ["P1", "P2"], "P2", 1) };
+out.board = board(wins);
 
 console.log(JSON.stringify(out));

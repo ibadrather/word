@@ -189,6 +189,9 @@ const problem = (v) =>
     join: `Couldn't join ${v.room}. Check this phone is online and try again.`,
   })[v.error] ?? "";
 
+// A moment as 2026-10-18 21:40 UTC, the same on both phones wherever they are
+export const utc = (ms) => `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+
 // Rounded up: 0:00 only once the time is really gone
 const time = (ms) => formatTime(ms + 999);
 
@@ -225,6 +228,21 @@ function showNote({ text, dot = "", warn = false }) {
 function showChoice(v) {
   $("play-duel").checked = v.active;
   $("play-face").checked = !v.active;
+}
+
+// The room's wins, one row a player who has played here, this phone's player marked
+function showWins(v) {
+  const rows = v.board.map(({ name, won }) => {
+    const li = document.createElement("li");
+    li.classList.toggle("me", name === v.me);
+    li.append(
+      Object.assign(document.createElement("span"), { textContent: name }),
+      Object.assign(document.createElement("b"), { textContent: won }),
+    );
+    return li;
+  });
+  $("wins-list").replaceChildren(...rows);
+  $("wins-when").textContent = v.playedAt ? `Last played ${utc(v.playedAt)}` : "No games played here yet";
 }
 
 // The sheet shows one of five screens. It folds away by itself when the other phone arrives while it shows Waiting,
@@ -265,9 +283,6 @@ function showSheet(v) {
   dot.className = `dot ${dotFor(v.phase)}`;
   who.textContent = STATUS[v.phase]?.(otherName(v)) ?? ""; // shown only while live, dropped or left
   liveRoom.textContent = v.room;
-  const [, mine, theirs] = $("duel-wins").children;
-  mine.lastElementChild.textContent = v.wins.mine;
-  theirs.firstElementChild.textContent = otherName(v);
-  theirs.lastElementChild.textContent = v.wins.theirs;
+  showWins(v);
   for (const chip of $("chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
 }
