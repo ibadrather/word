@@ -9,6 +9,7 @@ const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey 
 const STORAGE_KEY = "guess-word-v2"; // old name kept so saved games survive the rename
 
 const NOT_A_WORD = "Not in the dictionary";
+const TIME_LIMIT = 20 * 60_000; // the game's timers stop here, so one left open doesn't count up for ever
 const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 
 const $ = (id) => document.getElementById(id);
@@ -77,7 +78,7 @@ function addNote(count) {
   if (state.notes.some((note) => note.word === word)) return showMessage("Already noted");
 
   setGuess("");
-  const at = state.startedAt ? Date.now() - state.startedAt : undefined;
+  const at = state.startedAt ? gameTime() : undefined;
   update(() => {
     state.notes.push({ word, count, at });
     mode.press(); // in a duel, my clock stops and the other player's starts
@@ -172,12 +173,18 @@ function progress(fitting) {
 
 // On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
 // In a duel the two players' clocks tick in the dock at the bottom (duel.js); the game's own times stay as they are.
+// Both stop at TIME_LIMIT into the game and turn red.
+const gameTime = () => Math.min(Date.now() - state.startedAt, TIME_LIMIT);
+
 function showTimer() {
   $("timer").hidden = $("game-stats").hidden = !state.startedAt;
   if (!state.startedAt) return;
-  const elapsed = Date.now() - state.startedAt;
+  const elapsed = gameTime();
+  const over = elapsed >= TIME_LIMIT;
   $("timer").textContent = formatTime(elapsed - (state.notes.at(-1)?.at ?? 0));
   $("game-time").textContent = formatTime(elapsed);
+  $("timer").classList.toggle("over", over);
+  $("game-stats").classList.toggle("over", over);
 }
 
 function showMessage(text) {
