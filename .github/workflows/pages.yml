@@ -4,9 +4,10 @@ name: Deploy to GitHub Pages
 # version at the root, the staging branch at beta/, and a staging copy of every
 # other branch under staging/<branch>/, each with its own notes and duel. The Release workflow
 # calls this once a new version is tagged, so only released versions go live.
-# It also runs after CI on any branch and when a branch is deleted, so the
-# staging copies follow their branches. These triggers always run from main,
-# the only branch allowed to deploy. Run it by hand to republish.
+# It also runs after CI passes on a push to any branch but main (main goes live
+# only through a release) and when a branch is deleted, so the staging copies
+# follow their branches. These triggers always run from main, the only branch
+# allowed to deploy. Run it by hand to republish.
 
 on:
   workflow_call:
@@ -27,6 +28,14 @@ concurrency:
 
 jobs:
   deploy:
+    # After CI, deploy only for a passing push to a branch other than main:
+    # main goes live only through a release, which the Release workflow
+    # deploys itself, and CI's pull request runs repeat its push runs.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch != 'main')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -42,9 +51,13 @@ jobs:
       - name: Build the site
         run: uv run --no-project python .github/scripts/build_site.py _site
 
+      # One artifact name per attempt, or a re-run finds the first attempt's too
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+          name: github-pages-${{ github.run_attempt }}
 
       - id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
