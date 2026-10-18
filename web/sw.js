@@ -13,6 +13,7 @@ const FILES = [
   "common.js",
   "clock.js",
   "duel.js",
+  "ask.js",
   "trystero.js",
   "manifest.webmanifest",
   "icon.png",

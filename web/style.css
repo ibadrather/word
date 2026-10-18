@@ -133,6 +133,7 @@ button, select {
 .label { margin: 14px 0 8px; font-size: .9rem; font-weight: 600; text-align: center; }
 .progress { margin: 0 0 12px; text-align: center; font-size: .9rem; font-weight: 600; color: var(--heading); }
 .msg { min-height: 1.4em; margin: 4px 0; text-align: center; font-size: .9rem; font-weight: 600; color: var(--error); }
+.msg.calm { color: var(--muted); }
 
 /* The guess: four slots filled from the page's keyboard, the next one to fill underlined */
 .slots { display: flex; justify-content: center; gap: 12px; margin: 0; }
@@ -287,7 +288,7 @@ button, select {
   overscroll-behavior: contain; /* scrolling the drawer doesn't scroll the page behind it */
 }
 .menu[open] { animation: slide-in .25s cubic-bezier(.2, .8, .2, 1); }
-.menu::backdrop, .sheet::backdrop { background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.menu::backdrop, .sheet::backdrop, .ask::backdrop { background: rgb(0 0 0 / .45); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
 @keyframes slide-in { from { transform: translateX(-100%); } }
 
 .menu-body {
@@ -564,3 +565,27 @@ body.learning main, body.learning .dock { display: none; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 .new-words { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .new-words svg { width: 18px; height: 18px; }
+
+/* Questions and notes: a small card in the middle of the screen, in place of the browser's own */
+.ask { width: min(340px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 20px; background: var(--bg); color: var(--fg); box-shadow: 0 10px 40px rgb(0 0 0 / .25); }
+.ask form { display: grid; gap: 16px; margin: 0; padding: 22px 18px 18px; }
+.ask p { margin: 0; text-align: center; font-weight: 600; overflow-wrap: anywhere; }
+.ask-word { display: flex; justify-content: center; gap: 6px; }
+.ask-word[hidden], .ask [hidden] { display: none; }
+.ask-word b {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 46px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--heading) 10%, var(--bg));
+  color: var(--heading);
+  font-size: 1.3rem;
+  text-transform: uppercase;
+}
+.ask button { min-height: 44px; border-radius: 14px; }
+.ask button:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .ask[open] { animation: pop .15s ease-out; }
+}
+@keyframes pop { from { opacity: 0; transform: scale(.95); } }
