@@ -22,10 +22,6 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
 jobs:
   deploy:
     # After CI, deploy only for a passing push to a branch other than main:
@@ -36,6 +32,14 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_branch != 'main')
+    # One deploy at a time, and one that has started always finishes. The queue
+    # is the job's, not the workflow's: a run whose job is skipped (after a pull
+    # request's CI, say) never joins it, so it can't cancel a real deploy. A
+    # deploy still waiting gives way to a newer one, which builds every branch
+    # at its latest anyway.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment:
       name: github-pages
