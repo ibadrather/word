@@ -129,8 +129,10 @@ const REJOIN_AFTER = 60_000; // back after this long away, a phone still waiting
 
 let state = { ...EMPTY };
 let onChange = () => {};
+let onGame = () => {}; // app.js's handler for the other phone's "game" messages
 let room = null; // the Trystero room while joined
 let action = null; // the room's "clock" messages
+let game = null; // the room's "game" messages: a claimed win, its answer and a New game (app.js words them)
 let farewell = null; // the room's "bye", sent when leaving so the other phone can tell it from a dropout
 let peer = ""; // the opponent's peer id, "" while it isn't here
 let names = {}; // peer id → name, for every phone in the room
@@ -156,8 +158,9 @@ function save() {
   } catch {}
 }
 
-export function init(change) {
+export function init(change, heard) {
   onChange = change;
+  onGame = heard;
   state = load();
   if (!state.id) state.id = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
   if (state.joined) join();
@@ -220,22 +223,30 @@ export function press() {
   if (state.joined) commit(pressed(state.clock, Date.now(), myId()));
 }
 
-// New game was confirmed: both clocks back to full, unless a game is going on them and the player wants to keep it.
-// app.js renders the page after it.
+// New game was confirmed: both clocks back to full, so a word changed mid-game never keeps its time, and the other
+// phone is told. app.js renders the page after it.
 export function newGame() {
   if (!state.joined) return;
-  if (inPlay(state.clock, state.minutes, Date.now()) && !confirm("Also restart both clocks?")) return;
   commit(reset(state.clock, state.minutes, Date.now(), myId()));
+  send({ type: "new" });
 }
 
+// A win was confirmed: both clocks stop where they are
+export function stop() {
+  if (state.joined) commit(paused(state.clock, Date.now(), myId()));
+  onChange();
+}
+
+// A "game" message to the other phone, if it's here
+export function send(data) {
+  if (game && peer) game.send(data, { target: peer }).catch(() => {});
+}
+
+// duel.js asks first while a game is going on the clocks
 export function setMinutes(value) {
   const minutes = clampMinutes(value, state.minutes);
   if (minutes === state.minutes) return onChange(); // puts a rejected value back
   const now = Date.now();
-  if (state.joined && inPlay(state.clock, state.minutes, now) && !confirm(`Restart both clocks with ${minutes} minutes?`)) {
-    return onChange();
-  }
-  state.minutes = minutes;
   if (state.joined) commit(reset(state.clock, minutes, now, myId()));
   else save();
   onChange();
@@ -257,6 +268,7 @@ export function view() {
     peerName: peer ? (names[peer] ?? "") : (departed ?? gone ?? ""), // as their phone sent it; "" before it has
     joinedAt,
     started: started(clock, minutes),
+    inPlay: inPlay(clock, minutes, now),
     error,
     mine: side("mine"),
     theirs: side("theirs"),
@@ -312,6 +324,7 @@ async function join() {
     room = joinRoom({ appId: APP_ID }, state.room);
     action = room.makeAction("clock");
     farewell = room.makeAction("bye"); // apart from "clock", so its seq order stays as it is
+    game = room.makeAction("game");
   } catch {
     return tell("join");
   }
@@ -355,6 +368,9 @@ async function join() {
     if (arrived || newer(state.clock, theirs)) share();
     onChange();
   };
+  game.onMessage = (data, { peerId }) => {
+    if (joined === room && peerId === peer && typeof data?.type === "string") onGame(data);
+  };
   // The other player tapped Leave: both clocks stop until they come back. Their phone's leave, which follows, finds
   // no peer to drop, so it doesn't turn "left" into "dropped out".
   farewell.onMessage = (data, { peerId }) => {
@@ -371,7 +387,7 @@ async function join() {
 // other phone has gone or half a second has passed: a send that fails or hangs never keeps it open.
 function leaveRoom() {
   const [old, to, bye] = [room, peer, farewell];
-  room = action = farewell = null;
+  room = action = farewell = game = null;
   peer = "";
   names = {};
   if (!old) return;

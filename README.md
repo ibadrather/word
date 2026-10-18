@@ -18,6 +18,7 @@ Install it from the browser (**Add to Home Screen**, or **Install app** on Andro
 - **Learn words** (in the menu) shows ten common dictionary words at random, with a button for ten more.
 - Helper modes mark letters for you: **Basic** reds out letters from 0-score guesses, **Advanced** works out letters from all your guesses.
 - **Duel clock**: a chess clock across two phones. Share a room link, and each guess passes the clock to the other player.
+- In a duel, a guess that scores 4 can claim the win: the other phone is asked to confirm it, then both words are shown. Words lock once the clocks start; **New game** frees them and restarts both clocks.
 - Everything stays on your phone. The duel clock is the only part that goes online, connecting the two phones directly.
 
 ## Dev

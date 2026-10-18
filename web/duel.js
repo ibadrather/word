@@ -3,6 +3,7 @@
 // menu's "How you play" choice. Everything they show comes from clock.js's view(); app.js calls render() on every
 // change and tick() every second, and openLink() once on load.
 
+import { ask } from "./ask.js";
 import * as mode from "./clock.js";
 import { formatTime } from "./helpers.js";
 
@@ -41,7 +42,7 @@ export function init() {
   for (const button of document.querySelectorAll("#duel .share")) button.addEventListener("click", share);
   for (const minutes of MINUTES) {
     const chip = Object.assign(document.createElement("button"), { type: "button", textContent: minutes });
-    chip.addEventListener("click", () => mode.setMinutes(minutes)); // asks first while a clock ticks
+    chip.addEventListener("click", () => setMinutes(minutes));
     $("chips").append(chip);
   }
 }
@@ -55,6 +56,14 @@ function choose(event) {
     mode.disconnect();
   }
   showChoice(mode.view()); // Duel clock stays unchecked until a duel is really on
+}
+
+// New minutes restart both clocks, so it asks first while a game is going on them
+async function setMinutes(minutes) {
+  const v = mode.view();
+  const asking = v.active && v.inPlay && minutes !== v.minutes;
+  if (asking && !(await ask(`Restart both clocks with ${minutes} minutes?`, { yes: "Restart" }))) return;
+  mode.setMinutes(minutes);
 }
 
 function open() {
@@ -136,7 +145,7 @@ async function share(event) {
   try {
     await navigator.clipboard.writeText(url);
   } catch {
-    return prompt("Copy this link", url);
+    return ask(`Copy this link: ${url}`, { no: null });
   }
   button.textContent = "Link copied";
   clearTimeout(button.copied);
@@ -169,7 +178,7 @@ export function tick(v = mode.view()) {
 }
 
 // The host's other player is player two, and the other way round, until their phone sends a name
-const otherName = (v) => v.peerName || mode.playerName(!v.host);
+export const otherName = (v) => v.peerName || mode.playerName(!v.host);
 const waitingFor = (v) => `Waiting for ${mode.playerName(!v.host).toLowerCase()}…`;
 
 // What went wrong, in the sheet's words
