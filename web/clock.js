@@ -122,9 +122,10 @@ export const roomFromLink = (search) => cleanRoom(new URLSearchParams(search).ge
 // --- The mode in the browser ---
 // Saved: { id: this phone's, kept for good, name, room: as typed, madeUp: the room made up for this phone,
 //         host: whether it joined its made-up room, joined: whether the duel is on (the room is rejoined on load),
-//         opponent: { id, host } of the phone playing this one, null until it speaks, minutes, clock: a view }
+//         opponent: { id, host } of the phone playing this one, null until it speaks, minutes, clock: a view,
+//         wins: { room: { mine, theirs } }, the games each player has won in each room }
 
-const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10) };
+const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10), wins: {} };
 const REJOIN_AFTER = 60_000; // back after this long away, a phone still waiting rejoins: its connection may be gone
 
 let state = { ...EMPTY };
@@ -237,6 +238,14 @@ export function stop() {
   onChange();
 }
 
+// A game was won, by "mine" or "theirs": one more win for them in this room
+export function win(side) {
+  const tally = { mine: 0, theirs: 0, ...state.wins[state.room] };
+  state.wins = { ...state.wins, [state.room]: { ...tally, [side]: tally[side] + 1 } };
+  save();
+  onChange();
+}
+
 // A "game" message to the other phone, if it's here
 export function send(data) {
   if (game && peer) game.send(data, { target: peer }).catch(() => {});
@@ -272,6 +281,7 @@ export function view() {
     error,
     mine: side("mine"),
     theirs: side("theirs"),
+    wins: { mine: 0, theirs: 0, ...state.wins[typed] },
   };
 }
 
