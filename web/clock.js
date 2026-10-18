@@ -83,6 +83,39 @@ export const started = (view, minutes) =>
 export const inPlay = (view, minutes, now) =>
   started(view, minutes) && left(view, "mine", now) > 0 && left(view, "theirs", now) > 0;
 
+// A room's wins: { players: { name: games won }, at: when its last game ended, in UTC ms }. Everyone who has played
+// in the room is listed, whoever they played. When the two phones' tallies differ, the one whose last game ended
+// later is kept on both.
+export const NO_WINS = { players: {}, at: 0 };
+export function latestWins(ours, sent) {
+  const at = Number(sent?.at) || 0;
+  if (at <= (ours?.at ?? 0)) return ours;
+  const players = Object.entries(sent.players ?? {}).map(([name, won]) => [String(name).slice(0, 12), Number(won) || 0]);
+  return { players: Object.fromEntries(players), at };
+}
+
+// After a game between two players: both listed, the winner (if it wasn't a draw) with one more win
+export function counted(wins, players, winner, at) {
+  const tally = { ...wins.players };
+  for (const name of players) tally[name] ??= 0;
+  if (winner) tally[winner] += 1;
+  return { players: tally, at };
+}
+
+// A win both players agreed to undo: one fewer for the winner. It counts as later than the tally it changes, even on a
+// phone whose clock is behind the other's, so the other phone adopts it.
+export function uncounted(wins, winner, now) {
+  const tally = { ...wins.players };
+  if (tally[winner]) tally[winner] -= 1;
+  return { players: tally, at: Math.max(now, wins.at + 1) };
+}
+
+// The room's players, most wins first, then by name
+export const board = (wins) =>
+  Object.entries(wins.players)
+    .map(([name, won]) => ({ name, won }))
+    .sort((a, b) => b.won - a.won || a.name.localeCompare(b.name));
+
 // What a player is called until their phone sends a name: the host is player one
 export const playerName = (host) => (host ? "Player one" : "Player two");
 
@@ -122,15 +155,19 @@ export const roomFromLink = (search) => cleanRoom(new URLSearchParams(search).ge
 // --- The mode in the browser ---
 // Saved: { id: this phone's, kept for good, name, room: as typed, madeUp: the room made up for this phone,
 //         host: whether it joined its made-up room, joined: whether the duel is on (the room is rejoined on load),
-//         opponent: { id, host } of the phone playing this one, null until it speaks, minutes, clock: a view }
+//         opponent: { id, host } of the phone playing this one, null until it speaks, minutes, clock: a view,
+//         wins: { room: { players: { name: games won }, at } }, the games each player has won in each room,
+//         last: { winner: name, side: "mine" | "theirs" }, this room's last game if it was won, until it's undone }
 
-const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10) };
+const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10), wins: {}, last: null };
 const REJOIN_AFTER = 60_000; // back after this long away, a phone still waiting rejoins: its connection may be gone
 
 let state = { ...EMPTY };
 let onChange = () => {};
+let onGame = () => {}; // app.js's handler for the other phone's "game" messages
 let room = null; // the Trystero room while joined
 let action = null; // the room's "clock" messages
+let game = null; // the room's "game" messages: a claimed win, its answer, a New game and undoing a win (app.js words them)
 let farewell = null; // the room's "bye", sent when leaving so the other phone can tell it from a dropout
 let peer = ""; // the opponent's peer id, "" while it isn't here
 let names = {}; // peer id → name, for every phone in the room
@@ -156,8 +193,9 @@ function save() {
   } catch {}
 }
 
-export function init(change) {
+export function init(change, heard) {
   onChange = change;
+  onGame = heard;
   state = load();
   if (!state.id) state.id = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
   if (state.joined) join();
@@ -200,7 +238,7 @@ export function connect(name, typed, joining = false) {
   const host = !joining && typed === state.madeUp;
   // A fresh clock, so an old one never carries into a new room; at seq 0 it gives way to any game in progress
   const clock = { ...fresh(state.minutes), at: Date.now(), by: phoneId(host, state.id) };
-  state = { ...state, name, room: typed, host, joined: true, opponent: null, clock };
+  state = { ...state, name, room: typed, host, joined: true, opponent: null, clock, last: null };
   save();
   join();
   onChange();
@@ -220,22 +258,60 @@ export function press() {
   if (state.joined) commit(pressed(state.clock, Date.now(), myId()));
 }
 
-// New game was confirmed: both clocks back to full, unless a game is going on them and the player wants to keep it.
-// app.js renders the page after it.
+// New game was confirmed: both clocks back to full, so a word changed mid-game never keeps its time, and the other
+// phone is told. app.js renders the page after it.
 export function newGame() {
   if (!state.joined) return;
-  if (inPlay(state.clock, state.minutes, Date.now()) && !confirm("Also restart both clocks?")) return;
   commit(reset(state.clock, state.minutes, Date.now(), myId()));
+  send({ type: "new" });
 }
 
+// A win was confirmed: both clocks stop where they are
+export function stop() {
+  if (state.joined) commit(paused(state.clock, Date.now(), myId()));
+  onChange();
+}
+
+// A game ended, won by "mine" or "theirs", or drawn (null): one more win for the winner in this room, by name, the
+// time it was played, and the other phone is told
+export function ended(winner) {
+  const players = { mine: myName(), theirs: theirName() };
+  const tally = counted(roomWins(), Object.values(players), players[winner], Date.now());
+  state.wins = { ...state.wins, [state.room]: tally };
+  state.last = winner ? { winner: players[winner], side: winner } : null;
+  save();
+  share();
+  onChange();
+}
+
+// This phone's player agreed to undo the last win: one fewer for the winner, sent to the other phone with the clock.
+// Only the agreeing phone changes the tally, so the win is never taken off twice.
+export function undo() {
+  if (!state.last) return;
+  state.wins = { ...state.wins, [state.room]: uncounted(roomWins(), state.last.winner, Date.now()) };
+  state.last = null;
+  save();
+  share();
+  onChange();
+}
+
+// The other player agreed to undo the last win: their phone's tally, without it, comes with their clock
+export function forget() {
+  state.last = null;
+  save();
+  onChange();
+}
+
+// A "game" message to the other phone, if it's here
+export function send(data) {
+  if (game && peer) game.send(data, { target: peer }).catch(() => {});
+}
+
+// duel.js asks first while a game is going on the clocks
 export function setMinutes(value) {
   const minutes = clampMinutes(value, state.minutes);
   if (minutes === state.minutes) return onChange(); // puts a rejected value back
   const now = Date.now();
-  if (state.joined && inPlay(state.clock, state.minutes, now) && !confirm(`Restart both clocks with ${minutes} minutes?`)) {
-    return onChange();
-  }
-  state.minutes = minutes;
   if (state.joined) commit(reset(state.clock, minutes, now, myId()));
   else save();
   onChange();
@@ -257,9 +333,14 @@ export function view() {
     peerName: peer ? (names[peer] ?? "") : (departed ?? gone ?? ""), // as their phone sent it; "" before it has
     joinedAt,
     started: started(clock, minutes),
+    inPlay: inPlay(clock, minutes, now),
     error,
     mine: side("mine"),
     theirs: side("theirs"),
+    me: myName(),
+    board: board(roomWins()),
+    playedAt: roomWins().at,
+    last: state.last,
   };
 }
 
@@ -282,6 +363,13 @@ function isHost() {
 
 const myId = () => phoneId(state.host, state.id);
 
+// The names the room's wins are kept under: as typed, or player one and two
+const myName = () => state.name || playerName(isHost());
+const theirName = () => (peer ? names[peer] : (departed ?? gone)) || playerName(!isHost());
+
+// This room's wins; an older save's two-sided tally starts again
+const roomWins = () => (state.wins[state.room]?.players ? state.wins[state.room] : NO_WINS);
+
 function tell(problem) {
   error = problem;
   onChange();
@@ -299,6 +387,7 @@ function commit(clock) {
 function share(to = peer) {
   if (!action || !to) return;
   const data = { ...message(state.clock, Date.now(), state.name, state.minutes), id: state.id, host: state.host };
+  data.wins = roomWins();
   action.send(data, { target: to }).catch(() => {});
 }
 
@@ -312,6 +401,7 @@ async function join() {
     room = joinRoom({ appId: APP_ID }, state.room);
     action = room.makeAction("clock");
     farewell = room.makeAction("bye"); // apart from "clock", so its seq order stays as it is
+    game = room.makeAction("game");
   } catch {
     return tell("join");
   }
@@ -349,11 +439,16 @@ async function join() {
       state.clock = theirs;
       state.minutes = clampMinutes(data.minutes, state.minutes);
     }
+    const wins = roomWins();
+    state.wins = { ...state.wins, [state.room]: latestWins(wins, data.wins) };
     save();
-    // A phone that has just arrived needs this one's id; one that missed a press or reset needs it again (it adopts
-    // it, so this can't go back and forth)
-    if (arrived || newer(state.clock, theirs)) share();
+    // A phone that has just arrived needs this one's id; one that missed a press, a reset or a win needs it again
+    // (it adopts it, so this can't go back and forth)
+    if (arrived || newer(state.clock, theirs) || wins.at > (Number(data.wins?.at) || 0)) share();
     onChange();
+  };
+  game.onMessage = (data, { peerId }) => {
+    if (joined === room && peerId === peer && typeof data?.type === "string") onGame(data);
   };
   // The other player tapped Leave: both clocks stop until they come back. Their phone's leave, which follows, finds
   // no peer to drop, so it doesn't turn "left" into "dropped out".
@@ -371,7 +466,7 @@ async function join() {
 // other phone has gone or half a second has passed: a send that fails or hangs never keeps it open.
 function leaveRoom() {
   const [old, to, bye] = [room, peer, farewell];
-  room = action = farewell = null;
+  room = action = farewell = game = null;
   peer = "";
   names = {};
   if (!old) return;

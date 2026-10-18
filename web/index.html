@@ -123,7 +123,7 @@
         <li>Take turns guessing the other's word.</li>
         <li>The answer is how many of the guess's letters are in the word. Where they sit doesn't matter.</li>
         <li>A repeated letter counts once.</li>
-        <li>First to guess the word wins.</li>
+        <li>First to guess the word wins, unless the other player then gets theirs on their last turn: that's a draw.</li>
       </ol>
 
       <h3>Example</h3>
@@ -172,6 +172,12 @@
         <p class="hint">Send the link, or read the room out to them.</p>
       </div>
       <p id="duel-live" class="live-line" hidden><i class="dot" aria-hidden="true"></i><span></span><span class="room"></span></p>
+      <div id="duel-wins" class="wins" role="group" aria-labelledby="wins-label" hidden>
+        <span id="wins-label">Wins in this room</span>
+        <ol id="wins-list"></ol>
+        <span id="wins-when" class="hint"></span>
+        <button id="wins-undo" class="secondary" type="button" hidden>Undo last win</button>
+      </div>
       <div id="duel-room-field" class="field">
         <label for="duel-room">Room</label>
         <div class="row-flex">
@@ -196,6 +202,18 @@
       </div>
       <p id="duel-foot" class="hint foot"></p>
     </div>
+  </dialog>
+
+  <!-- The page's own questions and notes (ask.js): a line of text, a word as tiles if any, and one or two buttons -->
+  <dialog id="ask" class="ask" aria-labelledby="ask-text">
+    <form method="dialog">
+      <p id="ask-text"></p>
+      <p id="ask-word" class="ask-word" role="img" hidden></p>
+      <div class="row-flex">
+        <button id="ask-no" class="secondary grow" value="no"></button>
+        <button id="ask-yes" class="primary grow" value="yes"></button>
+      </div>
+    </form>
   </dialog>
 
 </body>

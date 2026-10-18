@@ -118,4 +118,32 @@ def test_clock_steps() -> None:
         ],
         "roomFromLink": ["mint-owl-42", "mint-owl-42", "x" * 20, "", "", ""],
         "roundTrip": "a b&c",
+        "latestWins": {
+            "theirsLater": {"players": {"Asha": 2, "Ben": 2, "Cleo": 1}, "at": 9_000},
+            "oursLater": {"players": {"Asha": 2, "Ben": 1}, "at": 5_000},
+            "same": {"players": {"Asha": 2, "Ben": 1}, "at": 5_000},
+            "olderPhone": {"players": {"Asha": 2, "Ben": 1}, "at": 5_000},
+        },
+        "counted": {
+            "won": {"players": {"Asha": 2, "Ben": 1, "Cleo": 1}, "at": 6_000},
+            "drawn": {
+                "players": {"Asha": 2, "Ben": 1, "Cleo": 1, "Dev": 0},
+                "at": 7_000,
+            },
+            "first": {"players": {"P1": 0, "P2": 1}, "at": 1},
+        },
+        # Most wins first, a tie by name
+        "board": [
+            {"name": "Asha", "won": 2},
+            {"name": "Ben", "won": 1},
+            {"name": "Cleo", "won": 1},
+        ],
+        # Undoing a win takes one off, and its time is past the tally's even
+        # when this phone's clock reads earlier, so the other phone adopts it
+        "uncounted": {
+            "undone": {"players": {"Asha": 2, "Ben": 1, "Cleo": 0}, "at": 9_000},
+            "behind": 6_001,
+            "adopted": {"players": {"Asha": 2, "Ben": 1, "Cleo": 0}, "at": 9_000},
+            "none": {"Asha": 2, "Ben": 1, "Cleo": 1},
+        },
     }

@@ -3,6 +3,7 @@
 // menu's "How you play" choice. Everything they show comes from clock.js's view(); app.js calls render() on every
 // change and tick() every second, and openLink() once on load.
 
+import { ask } from "./ask.js";
 import * as mode from "./clock.js";
 import { formatTime } from "./helpers.js";
 
@@ -38,10 +39,11 @@ export function init() {
   $("duel-name").addEventListener("input", (event) => mode.edit("name", event.target.value));
   $("duel-go").addEventListener("click", connect);
   $("duel-leave").addEventListener("click", leave);
+  $("wins-undo").addEventListener("click", undoWin);
   for (const button of document.querySelectorAll("#duel .share")) button.addEventListener("click", share);
   for (const minutes of MINUTES) {
     const chip = Object.assign(document.createElement("button"), { type: "button", textContent: minutes });
-    chip.addEventListener("click", () => mode.setMinutes(minutes)); // asks first while a clock ticks
+    chip.addEventListener("click", () => setMinutes(minutes));
     $("chips").append(chip);
   }
 }
@@ -55,6 +57,14 @@ function choose(event) {
     mode.disconnect();
   }
   showChoice(mode.view()); // Duel clock stays unchecked until a duel is really on
+}
+
+// New minutes restart both clocks, so it asks first while a game is going on them
+async function setMinutes(minutes) {
+  const v = mode.view();
+  const asking = v.active && v.inPlay && minutes !== v.minutes;
+  if (asking && !(await ask(`Restart both clocks with ${minutes} minutes?`, { yes: "Restart" }))) return;
+  mode.setMinutes(minutes);
 }
 
 function open() {
@@ -136,7 +146,7 @@ async function share(event) {
   try {
     await navigator.clipboard.writeText(url);
   } catch {
-    return prompt("Copy this link", url);
+    return ask(`Copy this link: ${url}`, { no: null });
   }
   button.textContent = "Link copied";
   clearTimeout(button.copied);
@@ -169,7 +179,21 @@ export function tick(v = mode.view()) {
 }
 
 // The host's other player is player two, and the other way round, until their phone sends a name
-const otherName = (v) => v.peerName || mode.playerName(!v.host);
+export const otherName = (v) => v.peerName || mode.playerName(!v.host);
+
+// The last win in this room, from this phone's side: `theirs` words the other player's
+export const lastWin = (v, theirs = `${otherName(v)}'s win`) => (v.last.side === "mine" ? "your win" : theirs);
+
+// A win can be undone after a mistake, like a wrong score or a "Yes" tapped by accident, but only if the other player
+// agrees on their phone (app.js asks them)
+export async function undoWin() {
+  const v = mode.view();
+  if (!v.last || v.phase !== "live") return;
+  const them = otherName(v);
+  if (await ask(`Undo ${lastWin(v)} so it doesn't count? ${them} has to agree on their phone.`, { yes: `Ask ${them}` })) {
+    mode.send({ type: "undo" });
+  }
+}
 const waitingFor = (v) => `Waiting for ${mode.playerName(!v.host).toLowerCase()}…`;
 
 // What went wrong, in the sheet's words
@@ -179,6 +203,9 @@ const problem = (v) =>
     https: "The duel clock needs the https site.",
     join: `Couldn't join ${v.room}. Check this phone is online and try again.`,
   })[v.error] ?? "";
+
+// A moment as 2026-10-18 21:40 UTC, the same on both phones wherever they are
+export const utc = (ms) => `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
 // Rounded up: 0:00 only once the time is really gone
 const time = (ms) => formatTime(ms + 999);
@@ -218,6 +245,22 @@ function showChoice(v) {
   $("play-face").checked = !v.active;
 }
 
+// The room's wins, one row a player who has played here, this phone's player marked
+function showWins(v) {
+  const rows = v.board.map(({ name, won }) => {
+    const li = document.createElement("li");
+    li.classList.toggle("me", name === v.me);
+    li.append(
+      Object.assign(document.createElement("span"), { textContent: name }),
+      Object.assign(document.createElement("b"), { textContent: won }),
+    );
+    return li;
+  });
+  $("wins-list").replaceChildren(...rows);
+  $("wins-when").textContent = v.playedAt ? `Last played ${utc(v.playedAt)}` : "No games played here yet";
+  $("wins-undo").hidden = !v.last || v.phase !== "live"; // the other player has to be there to agree
+}
+
 // The sheet shows one of five screens. It folds away by itself when the other phone arrives while it shows Waiting,
 // but stays put when opened mid-game to look at the minutes.
 function showSheet(v) {
@@ -230,6 +273,7 @@ function showSheet(v) {
   showOn("duel-invite", "join");
   showOn("duel-wait", "waiting");
   showOn("duel-live", "connected");
+  showOn("duel-wins", "waiting", "connected");
   showOn("duel-room-field", "setup", "error");
   showOn("duel-room-hint", "setup");
   showOn("duel-name-field", "setup", "join");
@@ -255,5 +299,6 @@ function showSheet(v) {
   dot.className = `dot ${dotFor(v.phase)}`;
   who.textContent = STATUS[v.phase]?.(otherName(v)) ?? ""; // shown only while live, dropped or left
   liveRoom.textContent = v.room;
+  showWins(v);
   for (const chip of $("chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
 }

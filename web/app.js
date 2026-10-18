@@ -1,5 +1,6 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
+import { ask } from "./ask.js"; // the page's own questions and notes
 import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock, the sheet and the menu's choice
@@ -9,6 +10,7 @@ const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey 
 const STORAGE_KEY = "guess-word-v2"; // old name kept so saved games survive the rename
 
 const NOT_A_WORD = "Not in the dictionary";
+const LOCKED = "Locked until New game";
 const TIME_LIMIT = 20 * 60_000; // the game's timers stop here, so one left open doesn't count up for ever
 const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 
@@ -18,14 +20,15 @@ const BACKSPACE_ICON =
 
 // --- State: { notes: [{ word, count, at }] oldest first, at being ms into the game (none before the first New game), colours: { letter: "in" | "out" | "unsure" }, secret: my word,
 //              helper: "" | "basic" | "advanced", how much to work out from the counts,
-//              startedAt: when New game was last pressed, in ms, or null before the first one } ---
+//              startedAt: when New game was last pressed, in ms, or null before the first one,
+//              held: in a duel, the other player's claim waiting for my last guess, or null } ---
 
 let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
 let guess = ""; // the guess being typed on the page's keyboard, up to 4 letters
 
 function load() {
-  const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null };
+  const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null, held: null };
   try {
     return { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
   } catch {
@@ -68,11 +71,11 @@ function cycleColour(letter) {
 }
 
 // Only your own marks: letters a helper set stay, as they come from the scores
-function clearColours() {
-  if (confirm("Clear the key colours you set?")) update(() => (state.colours = {}));
+async function clearColours() {
+  if (await ask("Clear the key colours you set?", { yes: "Clear" })) update(() => (state.colours = {}));
 }
 
-function addNote(count) {
+async function addNote(count) {
   const word = guess;
   if (word.length !== 4) return showMessage("Type a 4-letter word first");
   if (state.notes.some((note) => note.word === word)) return showMessage("Already noted");
@@ -83,22 +86,118 @@ function addNote(count) {
     state.notes.push({ word, count, at });
     mode.press(); // in a duel, my clock stops and the other player's starts
   });
+  // All four letters in could be their word: in a duel, the other player is asked to say so (heard() below)
+  if (mode.view().phase !== "live") return;
+  const claim = `All four letters are in. Is ${word.toUpperCase()} their word?`;
+  const gotIt = count === 4 && (await ask(claim, { yes: "Yes, I won", no: "No" }));
+  // This was the last guess after their claim: only now is it answered. Both right is a draw.
+  const held = state.held;
+  if (held) {
+    update(() => (state.held = null));
+    const right = await confirm(held, gotIt ? "Yes" : "Yes, they won");
+    if (gotIt && right) return mode.send({ type: "claim", guess: word, secret: state.secret, draw: true });
+    answer(held, right);
+  }
+  if (gotIt) mode.send({ type: "claim", guess: word, secret: state.secret, guesses: state.notes.length });
 }
 
-function deleteNote(note) {
-  if (confirm(`Remove ${note.word.toUpperCase()} (scored ${note.count})?`)) {
+async function deleteNote(note) {
+  if (await ask(`Remove ${note.word.toUpperCase()} (scored ${note.count})?`, { yes: "Remove" })) {
     update(() => (state.notes = state.notes.filter((n) => n !== note)));
   }
 }
 
-function newGame() {
-  if (confirm("Clear your word, guesses and key colours?")) {
-    showSecret(false);
-    update(() => {
-      state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now() };
-      mode.newGame(); // in a duel, both clocks back to full too
-    });
+// In a duel, New game restarts both clocks too: that's the only way to change a word once the game is on
+async function newGame() {
+  const duelling = mode.view().active;
+  const question = `Clear your word, guesses and key colours${duelling ? ", and restart both clocks" : ""}?`;
+  if (!(await ask(question, { yes: "New game" }))) return;
+  mode.newGame(); // tells the other phone too
+  clearGame();
+}
+
+function clearGame() {
+  showSecret(false);
+  update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now(), held: null }));
+}
+
+// The other phone's "game" messages in a duel: a claimed win, its answer, "last", a New game and undoing a win. A claim
+// carries the claimer's word, shown only once the win is confirmed; the answer carries the other word back. A claim made
+// with fewer guesses here waits for this phone's last guess (addNote), which can still draw; "last" tells the claimer.
+async function heard(data) {
+  const them = duel.otherName(mode.view());
+  if (data.type === "claim" && data.draw) {
+    // Their last guess also got it, and they said ours was right: a draw, unless theirs is wrong
+    const right = await confirm(data, "Yes, it's a draw");
+    mode.send({ type: "answer", right, draw: true, guess: data.guess, secret: state.secret });
+    mode.stop();
+    if (right) drew(data.secret);
+    else won(data.secret);
+  } else if (data.type === "claim" && state.notes.length < Number(data.guesses)) {
+    update(() => (state.held = data));
+    mode.send({ type: "last" });
+  } else if (data.type === "claim") {
+    answer(data, await confirm(data, "Yes, they won"));
+  } else if (data.type === "answer" && data.draw) {
+    if (data.right) drew(data.secret);
+    else lost(data.secret, `${them} says ${cleanWord(data.guess).toUpperCase()} isn't their word. ${them} wins!`);
+  } else if (data.type === "answer") {
+    if (data.right) won(data.secret);
+    else ask(`${them} says ${cleanWord(data.guess).toUpperCase()} isn't their word. Play on.`, { no: null });
+  } else if (data.type === "last") {
+    ask(`${them} gets one last guess to draw.`, { no: null });
+  } else if (data.type === "new") {
+    update(() => (state.held = null));
+    const question = `${them} started a new game, and both clocks restarted. Start a new game too?`;
+    if (await ask(question, { yes: "New game", no: "Not now" })) clearGame();
+  } else if (data.type === "undo") {
+    // They asked to undo the last win (duel.undoWin): it's undone here only if this player agrees
+    const v = mode.view();
+    const question = v.last && `${them} asks to undo ${duel.lastWin(v, "their win")}, so it doesn't count. Agree?`;
+    const agree = Boolean(question) && (await ask(question, { yes: "Undo it", no: "Keep it" }));
+    mode.send({ type: "undone", agree });
+    if (agree) mode.undo();
+  } else if (data.type === "undone") {
+    if (data.agree) mode.forget();
+    ask(data.agree ? `${them} agreed. The win is undone and doesn't count.` : `${them} said no. The win still counts.`, { no: null });
   }
+}
+
+const cleanWord = (value) => String(value ?? "").slice(0, 4);
+
+// Their claim on this phone's word, asked here; answer() sends the reply and ends the game if they were right
+function confirm(claim, yes) {
+  const them = duel.otherName(mode.view());
+  return ask(`${them} says your word is ${cleanWord(claim.guess).toUpperCase()}. Are they right?`, { yes, no: "No" });
+}
+
+function answer(claim, right) {
+  mode.send({ type: "answer", right, guess: claim.guess, secret: right ? state.secret : "" });
+  if (!right) return;
+  mode.stop();
+  lost(claim.secret, `${duel.otherName(mode.view())} wins!`);
+}
+
+// A game's end, counted in the room's wins, with the other player's word if it came
+function won(secret) {
+  mode.ended("mine");
+  const them = duel.otherName(mode.view());
+  showWin(cleanWord(secret) ? `You won! ${them}'s word was` : "You won!", secret);
+}
+
+function drew(secret) {
+  mode.ended(null);
+  ask(`It's a draw! ${duel.otherName(mode.view())}'s word was`, { no: null, word: cleanWord(secret) });
+}
+
+function lost(secret, text) {
+  mode.ended("theirs");
+  showWin(cleanWord(secret) ? `${text} Their word was` : text, secret);
+}
+
+// A won game's note offers to undo the win, now the words are out and a mistake shows. The duel sheet offers it too.
+async function showWin(text, secret) {
+  if (!(await ask(text, { yes: "OK", no: "Undo win", word: cleanWord(secret) }))) duel.undoWin();
 }
 
 // Learn words: ten dictionary words at random as tiles, each a moment after the last
@@ -145,8 +244,8 @@ const HELPER_QUESTIONS = {
     "Switch to Advanced Helper Mode (dark)? It works out letters from every score. Letters it sets get a dot and are locked.",
 };
 
-function chooseHelper(helper) {
-  if (confirm(HELPER_QUESTIONS[helper])) update(() => (state.helper = helper));
+async function chooseHelper(helper) {
+  if (await ask(HELPER_QUESTIONS[helper], { yes: "Switch" })) update(() => (state.helper = helper));
   else render(); // put the dropdown back
 }
 
@@ -283,7 +382,13 @@ function buildControls() {
 function render() {
   // Only write the secret back when it differs, so typing doesn't jump the cursor to the end.
   if ($("secret").value.toLowerCase() !== state.secret) $("secret").value = state.secret;
-  $("secret-msg").textContent = state.secret.length === 4 && !isWord(state.secret) ? NOT_A_WORD : "";
+  // In a duel, a word is locked once the game is on the clocks, until either player taps New game
+  const { active, started } = mode.view();
+  const locked = active && started && state.secret.length === 4;
+  $("secret").readOnly = locked;
+  const secretMessage = state.secret.length === 4 && !isWord(state.secret) ? NOT_A_WORD : locked ? LOCKED : "";
+  $("secret-msg").textContent = secretMessage;
+  $("secret-msg").classList.toggle("calm", secretMessage === LOCKED);
   $("helper").value = state.helper;
   document.body.classList.toggle("dark", state.helper === "advanced");
   // The installed app's status or title bar follows the page into dark and back
@@ -321,7 +426,7 @@ function render() {
 
 buildControls();
 duel.init();
-mode.init(render); // rejoins a saved room; the clock calls render whenever it changes
+mode.init(render, heard); // rejoins a saved room; the clock calls render whenever it changes
 render();
 showView();
 duel.openLink(); // a shared duel link asks to join
