@@ -1,5 +1,5 @@
-// Word: the dictionary, every 4-letter word the page accepts (4,983 of them). Never shown on the page;
-// it only answers "is this a word?" and counts the words a secret could still be.
+// Word: the dictionary, every 4-letter word the page accepts (4,983 of them). It answers "is this a
+// word?", counts the words a secret could still be, and holds the common words Learn words shows (common.js).
 //
 // From SCOWL 2020.12.07 (http://wordlist.aspell.net): sizes up to 80 ("words found in larger dictionaries") of
 // english-words, british-words, british_z-words (Oxford spelling), american-words, variant_1-words and

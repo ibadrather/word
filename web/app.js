@@ -1,6 +1,6 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
-import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock, the sheet and the menu's choice
 
@@ -98,6 +98,38 @@ function newGame() {
       mode.newGame(); // in a duel, both clocks back to full too
     });
   }
+}
+
+// Learn words: ten dictionary words at random as tiles, each a moment after the last
+function showLearnWords() {
+  const items = randomWords(10).map((word, i) => {
+    const li = document.createElement("li");
+    li.ariaLabel = word;
+    li.style.animationDelay = `${i * 30}ms`;
+    li.append(...[...word].map((letter) => Object.assign(document.createElement("b"), { textContent: letter, ariaHidden: "true" })));
+    return li;
+  });
+  $("learn-words").replaceChildren(...items);
+}
+
+// Learn words is a view of its own at #learn, so the phone's back button returns to the game
+let openedHere = false; // opened from the menu, so going back leaves the page where it was
+
+function showView() {
+  const learning = location.hash === "#learn";
+  if (learning === document.body.classList.contains("learning")) return;
+  document.body.classList.toggle("learning", learning);
+  $("learn").hidden = !learning;
+  if (learning) {
+    showLearnWords();
+    scrollTo(0, 0);
+  }
+}
+
+function leaveLearn() {
+  if (openedHere) return history.back();
+  history.replaceState(null, "", location.pathname + location.search); // opened straight from a #learn link
+  showView();
 }
 
 function showSecret(show) {
@@ -203,6 +235,7 @@ function buildControls() {
   // A computer's own keyboard types too, unless you're typing in a box or a dialog is open
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey || document.querySelector("dialog[open]")) return;
+    if (document.body.classList.contains("learning")) return;
     if (event.target.closest("input, select, textarea")) return;
     if (/^[a-z]$/i.test(event.key)) type(event.key.toLowerCase());
     else if (event.key === "Backspace") backspace();
@@ -221,6 +254,14 @@ function buildControls() {
   $("menu").addEventListener("click", (event) => {
     if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
   });
+  $("learn-open").addEventListener("click", () => {
+    $("menu").close();
+    openedHere = true;
+    location.hash = "learn";
+  });
+  $("learn-more").addEventListener("click", showLearnWords);
+  $("learn-back").addEventListener("click", leaveLearn);
+  addEventListener("hashchange", showView);
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
   // The dictionary's size as tiles in the logo's colours
   const tile = (digit, i) => {
@@ -275,6 +316,7 @@ buildControls();
 duel.init();
 mode.init(render); // rejoins a saved room; the clock calls render whenever it changes
 render();
+showView();
 duel.openLink(); // a shared duel link asks to join
 setInterval(() => {
   showTimer();

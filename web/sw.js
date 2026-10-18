@@ -10,6 +10,7 @@ const FILES = [
   "app.js",
   "helpers.js",
   "words.js",
+  "common.js",
   "clock.js",
   "duel.js",
   "trystero.js",
