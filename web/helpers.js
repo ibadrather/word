@@ -24,6 +24,10 @@ export function randomWords(count, random = Math.random) {
   return words.slice(0, count);
 }
 
+// --- Scoring: how many of a guess's letters are in the word. ---
+
+export const score = (guess, word) => [...new Set(guess)].filter((letter) => word.includes(letter)).length;
+
 // --- Basic helper: a guess that scored 0 has none of its letters in the word. ---
 
 export function zeroGuesses(notes) {
@@ -51,9 +55,7 @@ function allSets(chosen, from) {
 // The letter sets (like "ackr") that give every guess its count.
 // knownLetters then says which letters those sets settle as "in" or "out".
 export function fittingSets(notes) {
-  return LETTER_SETS.filter((set) =>
-    notes.every(({ word, count }) => [...new Set(word)].filter((letter) => set.includes(letter)).length === count),
-  );
+  return LETTER_SETS.filter((set) => notes.every(({ word, count }) => score(word, set) === count));
 }
 
 export function knownLetters(fitting, colours) {

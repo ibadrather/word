@@ -6,6 +6,8 @@
 import { ask } from "./ask.js";
 import * as mode from "./clock.js";
 import { formatTime } from "./helpers.js";
+import { cleanRoom, roomFromLink, shareLink } from "./room.js";
+import { playerName } from "./wins.js";
 
 const $ = (id) => document.getElementById(id);
 const JOINED_NOTE = 4_000; // how long "… joined" stays on the dock's edge, in ms
@@ -81,7 +83,7 @@ function open() {
 // A shared link (?room=…) asks "Join the duel?" once: the address loses the room, so a refresh or bookmark doesn't ask
 // again, and a phone already in that room isn't asked at all
 export function openLink() {
-  const room = mode.roomFromLink(location.search);
+  const room = roomFromLink(location.search);
   if (!room) return;
   history.replaceState(null, "", location.pathname + location.hash);
   const v = mode.view();
@@ -107,7 +109,7 @@ function typeRoom(event) {
 // say so
 function showJoining() {
   const joining = Boolean(invite) || $("duel-room").value.trim() !== mode.view().madeUp;
-  $("duel-name").placeholder = mode.playerName(!joining);
+  $("duel-name").placeholder = playerName(joining ? 1 : 0);
   $("duel-foot").textContent = joining
     ? "Joining? Your minutes give way to the other phone's."
     : "Both phones need internet to find each other.";
@@ -133,9 +135,9 @@ function leave() {
 async function share(event) {
   const button = event.currentTarget;
   const setUp = Boolean(button.closest("#duel-room-field"));
-  const room = setUp ? mode.cleanRoom($("duel-room").value) : mode.view().room;
+  const room = setUp ? cleanRoom($("duel-room").value) : mode.view().room;
   if (!room) return $("duel-room").focus();
-  const url = mode.shareLink(location.href, room);
+  const url = shareLink(location.href, room);
   if (navigator.share) {
     try {
       return await navigator.share({ title: "Word", text: "Join my duel clock in Word", url });
@@ -179,7 +181,7 @@ export function tick(v = mode.view()) {
 }
 
 // The host's other player is player two, and the other way round, until their phone sends a name
-export const otherName = (v) => v.peerName || mode.playerName(!v.host);
+export const otherName = (v) => v.peerName || playerName(v.host ? 1 : 0);
 
 // The last win in this room, from this phone's side: `theirs` words the other player's
 export const lastWin = (v, theirs = `${otherName(v)}'s win`) => (v.last.side === "mine" ? "your win" : theirs);
@@ -194,7 +196,7 @@ export async function undoWin() {
     mode.send({ type: "undo" });
   }
 }
-const waitingFor = (v) => `Waiting for ${mode.playerName(!v.host).toLowerCase()}…`;
+const waitingFor = (v) => `Waiting for ${playerName(v.host ? 1 : 0).toLowerCase()}…`;
 
 // What went wrong, in the sheet's words
 const problem = (v) =>

@@ -1,32 +1,23 @@
 // Plays the duel clock's pure logic through a game and prints what each step showed: node clock_steps.mjs
 // Times are ms on each phone's own clock; player two's phone runs 7 seconds ahead of player one's throughout.
 import {
-  ADJECTIVES,
-  NOUNS,
-  NO_WINS,
-  board,
   clampMinutes,
-  counted,
   fresh,
   inPlay,
-  latestWins,
   left,
   message,
   mirrored,
   newer,
   paused,
   phoneId,
-  playerName,
   pressed,
   reset,
-  roomFromLink,
-  roomName,
-  shareLink,
   started,
   ticking,
-  uncounted,
 } from "../web/clock.js";
 import { formatTime } from "../web/helpers.js";
+import { ADJECTIVES, NOUNS, roomFromLink, roomName, shareLink } from "../web/room.js";
+import { NO_WINS, board, counted, latestWins, playerName, uncounted } from "../web/wins.js";
 
 const out = {};
 const ahead = (oneTime) => oneTime + 7_000; // the same moment on player two's phone
@@ -98,7 +89,7 @@ out.inPlay = {
   pausedAtZero: inPlay(paused({ ...inGame, theirs: 1_000 }, 9_000, "one"), 10, 20_000),
 };
 
-out.playerName = [playerName(true), playerName(false)];
+out.playerName = [0, 1, 2, 3].map(playerName);
 
 // Times as the dock and the game show them: m:ss, h:mm:ss past an hour, never below 0:00
 out.formatTime = [0, 59_999, 60_000, 3_599_000, 3_600_000, -5_000].map(formatTime);
@@ -151,18 +142,22 @@ out.paused = {
   rejoinerShows: [left(rejoinerSees, "mine", ahead(260_000)), left(rejoinerSees, "theirs", ahead(260_000))],
 };
 
-// Share link: the page's own path with only ?room=, and a room that needs it encoded
+// Share link: the page's own path with only ?room= (or ?group=), and a room that needs it encoded
 out.shareLink = [
   shareLink("https://ibadrather.github.io/word/?x=1#a", "mint-owl-42"),
   shareLink("http://localhost:8000/", "mint-owl-42"),
   shareLink("https://ibadrather.github.io/word/staging/feat-duel/index.html", "a b&c"),
+  shareLink("https://ibadrather.github.io/word/?room=mint-owl-42#a", "mint-owl-42", "group"),
 ];
 
 // A link's room, cleaned up as a typed one is; "" when there's none
 out.roomFromLink = ["?room=mint-owl-42", "?room=MINT-OWL-42", `?room=${"x".repeat(30)}`, "", "?x=1", "?room="].map(
-  roomFromLink,
+  (search) => roomFromLink(search),
 );
 out.roundTrip = roomFromLink(new URL(shareLink("https://ibadrather.github.io/word/", "a b&c")).search);
+// A group link's room is under ?group=, and a duel link's room isn't taken for one
+out.groupFromLink = ["?group=MINT-OWL-42", "?room=mint-owl-42", "?room=a&group=b"].map((search) => roomFromLink(search, "group"));
+out.groupRoundTrip = roomFromLink(new URL(shareLink("https://ibadrather.github.io/word/", "a b&c", "group")).search, "group");
 
 // The room's wins, by name: the tally whose last game ended later is kept on both phones
 const ours = { players: { Asha: 2, Ben: 1 }, at: 5_000 };
