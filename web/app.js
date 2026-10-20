@@ -3,7 +3,8 @@
 import { ask } from "./ask.js"; // the page's own questions and notes
 import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
-import * as duel from "./duel.js"; // the duel clock's screens: the dock, the sheet and the menu's choice
+import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
+import * as modes from "./modes.js"; // which way you play: the menu's choice, and what a guess or New game does in it
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -78,7 +79,8 @@ async function clearColours() {
 async function addNote(count) {
   const word = guess;
   // In a duel, a guess is noted only on your turn: it's what passes the clock (typing the next one is fine)
-  if (!mode.view().myTurn) return showMessage(`It's ${duel.otherName(mode.view())}'s turn`);
+  const notYet = modes.turn();
+  if (notYet) return showMessage(notYet);
   if (word.length !== 4) return showMessage("Type a 4-letter word first");
   if (state.notes.some((note) => note.word === word)) return showMessage("Already noted");
 
@@ -86,7 +88,7 @@ async function addNote(count) {
   const at = state.startedAt ? gameTime() : undefined;
   update(() => {
     state.notes.push({ word, count, at });
-    mode.press(); // in a duel, my clock stops and the other player's starts
+    modes.note(word, count); // in a duel, my clock stops and the other player's starts
   });
   // All four letters in could be their word: in a duel, the other player is asked to say so (heard() below)
   if (mode.view().phase !== "live") return;
@@ -109,13 +111,9 @@ async function deleteNote(note) {
   }
 }
 
-// In a duel, New game restarts both clocks too: that's the only way to change a word once the game is on
+// In a duel, New game restarts both clocks too (modes.js asks in the mode's own words)
 async function newGame() {
-  const duelling = mode.view().active;
-  const question = `Clear your word, guesses and key colours${duelling ? ", and restart both clocks" : ""}?`;
-  if (!(await ask(question, { yes: "New game" }))) return;
-  mode.newGame(); // tells the other phone too
-  clearGame();
+  if (await modes.newGame()) clearGame();
 }
 
 function clearGame() {
@@ -299,7 +297,7 @@ function showGuess() {
     slot.classList.toggle("next", i === guess.length);
   }
   $("word").ariaLabel = guess ? `Your guess: ${guess.toUpperCase()}` : "Your guess";
-  $("counts").classList.toggle("ready", guess.length === 4 && mode.view().myTurn);
+  $("counts").classList.toggle("ready", guess.length === 4 && !modes.turn());
 }
 
 // --- Rendering ---
@@ -396,7 +394,7 @@ function render() {
   // The installed app's status or title bar follows the page into dark and back
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
   showGuess();
-  duel.render();
+  modes.render();
   const { known, fitting } = deduce();
   settled = known;
   $("clear").disabled = !Object.keys(state.colours).length;
@@ -427,14 +425,14 @@ function render() {
 }
 
 buildControls();
-duel.init();
-mode.init(render, heard); // rejoins a saved room; the clock calls render whenever it changes
+mode.init(render, heard); // the clock calls render whenever it changes
+modes.init(); // rejoins the saved mode's room
 render();
 showView();
-duel.openLink(); // a shared duel link asks to join
+modes.openLink(); // a shared link asks to join
 setInterval(() => {
   showTimer();
-  duel.tick();
+  modes.tick();
 }, 1000);
 
 // Keeps the files for offline use, which also lets the page be installed as an app (sw.js)

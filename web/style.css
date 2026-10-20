@@ -393,7 +393,7 @@ button, select {
 /* Duel clock: the clocks in a dock pinned to the bottom, like a real chess clock. The side that's ticking grows
    and fills in, so whose turn it is shows from across the table. Its background spans the screen, its sides stay
    within main's column, and the page gets room underneath so the secret word scrolls clear of it. */
-body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .dock {
   position: fixed;
   left: 0;
