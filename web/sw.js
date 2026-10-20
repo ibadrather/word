@@ -15,6 +15,7 @@ const FILES = [
   "wins.js",
   "clock.js",
   "duel.js",
+  "modes.js",
   "ask.js",
   "trystero.js",
   "manifest.webmanifest",

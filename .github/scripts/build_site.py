@@ -39,9 +39,9 @@ Files = str | tuple[str, ...]
 # the duel's and the group game's rooms apart too, so a staging phone only ever
 # meets another phone on the same branch. It is in room.js on newer branches,
 # which still have a clock.js without it, so room.js is tried first. A file the
-# branch doesn't have is skipped (older branches have no room.js or group.js);
-# one that has lost its text stops the branch, as its copy would share the live
-# game's storage.
+# branch doesn't have is skipped (older branches have no room.js, modes.js or
+# group.js); one that has lost its text stops the branch, as its copy would
+# share the live game's storage.
 SEPARATE: tuple[tuple[Files, str, str], ...] = (
     (
         "app.js",
@@ -52,6 +52,11 @@ SEPARATE: tuple[tuple[Files, str, str], ...] = (
         "clock.js",
         'const STORAGE_KEY = "word-clock"',
         'const STORAGE_KEY = "word-clock:{folder}"',
+    ),
+    (
+        "modes.js",
+        'const STORAGE_KEY = "word-mode"',
+        'const STORAGE_KEY = "word-mode:{folder}"',
     ),
     (
         ("room.js", "clock.js"),

@@ -129,7 +129,6 @@ export function init(change, heard) {
   onGame = heard;
   state = load();
   if (!state.id) state.id = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
-  if (state.joined) join();
   // Back from a locked phone or another app: a message may have been missed, or the connection dropped. A quick trip
   // away, like the share sheet while sending the link, keeps a waiting phone's room as it is, so a friend joining
   // just then isn't missed.
@@ -139,6 +138,11 @@ export function init(change, heard) {
     else if (gone !== null || away) rejoin();
     onChange();
   });
+}
+
+// On load, when modes.js finds the duel was the mode on: the saved room is rejoined
+export function resume() {
+  if (state.joined) join();
 }
 
 // The setup screen opened: the room is made up the first time and kept from then on, and an old complaint goes

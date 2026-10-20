@@ -1,12 +1,12 @@
-// The duel clock's screens: the dock of two clocks pinned to the bottom of the page, like a real chess clock; the sheet
-// that drops from the top to set the duel up, to join one from a shared link and to show it while it's on; and the
-// menu's "How you play" choice. Everything they show comes from clock.js's view(); app.js calls render() on every
-// change and tick() every second, and openLink() once on load.
+// The duel clock's screens: the dock of two clocks pinned to the bottom of the page, like a real chess clock, and the
+// sheet that drops from the top to set the duel up, to join one from a shared link and to show it while it's on.
+// Everything they show comes from clock.js's view(). modes.js calls render() on every change and tick() every second,
+// shows or hides the dock, and goes through turn(), note() and newGame() for app.js while the duel is on.
 
 import { ask } from "./ask.js";
 import * as mode from "./clock.js";
 import { formatTime } from "./helpers.js";
-import { cleanRoom, roomFromLink, shareLink } from "./room.js";
+import { cleanRoom, shareLink } from "./room.js";
 import { playerName } from "./wins.js";
 
 const $ = (id) => document.getElementById(id);
@@ -30,7 +30,6 @@ let invite = ""; // the room from a shared link while the sheet asks "Join the d
 
 export function init() {
   $("dock-menu").addEventListener("click", open);
-  for (const input of document.getElementsByName("play")) input.addEventListener("change", choose);
   $("duel-close").addEventListener("click", () => $("duel").close());
   $("duel-not-now").addEventListener("click", () => $("duel").close());
   $("duel").addEventListener("close", () => (invite = "")); // ×, Escape, Not now or a tap outside: nothing changes
@@ -50,17 +49,6 @@ export function init() {
   }
 }
 
-// "How you play": Duel clock opens the sheet in the menu's place; Face to face leaves a duel without asking
-function choose(event) {
-  if (event.target.value === "duel") {
-    $("menu").close();
-    open();
-  } else {
-    mode.disconnect();
-  }
-  showChoice(mode.view()); // Duel clock stays unchecked until a duel is really on
-}
-
 // New minutes restart both clocks, so it asks first while a game is going on them
 async function setMinutes(minutes) {
   const v = mode.view();
@@ -69,7 +57,7 @@ async function setMinutes(minutes) {
   mode.setMinutes(minutes);
 }
 
-function open() {
+export function open() {
   if (!mode.view().active) mode.setUp();
   const v = mode.view();
   // The fields are written only here, so a render while typing never moves the cursor
@@ -80,12 +68,8 @@ function open() {
   if (!$("duel").open) $("duel").showModal();
 }
 
-// A shared link (?room=…) asks "Join the duel?" once: the address loses the room, so a refresh or bookmark doesn't ask
-// again, and a phone already in that room isn't asked at all
-export function openLink() {
-  const room = roomFromLink(location.search);
-  if (!room) return;
-  history.replaceState(null, "", location.pathname + location.hash);
+// A shared link's room (modes.js reads it) asks "Join the duel?", unless this phone is already in that room
+export function invited(room) {
   const v = mode.view();
   if (v.active && v.room === room) return;
   invite = room;
@@ -156,20 +140,16 @@ async function share(event) {
 }
 
 export function render(v = mode.view()) {
-  document.body.classList.toggle("duel", v.active); // makes room under the page for the dock
-  $("dock").hidden = !v.active;
   const idle = ["waiting", "error", "left"].includes(v.phase); // nobody there to play against
   for (const which of SIDES) $(which).classList.toggle("idle", idle);
   $("theirs").firstElementChild.textContent = otherName(v);
   $("dock-menu").lastElementChild.className = `dot ${dotFor(v.phase)}`;
-  showChoice(v);
   showSheet(v);
   tick(v);
 }
 
 // The times, which side runs or has run out, and the note on the dock's edge
 export function tick(v = mode.view()) {
-  $("times-up").hidden = !v.active || v.mine.left > 0; // when theirs runs out, the dock alone shows it
   if (!v.active) return;
   for (const which of SIDES) {
     $(which).lastElementChild.textContent = time(v[which].left);
@@ -177,7 +157,26 @@ export function tick(v = mode.view()) {
     $(which).classList.toggle("over", v[which].left === 0);
   }
   label(v);
-  showNote(note(v, Date.now()));
+  showNote(edgeNote(v, Date.now()));
+}
+
+// My own time has run out: modes.js shows "Your time is up" above the guess
+export const timesUp = (v = mode.view()) => v.active && v.mine.left === 0;
+
+// A guess can be noted unless the other player's clock is running: "" if it can, or else why not
+export const turn = (v = mode.view()) => (v.myTurn ? "" : `It's ${otherName(v)}'s turn`);
+
+// A guess was noted: my clock stops and the other player's starts
+export function note() {
+  mode.press();
+}
+
+// New game restarts both clocks too: that's the only way to change a word once the game is on. Whether app.js should
+// clear its game.
+export async function newGame() {
+  if (!(await ask("Clear your word, guesses and key colours, and restart both clocks?", { yes: "New game" }))) return false;
+  mode.newGame(); // tells the other phone too
+  return true;
 }
 
 // The host's other player is player two, and the other way round, until their phone sends a name
@@ -223,7 +222,7 @@ function label(v) {
 }
 
 // The line on the dock's top edge: its text, its dot ("live", "wait" or "" for hollow) and whether it's a warning
-function note(v, now) {
+function edgeNote(v, now) {
   if (v.phase === "waiting") return { text: waitingFor(v), dot: "wait" };
   if (v.phase === "error") return { text: v.error === "join" ? `Couldn't join ${v.room}` : problem(v), warn: true };
   if (v.phase === "dropped") return { text: STATUS.dropped(otherName(v)), dot: "wait", warn: true };
@@ -240,11 +239,6 @@ function showNote({ text, dot = "", warn = false }) {
   el.classList.toggle("warn", warn);
   el.firstElementChild.className = `dot ${dot}`;
   el.lastElementChild.textContent = text;
-}
-
-function showChoice(v) {
-  $("play-duel").checked = v.active;
-  $("play-face").checked = !v.active;
 }
 
 // The room's wins, one row a player who has played here, this phone's player marked
