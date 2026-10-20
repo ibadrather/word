@@ -6,7 +6,8 @@
 import { ask } from "./ask.js";
 import * as mode from "./clock.js";
 import { formatTime } from "./helpers.js";
-import { cleanRoom, shareLink } from "./room.js";
+import { cleanRoom } from "./room.js";
+import { lowercase, share as shareRoom, showWins } from "./sheet.js";
 import { playerName } from "./wins.js";
 
 const $ = (id) => document.getElementById(id);
@@ -22,7 +23,6 @@ const STATUS = {
   dropped: (who) => `${who} dropped out · reconnecting…`,
   left: (who) => `${who} left the duel`,
 };
-const COPIED = 2_000; // how long a Share link button says "Link copied", in ms
 
 let labelled = ""; // what the clocks' labels were last written for, so they change with the turn, not every tick
 let shown = ""; // the sheet's screen at the last render, so it folds away only from Waiting
@@ -76,16 +76,8 @@ export function invited(room) {
   open();
 }
 
-// Lowercase as it's typed, with the cursor kept where it was
 function typeRoom(event) {
-  const input = event.target;
-  const lower = input.value.toLowerCase();
-  if (lower !== input.value) {
-    const at = input.selectionStart;
-    input.value = lower;
-    input.setSelectionRange(at, at);
-  }
-  mode.edit("room", input.value);
+  mode.edit("room", lowercase(event.target));
   showJoining();
 }
 
@@ -114,29 +106,16 @@ function leave() {
   mode.disconnect();
 }
 
-// Share link sends the page's address with the room: the room being set up, from beside its field, or the one joined.
-// The phone's share sheet first; without one, the clipboard; failing that, a box to copy it from.
-async function share(event) {
+// Another way to play was picked from the menu: the duel is left without asking
+export const leaving = () => Promise.resolve(true);
+
+// Share link sends the page's address with the room: the room being set up, from beside its field, or the one joined
+function share(event) {
   const button = event.currentTarget;
   const setUp = Boolean(button.closest("#duel-room-field"));
   const room = setUp ? cleanRoom($("duel-room").value) : mode.view().room;
   if (!room) return $("duel-room").focus();
-  const url = shareLink(location.href, room);
-  if (navigator.share) {
-    try {
-      return await navigator.share({ title: "Word", text: "Join my duel clock in Word", url });
-    } catch (error) {
-      if (error.name === "AbortError") return; // the player closed the share sheet
-    }
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-  } catch {
-    return ask(`Copy this link: ${url}`, { no: null });
-  }
-  button.textContent = "Link copied";
-  clearTimeout(button.copied);
-  button.copied = setTimeout(() => (button.textContent = "Share link"), COPIED);
+  shareRoom(button, room, "room", "Join my duel clock in Word");
 }
 
 export function render(v = mode.view()) {
@@ -205,9 +184,6 @@ const problem = (v) =>
     join: `Couldn't join ${v.room}. Check this phone is online and try again.`,
   })[v.error] ?? "";
 
-// A moment as 2026-10-18 21:40 UTC, the same on both phones wherever they are
-export const utc = (ms) => `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
-
 // Rounded up: 0:00 only once the time is really gone
 const time = (ms) => formatTime(ms + 999);
 
@@ -239,22 +215,6 @@ function showNote({ text, dot = "", warn = false }) {
   el.classList.toggle("warn", warn);
   el.firstElementChild.className = `dot ${dot}`;
   el.lastElementChild.textContent = text;
-}
-
-// The room's wins, one row a player who has played here, this phone's player marked
-function showWins(v) {
-  const rows = v.board.map(({ name, won }) => {
-    const li = document.createElement("li");
-    li.classList.toggle("me", name === v.me);
-    li.append(
-      Object.assign(document.createElement("span"), { textContent: name }),
-      Object.assign(document.createElement("b"), { textContent: won }),
-    );
-    return li;
-  });
-  $("wins-list").replaceChildren(...rows);
-  $("wins-when").textContent = v.playedAt ? `Last played ${utc(v.playedAt)}` : "No games played here yet";
-  $("wins-undo").hidden = !v.last || v.phase !== "live"; // the other player has to be there to agree
 }
 
 // The sheet shows one of five screens. It folds away by itself when the other phone arrives while it shows Waiting,
@@ -295,6 +255,7 @@ function showSheet(v) {
   dot.className = `dot ${dotFor(v.phase)}`;
   who.textContent = STATUS[v.phase]?.(otherName(v)) ?? ""; // shown only while live, dropped or left
   liveRoom.textContent = v.room;
-  showWins(v);
+  showWins($("wins-list"), $("wins-when"), v.board, v.me, v.playedAt);
+  $("wins-undo").hidden = !v.last || v.phase !== "live"; // the other player has to be there to agree
   for (const chip of $("chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
 }
