@@ -8,20 +8,11 @@ const APP_ID = "ibadrather-word";
 const MINUTE = 60_000;
 
 // --- A view of the clocks: { mine, theirs: ms left on each side at `at`, running: "mine" | "theirs" | null,
-//     turn: whose guess is next, "mine" | "theirs", or null before the first guess,
 //     at: this phone's wall-clock ms when the running clock last (re)started, seq: one more on every press or reset,
 //     by: an id of the phone that made it, to break ties }. Views are ordered by seq, never by time, and only
 //     elapsed times cross between the phones, never `at`: two phones' clocks are never quite in step. ---
 
-export const fresh = (minutes) => ({
-  mine: minutes * MINUTE,
-  theirs: minutes * MINUTE,
-  running: null,
-  turn: null,
-  at: 0,
-  seq: 0,
-  by: "",
-});
+export const fresh = (minutes) => ({ mine: minutes * MINUTE, theirs: minutes * MINUTE, running: null, at: 0, seq: 0, by: "" });
 
 // ms left on a side at `now`
 export const left = (view, side, now) => Math.max(0, view[side] - (view.running === side ? now - view.at : 0));
@@ -29,16 +20,11 @@ export const left = (view, side, now) => Math.max(0, view[side] - (view.running 
 // Whether a clock is ticking; one that has run out counts as stopped
 export const ticking = (view, now) => Boolean(view.running) && left(view, view.running, now) > 0;
 
-// Whose guess is next: the side whose clock was last started, kept while both are stopped. A view from an older
-// version has no turn, so its running clock says. null before the first guess, which either player may make.
-export const turn = (view) => view.turn ?? view.running ?? null;
-
 // Both clocks stopped where they are at `now`, then `running` started: a new view
-const stopAt = (view, now, by, running, next = running) => ({
+const stopAt = (view, now, by, running) => ({
   mine: left(view, "mine", now),
   theirs: left(view, "theirs", now),
   running,
-  turn: next,
   at: now,
   seq: view.seq + 1,
   by,
@@ -48,8 +34,8 @@ const stopAt = (view, now, by, running, next = running) => ({
 export const pressed = (view, now, by) => stopAt(view, now, by, "theirs");
 
 // The other player left: both clocks stop where they are. It counts as a new view, so a phone that rejoins with a fresh
-// clock at seq 0 adopts it, and play goes on from the same times and the same turn.
-export const paused = (view, now, by) => stopAt(view, now, by, null, turn(view));
+// clock at seq 0 adopts it, and play goes on from the same times.
+export const paused = (view, now, by) => stopAt(view, now, by, null);
 
 // Both clocks back to full and stopped
 export const reset = (view, minutes, now, by) => ({ ...fresh(minutes), at: now, seq: view.seq + 1, by });
@@ -68,7 +54,6 @@ export const message = (view, now, name, minutes) => ({
   mine: view.mine,
   theirs: view.theirs,
   running: view.running,
-  turn: turn(view),
   elapsed: view.running ? now - view.at : 0,
   seq: view.seq,
   by: view.by,
@@ -80,7 +65,6 @@ export const mirrored = (data, now) => ({
   mine: data.theirs,
   theirs: data.mine,
   running: OTHER_SIDE[data.running] ?? null,
-  turn: OTHER_SIDE[data.turn] ?? null,
   at: now - data.elapsed,
   seq: data.seq,
   by: data.by,
@@ -349,7 +333,7 @@ export function view() {
     peerName: peer ? (names[peer] ?? "") : (departed ?? gone ?? ""), // as their phone sent it; "" before it has
     joinedAt,
     started: started(clock, minutes),
-    myTurn: !joined || turn(clock) !== "theirs", // a guess can be noted; out of a duel, always
+    myTurn: !joined || clock.running !== "theirs", // a guess can be noted unless the other player's clock is running
     inPlay: inPlay(clock, minutes, now),
     error,
     mine: side("mine"),

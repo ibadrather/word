@@ -24,7 +24,6 @@ import {
   shareLink,
   started,
   ticking,
-  turn,
   uncounted,
 } from "../web/clock.js";
 import { formatTime } from "../web/helpers.js";
@@ -140,18 +139,6 @@ const stopped = paused(running, 130_000, phoneId(true, "aa"));
 // clocks, and player one keeps them
 const rejoiner = { ...fresh(10), at: ahead(200_000), by: phoneId(false, "zz") };
 const rejoinerSees = mirrored(message(stopped, 200_000, "Player one", 10), ahead(200_000));
-// Whose guess is next: either player's before the first, then the other side's after each press, seen the same from
-// both phones. It stays put while both clocks are stopped, rejoined or not, and a reset frees it again. A view from an
-// older version has no turn, so its running clock says.
-out.turn = {
-  fresh: turn(fresh(10)),
-  firstPress: turn(pressed(fresh(10), 5_000, "one")),
-  mirrored: turn(mirrored(message(pressed(fresh(10), 5_000, "one"), 6_000, "", 10), ahead(6_000))),
-  paused: turn(stopped),
-  rejoiner: turn(rejoinerSees),
-  reset: turn(reset(stopped, 10, 300_000, "one")),
-  olderVersion: turn(mirrored({ ...message(running, 130_000, "", 10), turn: undefined }, ahead(130_000))),
-};
 out.paused = {
   mine: left(stopped, "mine", 200_000),
   theirs: left(stopped, "theirs", 200_000),

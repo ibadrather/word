@@ -111,17 +111,6 @@ def test_clock_steps() -> None:
             "rejoinerAdopts": True,
             "rejoinerShows": [8 * MINUTE, 7 * MINUTE - 30_000],
         },
-        # Player one's clock was running when player two left: still player one's
-        # turn, which player two's phone sees as the other side's
-        "turn": {
-            "fresh": None,
-            "firstPress": "theirs",
-            "mirrored": "mine",
-            "paused": "mine",
-            "rejoiner": "theirs",
-            "reset": None,
-            "olderVersion": "theirs",
-        },
         "shareLink": [
             "https://ibadrather.github.io/word/?room=mint-owl-42",
             "http://localhost:8000/?room=mint-owl-42",
