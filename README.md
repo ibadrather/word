@@ -17,7 +17,7 @@ Install it from the browser (**Add to Home Screen**, or **Install app** on Andro
 - A dictionary of 4,983 words warns about guesses it doesn't know.
 - **Learn words** (in the menu) shows ten common dictionary words at random, with a button for ten more.
 - Helper modes mark letters for you: **Basic** reds out letters from 0-score guesses, **Advanced** works out letters from all your guesses.
-- **Duel clock**: a chess clock across two phones. Share a room link, and each guess passes the clock to the other player.
+- **Duel clock**: a chess clock across two phones. Share a room link, and each guess passes the clock to the other player. A guess can only be noted on your turn; the first one is free for either player.
 - In a duel, a guess that scores 4 can claim the win: the other phone is asked to confirm it, then both words are shown. If the other player has a turn left, they're asked only after their last guess, which can still draw. The sheet lists the wins of everyone who has played in the room, by name, and when the last game was played (UTC). Each phone keeps its own copy; when two phones meet, the one with the later game wins. Words lock once the clocks start; **New game** frees them and restarts both clocks.
 - Everything stays on your phone. The duel clock is the only part that goes online, connecting the two phones directly.
 

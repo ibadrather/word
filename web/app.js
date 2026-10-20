@@ -77,6 +77,8 @@ async function clearColours() {
 
 async function addNote(count) {
   const word = guess;
+  // In a duel, a guess is noted only on your turn: it's what passes the clock (typing the next one is fine)
+  if (!mode.view().myTurn) return showMessage(`It's ${duel.otherName(mode.view())}'s turn`);
   if (word.length !== 4) return showMessage("Type a 4-letter word first");
   if (state.notes.some((note) => note.word === word)) return showMessage("Already noted");
 
@@ -290,14 +292,14 @@ function showMessage(text) {
   $("msg").textContent = text;
 }
 
-// The guess in its four slots, the next one to fill underlined; the scores light up once it's full
+// The guess in its four slots, the next one to fill underlined; the scores light up once it's full, on your turn
 function showGuess() {
   for (const [i, slot] of [...$("word").children].entries()) {
     slot.textContent = guess[i] ?? "";
     slot.classList.toggle("next", i === guess.length);
   }
   $("word").ariaLabel = guess ? `Your guess: ${guess.toUpperCase()}` : "Your guess";
-  $("counts").classList.toggle("ready", guess.length === 4);
+  $("counts").classList.toggle("ready", guess.length === 4 && mode.view().myTurn);
 }
 
 // --- Rendering ---
