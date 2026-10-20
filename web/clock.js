@@ -333,6 +333,7 @@ export function view() {
     peerName: peer ? (names[peer] ?? "") : (departed ?? gone ?? ""), // as their phone sent it; "" before it has
     joinedAt,
     started: started(clock, minutes),
+    myTurn: !joined || clock.running !== "theirs", // a guess can be noted unless the other player's clock is running
     inPlay: inPlay(clock, minutes, now),
     error,
     mine: side("mine"),
