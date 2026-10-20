@@ -1,11 +1,14 @@
-// How you play: face to face, or online with the duel clock. This is the one place that knows which of them is on. It
-// ticks the menu's choice, shows that mode's dock, rejoins only that mode's room on load, opens shared links, and is
-// what app.js goes through to note a guess, start a new game, render and tick. Each online mode keeps its own logic
-// (clock.js) and screens (duel.js); the screens fill in their own dock, and only this file shows or hides it.
+// How you play: face to face, or online with the duel clock or in a group game. This is the one place that knows which
+// of them is on. It ticks the menu's choice, shows that mode's dock, rejoins only that mode's room on load, opens shared
+// links, and is what app.js goes through to note a guess, start a new game, render and tick. Each online mode keeps its
+// own logic (clock.js, group.js) and screens (duel.js, lobby.js); the screens fill in their own dock, and only this
+// file shows or hides it.
 
 import { ask } from "./ask.js";
 import * as clock from "./clock.js";
 import * as duel from "./duel.js";
+import * as group from "./group.js";
+import * as lobby from "./lobby.js";
 import { roomFromLink } from "./room.js";
 
 const STORAGE_KEY = "word-mode";
@@ -15,6 +18,7 @@ const $ = (id) => document.getElementById(id);
 // links carry the room in, and what the page calls them
 const ONLINE = {
   duel: { logic: clock, screens: duel, dock: "dock", param: "room", called: "the duel" },
+  group: { logic: group, screens: lobby, dock: "group-dock", param: "group", called: "the group game" },
 };
 
 let saved = "face"; // the mode that was on when last rendered: on load, only its room is rejoined
@@ -53,20 +57,23 @@ export function init() {
   }
 }
 
-// "How you play": an online mode opens its sheet in the menu's place; Face to face leaves the one that's on without
-// asking
-function choose(event) {
-  const online = ONLINE[event.target.value];
-  if (online) {
-    $("menu").close();
-    online.screens.open();
-  } else {
-    ONLINE[current()]?.logic.disconnect();
+// "How you play": an online mode opens its sheet in the menu's place. Another mode leaves the one that's on, which asks
+// first only mid-way through a group game, as leaving it counts as losing.
+async function choose(event) {
+  const picked = event.target.value;
+  const on = current();
+  showChoice(on); // an online mode stays unchecked until it's really on
+  if (picked !== on && ONLINE[on]) {
+    if (!(await ONLINE[on].screens.leaving())) return;
+    ONLINE[on].logic.disconnect();
   }
-  showChoice(current()); // an online mode stays unchecked until it's really on
+  if (ONLINE[picked]) {
+    $("menu").close();
+    ONLINE[picked].screens.open();
+  }
 }
 
-// A shared link (?room=… for the duel) opens the mode it's for, once: the address loses the room, so a refresh or
+// A shared link (?room=… for the duel, ?group=… for the group game) opens the mode it's for, once: the address loses the room, so a refresh or
 // bookmark doesn't ask again. If another online mode is on, it asks before leaving it.
 export async function openLink() {
   const [name, room] =
@@ -87,6 +94,18 @@ export async function openLink() {
 
 // Whether a guess can be noted now: "" if it can, or else why not, in the page's words
 export const turn = () => ONLINE[current()]?.screens.turn() ?? "";
+
+// What the page shows in place of its own game, for a mode that keeps the game itself (the group game): { book: the
+// key colours and helper, notes, time }, or null
+export const page = () => ONLINE[current()]?.screens.page?.() ?? null;
+
+// A guess for a mode that scores it itself: "" once it's noted, or why it wasn't
+export const guess = (word) => ONLINE[current()]?.screens.guess(word) ?? "";
+
+// The page changed the mode's book (its key colours or helper)
+export function saveBook() {
+  ONLINE[current()]?.logic.save?.();
+}
 
 // A guess was noted. app.js renders the page after it.
 export function note(word, count) {

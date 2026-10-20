@@ -1,6 +1,6 @@
 <img src="web/icon.png" alt="WORD logo" width="96">
 
-A phone notepad for a two-player 4-letter word guessing game, with an optional chess clock shared between two phones.
+A phone notepad for a two-player 4-letter word guessing game, with an optional chess clock shared between two phones, and a group game for 2 to 4 phones.
 
 **Play: https://ibadrather.github.io/word**
 
@@ -19,7 +19,8 @@ Install it from the browser (**Add to Home Screen**, or **Install app** on Andro
 - Helper modes mark letters for you: **Basic** reds out letters from 0-score guesses, **Advanced** works out letters from all your guesses.
 - **Duel clock**: a chess clock across two phones. Share a room link, and each guess passes the clock to the other player. A guess can only be noted on your turn; the first one is free for either player.
 - In a duel, a guess that scores 4 can claim the win: the other phone is asked to confirm it, then both words are shown. If the other player has a turn left, they're asked only after their last guess, which can still draw. The sheet lists the wins of everyone who has played in the room, by name, and when the last game was played (UTC). Each phone keeps its own copy; when two phones meet, the one with the later game wins. Words lock once the clocks start; **New game** frees them and restarts both clocks.
-- Everything stays on your phone. The duel clock is the only part that goes online, connecting the two phones directly.
+- **Group game**: 2 to 4 phones in a room guess one word the computer deals, taking turns with a clock each. Every guess is scored for you and shows on every phone. Only dictionary words count, never one already guessed. Once someone gets it, the players after them in the round get one last guess, so a draw is still possible. Running out of time or leaving puts you out. The room keeps a wins board by name.
+- Everything stays on your phone. The duel clock and the group game are the only parts that go online, connecting the phones directly.
 
 ## Dev
 ```sh
