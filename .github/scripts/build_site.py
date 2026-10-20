@@ -31,13 +31,18 @@ DEFAULT_BRANCH = "main"
 BETA_BRANCH = "staging"  # its copy is the beta, at beta/ rather than staging/staging/
 VERSION_SLOT = '<span class="version">dev</span>'
 
+# A file, or files to try in order: the first one the branch has is used.
+Files = str | tuple[str, ...]
+
 # What keeps a staging copy apart from the live game: (file, text, replacement).
-# {folder} (staging/<slug>, or beta) and {name} are filled in. The duel's app id
-# keeps its rooms apart too, so a staging phone only ever meets another phone on
-# the same branch. A file the branch doesn't have is skipped (main has no
-# clock.js); one that has lost its text stops the branch, as its copy would
+# {folder} (staging/<slug>, or beta) and {name} are filled in. The app id keeps
+# the duel's and the group game's rooms apart too, so a staging phone only ever
+# meets another phone on the same branch. It is in room.js on newer branches,
+# which still have a clock.js without it, so room.js is tried first. A file the
+# branch doesn't have is skipped (older branches have no room.js, modes.js or
+# group.js); one that has lost its text stops the branch, as its copy would
 # share the live game's storage.
-SEPARATE = (
+SEPARATE: tuple[tuple[Files, str, str], ...] = (
     (
         "app.js",
         'const STORAGE_KEY = "guess-word-v2"',
@@ -49,9 +54,19 @@ SEPARATE = (
         'const STORAGE_KEY = "word-clock:{folder}"',
     ),
     (
-        "clock.js",
+        "modes.js",
+        'const STORAGE_KEY = "word-mode"',
+        'const STORAGE_KEY = "word-mode:{folder}"',
+    ),
+    (
+        ("room.js", "clock.js"),
         'const APP_ID = "ibadrather-word"',
         'const APP_ID = "ibadrather-word:{folder}"',
+    ),
+    (
+        "group.js",
+        'const STORAGE_KEY = "word-group"',
+        'const STORAGE_KEY = "word-group:{folder}"',
     ),
     (
         "sw.js",
@@ -121,12 +136,21 @@ def app_name(branch: str) -> str:
     return "Word beta" if branch == BETA_BRANCH else f"Word staging: {branch}"
 
 
+def first_file(site: pathlib.Path, files: Files) -> pathlib.Path | None:
+    """Return the first of files that site has, or None if it has none of them."""
+    for file in (files,) if isinstance(files, str) else files:
+        path = site / file
+        if path.is_file():
+            return path
+    return None
+
+
 def separate(site: pathlib.Path, branch: str) -> None:
     """Give a staging copy its own storage, offline cache and app name."""
     folder, name = folder_of(branch), app_name(branch)
-    for file, old, new in SEPARATE:
-        path = site / file
-        if path.is_file():
+    for files, old, new in SEPARATE:
+        path = first_file(site, files)
+        if path is not None:
             replace_once(path, old, new.format(folder=folder, name=html.escape(name)))
     manifest = site / "manifest.webmanifest"
     if manifest.is_file():
