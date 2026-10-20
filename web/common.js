@@ -1,6 +1,6 @@
 // Word: the common words, the dictionary's 4-letter words (words.js) that most people know
-// (1,889 of them). Only the Learn words view uses them, picking a few at random; the game still accepts every
-// word in words.js.
+// (1,889 of them). Only the Learn words view uses them, picking a few at random, never a blocked one; the game still
+// accepts every word in words.js.
 //
 // From SCOWL 2020.12.07 (http://wordlist.aspell.net): sizes 10, 20 and 35 (the words found in most dictionaries) of
 // english-words, american-words, british-words and british_z-words (Oxford spelling), keeping all-lowercase words of
@@ -43,3 +43,10 @@ export const COMMON = [
 ]
   .join(" ")
   .split(" ");
+
+// Common words that are crude, or grim for a family game, so they're never picked: Learn words doesn't show them. They
+// are still words, so they can be guessed.
+export const BLOCKED = new Set(
+  ("anal anus arse bums bust butt cock coke crap cums damn dead dope drug gays hell hoes hump kill kink knob " +
+    "lewd lust nude ogle orgy poop puke puss rape sexy slut smut snot sods suck teat tits").split(" "),
+);
