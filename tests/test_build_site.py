@@ -37,9 +37,10 @@ def test_staging_copy_has_its_own_storage(tmp_path: Path) -> None:
     copy = tmp_path / "copy"
     shutil.copytree(WEB, copy)
     site.separate(copy, "feat/duel-sheet")
-    for name, old, new in site.SEPARATE:
-        if (WEB / name).is_file():
-            text = (copy / name).read_text()
+    for files, old, new in site.SEPARATE:
+        path = site.first_file(WEB, files)
+        if path is not None:
+            text = (copy / path.name).read_text()
             assert old not in text
             filled = new.format(
                 folder="staging/feat-duel-sheet", name="Word staging: feat/duel-sheet"
@@ -60,6 +61,63 @@ def test_beta_has_its_own_storage(tmp_path: Path) -> None:
     assert "<title>Word beta</title>" in (copy / "index.html").read_text()
     manifest = json.loads((copy / "manifest.webmanifest").read_text())
     assert (manifest["name"], manifest["short_name"]) == ("Word beta", "Word beta")
+
+
+APP_ID = 'const APP_ID = "ibadrather-word"'
+STAGED_APP_ID = 'const APP_ID = "ibadrather-word:staging/feat-x"'
+
+
+def test_app_id_in_clock_js_is_separated(tmp_path: Path) -> None:
+    """An older branch, with the app id in clock.js and no room.js, is staged."""
+    site = build_site()
+    copy = tmp_path / "copy"
+    shutil.copytree(WEB, copy)
+    (copy / "room.js").unlink(missing_ok=True)
+    clock = copy / "clock.js"
+    if APP_ID not in clock.read_text():
+        clock.write_text(f"{APP_ID};\n{clock.read_text()}")
+    site.separate(copy, "feat/x")
+    assert STAGED_APP_ID in clock.read_text()
+
+
+def test_app_id_in_room_js_is_separated(tmp_path: Path) -> None:
+    """A newer branch is staged: the app id in room.js, a clock.js without it."""
+    site = build_site()
+    copy = tmp_path / "copy"
+    shutil.copytree(WEB, copy)
+    clock = copy / "clock.js"
+    clock.write_text(clock.read_text().replace(f"{APP_ID};\n", ""))
+    assert APP_ID not in clock.read_text()
+    room = copy / "room.js"
+    if not room.is_file():
+        room.write_text(f"{APP_ID};\n")
+    site.separate(copy, "feat/x")
+    assert STAGED_APP_ID in room.read_text()
+
+
+def test_group_storage_is_separated(tmp_path: Path) -> None:
+    """The group game's storage key is renamed when the branch has group.js."""
+    site = build_site()
+    copy = tmp_path / "copy"
+    shutil.copytree(WEB, copy)
+    group = copy / "group.js"
+    if not group.is_file():
+        group.write_text('const STORAGE_KEY = "word-group";\n')
+    site.separate(copy, "feat/x")
+    assert 'STORAGE_KEY = "word-group:staging/feat-x"' in group.read_text()
+
+
+def test_branch_without_group_js_is_staged(tmp_path: Path) -> None:
+    """A branch without group.js skips its entry and is still staged."""
+    site = build_site()
+    copy = tmp_path / "copy"
+    shutil.copytree(WEB, copy)
+    (copy / "group.js").unlink(missing_ok=True)
+    site.separate(copy, "feat/x")
+    assert not (copy / "group.js").exists()
+    assert (
+        'STORAGE_KEY = "guess-word-v2:staging/feat-x"' in (copy / "app.js").read_text()
+    )
 
 
 def test_staging_copy_without_its_text_is_refused(tmp_path: Path) -> None:
