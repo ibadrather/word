@@ -1,5 +1,5 @@
 // What the duel's and the group game's sheets share: the room field, sending a room's link, the time a game was
-// played, and the room's wins.
+// played, the room's wins, and chips that pick one of a few values (Learn words has some too).
 
 import { ask } from "./ask.js";
 import { shareLink } from "./room.js";
@@ -36,6 +36,11 @@ export function lowercase(input) {
     input.setSelectionRange(at, at);
   }
   return input.value;
+}
+
+// The chip in `chips` whose data-value is `value` shows as picked, and only it
+export function press(chips, value) {
+  for (const chip of chips.children) chip.ariaPressed = String(chip.dataset.value === String(value));
 }
 
 // A moment as 2026-10-18 21:40 UTC, the same on every phone wherever it is

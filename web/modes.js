@@ -96,7 +96,7 @@ export async function openLink() {
 export const turn = () => ONLINE[current()]?.screens.turn() ?? "";
 
 // What the page shows in place of its own game, for a mode that keeps the game itself (the group game): { book: the
-// key colours and helper, notes, time }, or null
+// key colours and helper, notes, time, letters, waiting, playing, empty } (lobby.js's page() says what each is), or null
 export const page = () => ONLINE[current()]?.screens.page?.() ?? null;
 
 // A guess for a mode that scores it itself: "" once it's noted, or why it wasn't

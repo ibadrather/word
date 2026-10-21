@@ -7,7 +7,7 @@ import { ask } from "./ask.js";
 import * as mode from "./group.js";
 import { formatTime } from "./helpers.js";
 import { cleanRoom } from "./room.js";
-import { lowercase, share as shareRoom, showWins } from "./sheet.js";
+import { lowercase, press, share as shareRoom, showWins } from "./sheet.js";
 
 const $ = (id) => document.getElementById(id);
 const MINUTE = 60_000;
@@ -49,12 +49,13 @@ export function init() {
   for (const button of document.querySelectorAll("#group .share")) button.addEventListener("click", share);
   for (const minutes of MINUTES) {
     const chip = Object.assign(document.createElement("button"), { type: "button", textContent: minutes });
+    chip.dataset.value = minutes;
     chip.addEventListener("click", () => mode.setMinutes(minutes));
     $("group-chips").append(chip);
   }
   for (const letters of mode.LETTERS) {
     const chip = Object.assign(document.createElement("button"), { type: "button", textContent: `${letters} letters` });
-    chip.dataset.letters = letters;
+    chip.dataset.value = letters;
     chip.addEventListener("click", () => mode.setLetters(letters));
     $("group-letter-chips").append(chip);
   }
@@ -119,14 +120,23 @@ function share(event) {
 // --- What app.js asks of the group game, through modes.js ---
 
 // Whether a guess can be noted now: "" if it can, or else why not
-export function turn(v = mode.view()) {
-  if (v.phase === "error") return "Not connected. Open the group game to try again";
-  if (v.phase !== "game") return v.seated && v.play?.over ? "This game is over. Tap Deal for another" : "Tap Deal for a word";
+export const turn = (v = mode.view()) => notYours(v).long;
+
+// Why this phone can't guess now, in a few words for the Guess button and at length for under it when it's tapped, or
+// "" for both when it can
+function notYours(v) {
+  const words = (short, long = short) => ({ short, long });
+  if (v.phase === "error") return words("Not connected", "Not connected. Open the group game to try again");
+  if (v.phase !== "game") {
+    if (v.seated && v.play?.over) return words("Game over · tap Deal", "This game is over. Tap Deal for another");
+    return words("No game yet · tap Deal", "Tap Deal for a word");
+  }
   const out = v.play.out[v.id];
-  if (out) return out === "time" ? "You're out of time" : "You left this game";
-  if (v.play.winners.includes(v.id)) return "You got it! The others get their last guess";
-  if (v.play.turn !== v.id) return `It's ${nameOf(v, v.play.turn)}'s turn`;
-  return "";
+  if (out) return words(out === "time" ? "You're out of time" : "You left this game");
+  if (v.play.winners.includes(v.id)) return words("You got it!", "You got it! The others get their last guess");
+  const name = nameOf(v, v.play.turn);
+  if (v.play.turn !== v.id) return words(`${name}'s turn`, `It's ${name}'s turn`);
+  return words("");
 }
 
 // The phone scores a guess itself: "" once it's noted, or why it wasn't (nothing is noted and the turn isn't used)
@@ -139,11 +149,11 @@ export function guess(word) {
   return turn(v);
 }
 
-// The header's Deal deals a word, only between games. app.js never clears its own game for it.
+// The header's Deal deals a word, only between games (app.js turns it off during one). app.js never clears its own
+// game for it.
 export async function newGame() {
   const v = mode.view();
-  if (v.phase === "game") await ask("A game is on. Leave it to quit.", { no: null });
-  else if (v.phase !== "lobby") open();
+  if (v.phase !== "lobby") open();
   else if (await ask(`Deal a new ${v.letters}-letter word to everyone here?`, { yes: "Deal" })) start();
   return false;
 }
@@ -164,20 +174,10 @@ export function page(v = mode.view()) {
     return { word, count, at, who: seat === v.id ? "You" : nameOf(v, seat), mine: seat === v.id, won: won && !hidden, hidden };
   });
   const letters = v.phase === "game" ? v.table.word.length : v.letters;
-  const time = p && { game: p.time, turn: p.running, over: p.over };
-  const empty = v.phase === "error" ? `${turn(v)}.` : "No game yet. Tap Deal for a word."; // the guess list, before a deal
-  return { book: mode.book(), notes, letters, time, waiting: waiting(v), playing: v.phase === "game", empty };
-}
-
-// The Guess button's words when this phone can't guess: turn() says it at length, under the button, when it's tapped
-function waiting(v) {
-  if (v.phase === "error") return "Not connected";
-  if (v.phase !== "game") return v.seated && v.play?.over ? "Game over · tap Deal" : "No game yet · tap Deal";
-  const out = v.play.out[v.id];
-  if (out) return out === "time" ? "You're out of time" : "You left this game";
-  if (v.play.winners.includes(v.id)) return "You got it!";
-  if (v.play.turn !== v.id) return `${nameOf(v, v.play.turn)}'s turn`;
-  return "";
+  const time = p && { game: p.time };
+  const { short, long } = notYours(v);
+  const empty = v.phase === "error" ? `${long}.` : "No game yet. Tap Deal for a word."; // the guess list, before a deal
+  return { book: mode.book(), notes, letters, time, waiting: short, playing: v.phase === "game", empty };
 }
 
 // --- Drawing ---
@@ -261,7 +261,6 @@ function showNote({ text, dot = "", warn = false }) {
 // players' on the dock's edge, not in a queue of notes
 function announce(v) {
   const p = v.seated ? v.play : null;
-  const picks = Object.fromEntries(v.lobby.map(({ id, picked }) => [id, picked]));
   const now = {
     game: v.table?.game ?? "",
     winners: p?.winners.length ?? 0,
@@ -270,7 +269,9 @@ function announce(v) {
     skips: skips(p),
     letters: v.letters,
     minutes: v.minutes,
-    picks,
+    picked: v.picked,
+    pickedBy: v.pickedBy,
+    here: v.lobby.map(({ id }) => id),
   };
   const before = told;
   told = now;
@@ -291,14 +292,15 @@ function announce(v) {
 const skips = (p) => p?.moves.filter((move) => move.kind === "skip").length ?? 0;
 
 // Another phone here changed the letters or the minutes: said on the dock's edge, so nobody is caught out by a change
-// they didn't make. It's the phone whose pick went up, one that was here already: a phone just joined takes up the
+// they didn't make. It's said only for a new pick by a phone that was here already: a phone just joined takes up the
 // room's choice from the others, which says nothing.
 function switched(v, before) {
+  if (v.picked === before.picked && v.pickedBy === before.pickedBy) return;
   const changes = [v.letters !== before.letters && `${v.letters} letters`, v.minutes !== before.minutes && `${v.minutes} minutes each`];
-  if (!changes.some(Boolean)) return;
-  const by = v.lobby.find(({ id, me, picked }) => !me && Object.hasOwn(before.picks, id) && picked > before.picks[id]);
+  const by = before.here.includes(v.pickedBy) && v.lobby.find(({ id, me }) => !me && id === v.pickedBy);
+  if (!by || !changes.some(Boolean)) return;
   const next = v.phase === "game" ? " for the next word" : "";
-  if (by) say(`${by.name || "Someone"} switched to ${changes.filter(Boolean).join(" and ")}${next}`);
+  say(`${by.name || "Someone"} switched to ${changes.filter(Boolean).join(" and ")}${next}`);
 }
 
 function say(text) {
@@ -407,8 +409,9 @@ function showSheet(v) {
   $("group-in-room").hidden = alone || !["lobby", "game"].includes(screen);
   showOn("group-share", "lobby"); // mid-game, a phone that joins is turned away
   $("group-name-field").hidden = !["setup", "join"].includes(screen) && !naming;
-  showOn("group-minutes", "setup", "lobby");
-  showOn("group-letters", "setup", "lobby", "game"); // during a game, for the next one
+  // Picked in the room, so a pick is never lost to the choice of the phones already there
+  showOn("group-minutes", "lobby");
+  showOn("group-letters", "lobby", "game"); // during a game, for the next one
   showOn("group-go", "setup", "join", "error");
   showOn("group-start", "lobby");
   showOn("group-not-now", "join");
@@ -434,6 +437,6 @@ function showSheet(v) {
   $("group-letters-label").textContent = screen === "game" ? "Letters in the next word" : "Letters in the word";
   if (screen === "lobby" || screen === "game") showPlayers(v, screen);
   showWins($("group-wins-list"), $("group-wins-when"), v.board, v.name, v.playedAt);
-  for (const chip of $("group-chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
-  for (const chip of $("group-letter-chips").children) chip.ariaPressed = String(Number(chip.dataset.letters) === v.letters);
+  press($("group-chips"), v.minutes);
+  press($("group-letter-chips"), v.letters);
 }

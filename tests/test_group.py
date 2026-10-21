@@ -272,16 +272,21 @@ def test_five_letters(steps: dict[str, dict[str, object]]) -> None:
 def test_the_room_chooses_the_letters(steps: dict[str, dict[str, object]]) -> None:
     """Every phone deals with the room's letters and minutes, not its own.
 
-    The latest pick wins; before anyone picks, or for picks made at once,
-    the phone that has been in the room longest.
+    The latest pick wins, and for picks made at once, the higher phone id's.
+    Before anyone picks, a phone that joins takes up the choice of the phone
+    that was there, and keeps it when that phone joins again later.
     """
-    host = {"letters": 5, "minutes": 3}
-    guest = {"letters": 4, "minutes": 10}
+    host = {"letters": 5, "minutes": 3, "picked": 0, "pickedBy": ""}
+    guest_pick = {"letters": 4, "minutes": 3, "picked": 1, "pickedBy": "b"}
+    both_picked = {"letters": 4, "minutes": 10, "picked": 1, "pickedBy": "b"}
     assert steps["chosen"] == {
-        "nobodyPicked": host,
-        "guestPicked": guest,
-        "hostPickedAgain": host,
-        "sameTime": host,
+        "joined": host,
+        "hostKeeps": host,
+        "rejoined": host,
+        "guestPicked": guest_pick,
+        "olderUnpicked": guest_pick,
+        "hostPickedAgain": {**guest_pick, "minutes": 10, "picked": 2, "pickedBy": "a"},
+        "sameTime": [both_picked, both_picked],
     }
 
 

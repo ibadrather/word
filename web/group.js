@@ -254,6 +254,7 @@ export function message(table, now) {
 
 const MINUTES = (value) => Math.min(60, Math.max(1, Math.round(Number(value)) || 10));
 export const LETTERS = [4, 5]; // the words a game can deal, by length
+const LETTER = (value) => (LETTERS.includes(Number(value)) ? Number(value) : 4);
 
 // Another phone's message as a table on this phone, started `elapsed` ms before `now` by this phone's clock, or null
 // if it isn't one. Everything in it is checked, as it comes from another phone.
@@ -285,12 +286,14 @@ export function received(data, now) {
   return { game: `${dealer}:${deal}`, deal, dealer, word, minutes: MINUTES(data.minutes), seats, moves, quit, at: now - elapsed };
 }
 
-// The letters and minutes the next deal uses, from the phones here ([{ letters, minutes, picked }], in the order they
-// joined): the latest pick wins, and before anyone here has picked, the choice of the phone that has been here longest.
-// Every phone that sees the same lobby works out the same, so it doesn't matter which of them deals.
-export function chosen(phones) {
-  const { letters, minutes } = phones.reduce((best, phone) => (phone.picked > best.picked ? phone : best));
-  return { letters, minutes };
+// Whether another phone's choice for the next deal ({ letters, minutes, picked, pickedBy }) is the room's rather than
+// this phone's: the latest pick wins, and two picks made at once go to the higher phone id. Before anyone here has
+// picked, the phone that has been here longer (`older`) keeps its choice, so a phone that joins takes up the room's.
+// Once taken up the choice is this phone's own, so coming back to the room later never changes it.
+export function laterPick(theirs, ours, older) {
+  if (theirs.picked !== ours.picked) return theirs.picked > ours.picked;
+  if (theirs.pickedBy !== ours.pickedBy) return theirs.pickedBy > ours.pickedBy;
+  return older && (theirs.letters !== ours.letters || theirs.minutes !== ours.minutes);
 }
 
 // --- Results and the wins board. A room's results: { [game]: { at: when it ended, in UTC ms, players: [names],
@@ -316,8 +319,7 @@ export function mergedResults(ours, theirs) {
     const at = Number(entry?.at) || 0;
     const moves = Math.max(0, Number(entry?.moves) || 0);
     if (all[game] && all[game].moves >= moves) continue;
-    const letters = LETTERS.includes(Number(entry?.letters)) ? Number(entry.letters) : 4;
-    all[game] = { at, players: names(entry?.players), winners: names(entry?.winners), moves, letters };
+    all[game] = { at, players: names(entry?.players), winners: names(entry?.winners), moves, letters: LETTER(entry?.letters) };
   }
   return Object.fromEntries(Object.entries(all).sort(([, a], [, b]) => b.at - a.at).slice(0, KEPT));
 }
@@ -346,13 +348,14 @@ export function wins(results) {
 
 // --- The mode in the browser ---
 // Saved: { id: this phone's, kept for good, name: required, room: as typed, madeUp: the room made up for this phone,
-//         joined: whether the group game is on (the room is rejoined on load), minutes and letters: this phone's
-//         choice for the next deal, picked: how many picks in this room led to it (0 until it picks here), table: the
-//         game this phone is seated in, or the last one, played: the room that game is in (the room typed on the setup
-//         screen may already be another), book: { colours, helper } the key colours and helper this phone uses in the
-//         group game, apart from the solo game's, results: { room: results }, each room's own games }
+//         joined: whether the group game is on (the room is rejoined on load), minutes and letters: the room's choice
+//         for the next deal, picked: how many picks in this room led to it (0 until someone picks here), pickedBy: the
+//         id of the phone that made the last of them ("" before that), table: the game this phone is seated in, or the
+//         last one, played: the room that game is in (the room typed on the setup screen may already be another),
+//         book: { colours, helper } the key colours and helper this phone uses in the group game, apart from the solo
+//         game's, results: { room: results }, each room's own games }
 
-const EMPTY = { id: "", name: "", room: "", madeUp: "", joined: false, minutes: 5, letters: 4, picked: 0, table: null, played: "", book: { colours: {}, helper: "" }, results: {} };
+const EMPTY = { id: "", name: "", room: "", madeUp: "", joined: false, minutes: 5, letters: 4, picked: 0, pickedBy: "", table: null, played: "", book: { colours: {}, helper: "" }, results: {} };
 const CHANNELS = ["hello", "table", "results", "bye"];
 
 let state = { ...EMPTY };
@@ -361,8 +364,8 @@ let onChange = () => {};
 // lobby); "table" goes only to seated phones, and each phone passes on a table it adopts, so phones that can't reach
 // each other still agree; "results" are the room's games; "bye" is sent on Leave
 let room = null;
-// peer id → { id, name, since: when it joined the room, by this phone's clock, letters, minutes, picked: its choice for
-// the next deal, game: { deal, dealer, seats } while one is on }
+// peer id → { id, name, since: when it joined the room, by this phone's clock, game: { deal, dealer, seats } while one
+// is on }
 let peers = {};
 let joinedAt = 0; // when this phone joined the room
 let awaySince = {}; // seat id → when this phone last saw it go, for the 30 s a player has to come back
@@ -438,9 +441,9 @@ export function connect(name, typed) {
   leaveRoom(); // Try again comes here too, from whatever is left of the failed join
   error = "";
   // A game from another room is dropped, so it's never recorded in this one; in the same room, a seated phone takes its
-  // seat again. The letters and minutes are the room's until this phone picks there.
+  // seat again. The letters and minutes are the room's, if anyone is there: this phone's choice gives way to theirs.
   const table = typed === state.played ? state.table : null;
-  state = { ...state, name, room: typed, joined: true, table, played: table ? typed : "", picked: 0 };
+  state = { ...state, name, room: typed, joined: true, table, played: table ? typed : "", picked: 0, pickedBy: "" };
   save();
   join();
   onChange();
@@ -468,8 +471,7 @@ export function deal() {
   const players = lobby().filter((player) => !player.taken);
   if (players.length < 2) return "alone";
   const deal = Math.max(state.table?.deal ?? 0, heardDeal) + 1;
-  const { letters, minutes } = chosen(lobby());
-  adopt(dealt(players.slice(0, SEATS), state.id, minutes, deal, now, Math.random, letters));
+  adopt(dealt(players.slice(0, SEATS), state.id, state.minutes, deal, now, Math.random, state.letters));
   shareTable();
   onChange();
   return "";
@@ -492,8 +494,7 @@ export function setLetters(letters) {
 
 // A chip tapped: the room's choice with this change, later than any pick here, so every phone here takes it up
 function pick(change) {
-  const phones = lobby();
-  state = { ...state, ...chosen(phones), ...change, picked: Math.max(...phones.map((phone) => phone.picked)) + 1 };
+  state = { ...state, ...change, picked: state.picked + 1, pickedBy: state.id };
   save();
   if (state.joined) hello();
   onChange();
@@ -530,33 +531,36 @@ export function view() {
     if (seat.id !== state.id && !here(seat.id)) away[seat.id] = Math.max(0, AWAY - (now - (awaySince[seat.id] ?? now)));
   }
   const { board, at } = wins(state.results[state.room] ?? {});
-  const { letters, minutes } = chosen(lobby());
+  const phones = lobby();
+  const sat = seated(state.id);
   return {
     active: state.joined,
-    phase: !state.joined ? "off" : error ? "error" : gameOn() ? "game" : "lobby",
+    phase: !state.joined ? "off" : error ? "error" : sat && !p.over ? "game" : "lobby",
     error,
     id: state.id,
     name: state.name,
     room: state.room,
     madeUp: state.madeUp,
-    minutes,
-    letters,
-    lobby: lobby(),
-    taken: taken(),
+    minutes: state.minutes,
+    letters: state.letters,
+    picked: state.picked,
+    pickedBy: state.pickedBy,
+    lobby: phones,
+    taken: phones.find((phone) => phone.me).taken,
     table,
     play: p,
-    seated: seated(state.id),
+    seated: sat,
     away,
     board,
     playedAt: at,
   };
 }
 
-// The phones here, this one included, in the order they joined the room: [{ id, name, me, taken, letters, minutes,
-// picked }]. A name that an earlier phone has is taken, and that phone can't play until it picks another.
+// The phones here, this one included, in the order they joined the room: [{ id, name, me, taken }]. A name that an
+// earlier phone has is taken, and that phone can't play until it picks another.
 function lobby() {
-  const { id, name, letters, minutes, picked } = state;
-  const phones = new Map([[id, { id, name, since: joinedAt, me: true, letters, minutes, picked }]]);
+  const { id, name } = state;
+  const phones = new Map([[id, { id, name, since: joinedAt, me: true }]]);
   for (const peer of Object.values(peers)) if (!phones.has(peer.id)) phones.set(peer.id, { ...peer, me: false });
   const list = [...phones.values()].sort((a, b) => a.since - b.since || order(a.id, b.id));
   return list.map((phone, i) => ({
@@ -564,9 +568,6 @@ function lobby() {
     name: phone.name,
     me: phone.me,
     taken: list.slice(0, i).some((other) => other.name.toLowerCase() === phone.name.toLowerCase()),
-    letters: phone.letters,
-    minutes: phone.minutes,
-    picked: phone.picked,
   }));
 }
 
@@ -616,9 +617,9 @@ function commit(table) {
   onChange();
 }
 
-// A game that's over, in the results of the room it was played in, which is the room joined
+// A game that's over, in the results of the room it was played in, which is the room joined: connect() drops a game
+// from any other room
 function record(now) {
-  if (state.played !== state.room) return;
   const results = state.results[state.room] ?? {};
   const entry = result(state.table, now);
   if (!entry || (results[state.table.game]?.moves ?? -1) >= entry.moves) return;
@@ -633,13 +634,15 @@ function send(channel, data, to) {
   if (room) room.send(channel, data, to);
 }
 
-// Who this phone is, how long it has been here, its choice for the next deal, and the game it's in while one is on
+// Who this phone is, how long it has been here, the room's choice for the next deal as this phone has it, and the game
+// it's in while one is on
 function hello(to) {
   const { table } = state;
   const on = table && !play(table, Date.now()).over;
   const game = on ? { deal: table.deal, dealer: table.dealer, seats: table.seats.map((seat) => seat.id) } : null;
-  const { id, name, letters, minutes, picked } = state;
-  send("hello", { id, name, joined: Date.now() - joinedAt, deal: table?.deal ?? 0, game, letters, minutes, picked }, to);
+  const { id, name, letters, minutes, picked, pickedBy } = state;
+  const joined = Date.now() - joinedAt;
+  send("hello", { id, name, joined, deal: table?.deal ?? 0, game, letters, minutes, picked, pickedBy }, to);
 }
 
 // The table to every seated phone here, but `except` (the one it came from)
@@ -673,12 +676,12 @@ const heard = {
     const seats = Array.isArray(data.game?.seats) ? data.game.seats.slice(0, SEATS).map(String) : null;
     const game = seats && { deal: Number(data.game.deal) || 0, dealer: String(data.game.dealer ?? ""), seats };
     const since = peers[peerId]?.since ?? Date.now() - Math.max(0, Number(data.joined) || 0);
-    const letters = LETTERS.includes(Number(data.letters)) ? Number(data.letters) : 4;
+    peers[peerId] = { id, name: String(data.name ?? "").slice(0, NAME), since, game };
+    // The room's choice is kept here too, so it stays the room's after the phone that made it has gone
     const picked = Math.max(0, Math.floor(Number(data.picked)) || 0);
-    peers[peerId] = { id, name: String(data.name ?? "").slice(0, NAME), since, letters, minutes: MINUTES(data.minutes), picked, game };
-    // A later pick is kept here too, so it stays the room's after the phone that made it has gone
-    if (picked > state.picked) {
-      state = { ...state, letters, minutes: MINUTES(data.minutes), picked };
+    const theirs = { letters: LETTER(data.letters), minutes: MINUTES(data.minutes), picked, pickedBy: String(data.pickedBy ?? "") };
+    if (laterPick(theirs, state, since < joinedAt)) {
+      state = { ...state, ...theirs };
       save();
     }
     delete awaySince[id];
