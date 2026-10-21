@@ -33,6 +33,9 @@ VERSION_SLOT = '<span class="version">dev</span>'
 # The beta's app icons, with BETA across them, so its installed app stands
 # apart from the live one on a home screen
 BETA_ICONS = pathlib.Path(__file__).parent.parent / "beta"
+# The page's tab icon, drawn inline, which the beta swaps for its BETA icon
+FAVICON = re.compile(r'<link rel="icon" href="[^"]*">')
+BETA_FAVICON = '<link rel="icon" type="image/png" href="icon-192.png">'
 
 # A file, or files to try in order: the first one the branch has is used.
 Files = str | tuple[str, ...]
@@ -151,7 +154,7 @@ def first_file(site: pathlib.Path, files: Files) -> pathlib.Path | None:
 def separate(site: pathlib.Path, branch: str) -> None:
     """Give a staging copy its own storage, offline cache and app name.
 
-    The beta gets its own icons too.
+    The beta gets its own icons too, in the browser tab as well as the app.
     """
     folder, name = folder_of(branch), app_name(branch)
     for files, old, new in SEPARATE:
@@ -168,6 +171,12 @@ def separate(site: pathlib.Path, branch: str) -> None:
         for icon in BETA_ICONS.glob("*.png"):
             if (site / icon.name).is_file():
                 shutil.copyfile(icon, site / icon.name)
+        page = site / "index.html"
+        text, count = FAVICON.subn(BETA_FAVICON, page.read_text())
+        if count != 1:
+            message = f"index.html has {count} tab icons, not one"
+            raise StageError(message)
+        page.write_text(text)
 
 
 def branches() -> list[str]:

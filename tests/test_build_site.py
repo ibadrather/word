@@ -74,6 +74,8 @@ def test_beta_has_its_own_icons(tmp_path: Path) -> None:
         site.separate(copy, branch)
         for icon in icons:
             assert (copy / icon).read_bytes() == (source / icon).read_bytes()
+        is_beta = site.BETA_FAVICON in (copy / "index.html").read_text()
+        assert is_beta == (branch == "staging")
 
 
 APP_ID = 'const APP_ID = "ibadrather-word"'
