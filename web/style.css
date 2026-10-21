@@ -135,7 +135,7 @@ button, select {
 .msg { min-height: 1.4em; margin: 4px 0; text-align: center; font-size: .9rem; font-weight: 600; color: var(--error); }
 .msg.calm { color: var(--muted); }
 
-/* The guess: four slots filled from the page's keyboard, the next one to fill underlined */
+/* The guess: a slot a letter filled from the page's keyboard, the next one to fill underlined */
 .slots { display: flex; justify-content: center; gap: 12px; margin: 0; }
 .slots span {
   display: grid;
@@ -257,6 +257,8 @@ button, select {
 .notes { margin: 0; padding: 0; list-style: none; }
 .notes li { display: flex; align-items: center; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .notes li:last-child { border-bottom: 0; }
+/* A 5-letter group game's guesses have narrower tiles, so a row still fits beside the player's name */
+.notes li.five .tile { width: 34px; }
 .notes .empty { padding: 12px 0; color: var(--muted); font-size: .9rem; }
 /* When in the game it was noted: small and quiet, pushed right next to the score */
 .notes .at { margin: 0 6px 0 auto; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -368,6 +370,8 @@ button, select {
 .tiles .again { box-shadow: inset 0 0 0 2px var(--line); color: var(--muted); }
 .example .score { width: 30px; height: 30px; font-size: .95rem; }
 .example p { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
+/* Each count over its label, so the 5-digit one fits the narrowest drawer */
+.dictionary-row { flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 12px; }
 .dictionary-label { font-size: .95rem; font-weight: 600; white-space: nowrap; }
 
 /* "How you play": two cards, the chosen one outlined. Real radios, hidden but still focusable. */
@@ -583,6 +587,12 @@ body.learning main, body.learning .dock { display: none; }
 }
 /* Two words still fit side by side on the narrowest phones */
 @media (max-width: 360px) { .learn-words b { width: 28px; height: 34px; } }
+/* Five letters to a word: smaller tiles, so two words still fit side by side */
+.learn-words.five b { width: 26px; height: 32px; font-size: .95rem; }
+@media (max-width: 360px) {
+  .learn-words.five li { gap: 2px; }
+  .learn-words.five b { width: 23px; height: 30px; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .learn-words li { animation: rise .3s cubic-bezier(.2, .8, .2, 1) backwards; }
 }
