@@ -3,6 +3,7 @@
 import { BLOCKED, COMMON } from "../web/common.js";
 import { BLOCKED as BLOCKED5, COMMON as COMMON5 } from "../web/common5.js";
 import {
+  chosen,
   dealing,
   dealt,
   guessed,
@@ -297,6 +298,17 @@ out.fiveLetters = {
   // Sent to another phone, the guesses keep all five letters
   sent: received(message(t, 3_000), 3_000).moves.map((move) => move.word),
   fiveInFour: guess(table([ASHA, BEN], "stop", 1, 0), "a", "stone", 1_000),
+};
+
+// --- The room's choice for the next deal: the same whichever phone works it out, so whoever deals uses it ---
+
+const host = { letters: 5, minutes: 3, picked: 0 }; // here first, never picked here
+const guest = { letters: 4, minutes: 10, picked: 0 };
+out.chosen = {
+  nobodyPicked: chosen([host, guest]),
+  guestPicked: chosen([host, { ...guest, picked: 1 }]),
+  hostPickedAgain: chosen([{ ...host, picked: 2 }, { ...guest, picked: 1 }]),
+  sameTime: chosen([{ ...host, picked: 1 }, { ...guest, picked: 1 }]),
 };
 
 console.log(JSON.stringify(out));
