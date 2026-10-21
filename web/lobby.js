@@ -322,8 +322,12 @@ function ending(v) {
   let text = Object.values(p.out).every((reason) => reason === "time") ? "Time's up for everyone. Nobody got it." : "Nobody got it.";
   if (winners.length === 1) text = winners[0] === "you" ? "You win!" : `${winners[0]} wins!`;
   if (winners.length > 1) text = `${capital(listed(winners))} ${winners.length === 2 ? "both" : "all"} got it: a draw.`;
-  ask(`${text} The word was`, { no: null, word: v.table.word });
+  ask(`${text} The word was`, { no: null, word: v.table.word, meaning: meaningOf(v.table.word) });
 }
+
+// The word's brief meaning, or "" for a word without one. meanings.js is big, so it loads only when a game ends.
+const meaningOf = (word) =>
+  import("./meanings.js").then(({ MEANINGS }) => (Object.hasOwn(MEANINGS, word) ? MEANINGS[word] : ""), () => "");
 
 // The players' names, "you" first if you're one of them
 const names = (v, ids) => [...ids].sort((a, b) => (b === v.id) - (a === v.id)).map((id) => (id === v.id ? "you" : nameOf(v, id)));

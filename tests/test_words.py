@@ -58,3 +58,16 @@ def test_common_header_states_the_count(letters: int) -> None:
     name = COMMON_SOURCES[letters]
     text = source(name)
     assert f"({len(entries(name)):,} of them)" in text
+
+
+def test_meanings_are_for_words_the_game_deals() -> None:
+    """Every meaning is for a common word, sorted and one each, and says something."""
+    meanings = re.findall(
+        r'^ {2}([a-z]+): "(.+)",$', source("meanings.js"), re.MULTILINE
+    )
+    words = [word for word, _ in meanings]
+    assert sorted(set(words)) == words
+    common = {word for name in COMMON_SOURCES.values() for word in entries(name)}
+    assert set(words) <= common
+    assert all(meaning.strip() for _, meaning in meanings)
+    assert f"({len(words):,} of them)" in source("meanings.js")

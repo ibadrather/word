@@ -643,6 +643,7 @@ body.learning main, body.learning .dock { display: none; }
   font-size: 1.3rem;
   text-transform: uppercase;
 }
+.ask .ask-meaning { margin-top: -6px; color: var(--muted); font-weight: 400; font-size: .95rem; }
 .ask button { min-height: 44px; border-radius: 14px; }
 .ask button:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) {
