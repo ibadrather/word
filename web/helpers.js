@@ -36,6 +36,20 @@ export function randomWords(count, random = Math.random, letters = 4) {
   return words.slice(0, count);
 }
 
+// The common words' brief meanings (meanings.js): { word: meaning }. It's big, so it loads the first time it's asked
+// for (Learn words, the end of a group game); {} if it can't, and it's tried again next time.
+let meanings;
+export function loadMeanings() {
+  meanings ??= import("./meanings.js").then(
+    ({ MEANINGS }) => MEANINGS,
+    () => {
+      meanings = undefined;
+      return {};
+    },
+  );
+  return meanings;
+}
+
 // --- Scoring: how many of a guess's letters are in the word. ---
 
 export const score = (guess, word) => [...new Set(guess)].filter((letter) => word.includes(letter)).length;

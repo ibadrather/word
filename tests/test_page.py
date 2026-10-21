@@ -54,7 +54,7 @@ def test_page_loads_nothing_from_other_sites() -> None:
     links = re.findall(r'(?:href|src)="([^"]*)"', (WEB / "index.html").read_text())
     links += re.findall(r'url\("?([^")]*)', (WEB / "style.css").read_text())
     for link in links:
-        if not link.startswith("data:"):
+        if not link.startswith(("data:", "#")):  # a "#" link is a view of the page itself
             assert (WEB / link).is_file(), link
 
 

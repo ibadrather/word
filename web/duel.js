@@ -7,7 +7,7 @@ import { ask } from "./ask.js";
 import * as mode from "./clock.js";
 import { formatTime } from "./helpers.js";
 import { cleanRoom } from "./room.js";
-import { lowercase, press, share as shareRoom, showWins } from "./sheet.js";
+import { lowercase, press, share as shareRoom, showWins, winsLine } from "./sheet.js";
 import { playerName } from "./wins.js";
 
 const $ = (id) => document.getElementById(id);
@@ -157,6 +157,12 @@ export async function newGame() {
   if (!(await ask("Clear your word, guesses and key colours, and restart both clocks?", { yes: "New game" }))) return false;
   mode.newGame(); // tells the other phone too
   return true;
+}
+
+// The menu's "Now playing" card: the room, the other player and the room's wins (modes.js)
+export function status(v = mode.view()) {
+  const who = v.phase === "waiting" ? waitingFor(v) : v.phase === "error" ? problem(v) : STATUS[v.phase]?.(otherName(v));
+  return { title: "Duel clock", lines: [`Room ${v.room}`, who, winsLine(v.board, v.me)], dot: dotFor(v.phase), open: "Open the duel clock" };
 }
 
 // The host's other player is player two, and the other way round, until their phone sends a name

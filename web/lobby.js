@@ -5,9 +5,9 @@
 
 import { ask } from "./ask.js";
 import * as mode from "./group.js";
-import { formatTime } from "./helpers.js";
+import { formatTime, loadMeanings } from "./helpers.js";
 import { cleanRoom } from "./room.js";
-import { lowercase, press, share as shareRoom, showWins } from "./sheet.js";
+import { lowercase, press, share as shareRoom, showWins, winsLine } from "./sheet.js";
 
 const $ = (id) => document.getElementById(id);
 const MINUTE = 60_000;
@@ -137,6 +137,15 @@ function notYours(v) {
   const name = nameOf(v, v.play.turn);
   if (v.play.turn !== v.id) return words(`${name}'s turn`, `It's ${name}'s turn`);
   return words("");
+}
+
+// The menu's "Now playing" card: the room, who's here, how the game is going and the room's wins (modes.js)
+export function status(v = mode.view()) {
+  const letters = v.phase === "game" ? v.table.word.length : v.letters;
+  const where = v.phase === "error" ? `Room ${v.room}` : `Room ${v.room} · ${v.lobby.length} here · ${letters} letters`;
+  const doing = v.phase === "error" ? problem(v) : notYours(v).short || "Your turn";
+  const dot = v.phase === "error" ? "" : v.lobby.length < 2 ? "wait" : "live";
+  return { title: "Group game", lines: [where, doing, winsLine(v.board, v.name)], dot, open: "Open the room" };
 }
 
 // The phone scores a guess itself: "" once it's noted, or why it wasn't (nothing is noted and the turn isn't used)
@@ -325,9 +334,8 @@ function ending(v) {
   ask(`${text} The word was`, { no: null, word: v.table.word, meaning: meaningOf(v.table.word) });
 }
 
-// The word's brief meaning, or "" for a word without one. meanings.js is big, so it loads only when a game ends.
-const meaningOf = (word) =>
-  import("./meanings.js").then(({ MEANINGS }) => (Object.hasOwn(MEANINGS, word) ? MEANINGS[word] : ""), () => "");
+// The word's brief meaning, or "" for a word without one
+const meaningOf = (word) => loadMeanings().then((meanings) => (Object.hasOwn(meanings, word) ? meanings[word] : ""));
 
 // The players' names, "you" first if you're one of them
 const names = (v, ids) => [...ids].sort((a, b) => (b === v.id) - (a === v.id)).map((id) => (id === v.id ? "you" : nameOf(v, id)));

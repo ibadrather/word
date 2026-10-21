@@ -99,6 +99,16 @@ export const turn = () => ONLINE[current()]?.screens.turn() ?? "";
 // key colours and helper, notes, time, letters, waiting, playing, empty } (lobby.js's page() says what each is), or null
 export const page = () => ONLINE[current()]?.screens.page?.() ?? null;
 
+// The menu's "Now playing" card for an online mode, in its own words: { title, lines, dot, open: the button's label },
+// or null face to face, which app.js words itself
+export const status = () => ONLINE[current()]?.screens.status() ?? null;
+
+// The card's button: the online mode's sheet
+export const openSheet = () => ONLINE[current()]?.screens.open();
+
+// The way you play that's on: "face", "duel" or "group"
+export const on = () => current();
+
 // A guess for a mode that scores it itself: "" once it's noted, or why it wasn't
 export const guess = (word) => ONLINE[current()]?.screens.guess(word) ?? "";
 

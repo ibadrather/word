@@ -46,6 +46,10 @@ export function press(chips, value) {
 // A moment as 2026-10-18 21:40 UTC, the same on every phone wherever it is
 export const utc = (ms) => `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
+// The room's wins in a line for the menu, this phone's player (`me`) as You: "Wins: You 2 · Sam 1"
+export const winsLine = (board, me) =>
+  board.length ? `Wins: ${board.map(({ name, won }) => `${name === me ? "You" : name} ${won}`).join(" · ")}` : "No wins here yet";
+
 // The room's wins into `list`, one row a player who has played here, this phone's player (`me`) marked, and when the
 // last game was played into `when`. A group game's row also says how many of the wins were of 4 letters and of 5.
 export function showWins(list, when, board, me, playedAt) {

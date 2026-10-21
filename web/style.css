@@ -331,12 +331,9 @@ button, select {
 }
 .close:active { filter: brightness(.9); }
 
-.intro { margin: 16px 0 0; font-size: .95rem; }
-.intro b { color: var(--heading); }
-
 /* Small section labels */
-.menu h3 {
-  margin: 22px 0 10px;
+.menu-label, .view-label {
+  margin: 22px 0 8px;
   font-size: .75rem;
   font-weight: 600;
   letter-spacing: .08em;
@@ -344,68 +341,47 @@ button, select {
   color: var(--muted);
 }
 
-/* Rules: numbers in soft circles */
-.rules { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: rule; font-size: .95rem; }
-.rules li { display: flex; gap: 10px; counter-increment: rule; }
-.rules li::before {
-  content: counter(rule);
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  margin-top: 1px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--heading) 14%, var(--bg));
-  color: var(--heading);
-  font-size: .75rem;
-  font-weight: 700;
-}
+/* "Now playing": the way you play and how it's going, with a button to its sheet when it's online */
+.now { display: grid; gap: 2px; margin-top: 16px; padding: 14px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); }
+.now-label { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.now-label .dot[hidden] { display: none; }
+.now h3 { margin: 4px 0 0; font-size: 1.05rem; }
+#now-lines { display: grid; margin: 0; font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+#now-open { margin-top: 10px; }
+#now-open[hidden] { display: none; }
 
-/* Example: the word and the guess as tiles, with the score like in the guess list */
-.example { padding: 14px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); }
-.example-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.example-label { width: 46px; font-size: .75rem; font-weight: 600; color: var(--muted); }
-.tiles { display: flex; gap: 4px; }
-.tiles b {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  font-size: .95rem;
-}
-.tiles b:not([class]) { background: var(--key); }
-.tiles .again { box-shadow: inset 0 0 0 2px var(--line); color: var(--muted); }
-.example .score { width: 30px; height: 30px; font-size: .95rem; }
-.example p { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
-/* Each count over its label, so the 5-digit one fits the narrowest drawer */
-.dictionary-row { flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 12px; }
-.dictionary-label { font-size: .95rem; font-weight: 600; white-space: nowrap; }
-
-/* "How you play": two cards, the chosen one outlined. Real radios, hidden but still focusable. */
-.play-cards { display: grid; gap: 8px; }
-.play-card {
+/* "Switch how you play": one row a way, the chosen one's ring filled. Real radios, hidden but still focusable. */
+.play-row {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  padding: 12px;
-  border: 2px solid var(--line);
-  border-radius: 14px;
-  background: var(--bg);
+  min-height: 48px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.play-card input { position: absolute; opacity: 0; pointer-events: none; }
-.play-card:has(:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
-.play-card:has(:focus-visible) { outline: 2px solid var(--heading); outline-offset: 2px; }
-.play-card .radio { flex: none; width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--line); border-radius: 50%; }
-.play-card :checked + .radio { border: 6px solid var(--accent); }
-.play-card span { font-size: .8rem; color: var(--muted); }
-.play-card b { display: block; font-size: .95rem; color: var(--fg); }
+.play-row:last-child { border-bottom: 0; }
+.play-row input { position: absolute; opacity: 0; pointer-events: none; }
+.play-row:has(:focus-visible) { outline: 2px solid var(--heading); outline-offset: 2px; }
+.play-row .radio { flex: none; width: 20px; height: 20px; border: 2px solid var(--line); border-radius: 50%; }
+.play-row :checked + .radio { border: 6px solid var(--accent); }
+.play-row small { margin-left: auto; font-size: .75rem; font-weight: 400; color: var(--muted); }
+
+/* How to play and Learn words: a row each that opens its view */
+.menu-links { display: grid; gap: 8px; margin-top: 18px; }
+.menu-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); color: var(--fg); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.menu-link:active { background: color-mix(in srgb, var(--heading) 14%, var(--bg)); }
+.menu-link:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
+.menu-link svg { flex: none; width: 20px; height: 20px; color: var(--heading); }
+.menu-link span { font-size: .8rem; color: var(--muted); }
+.menu-link b { display: block; font-size: .95rem; color: var(--fg); }
+.menu-link::after { content: ""; flex: none; width: 7px; height: 7px; margin: 0 4px 0 auto; border-top: 2.5px solid var(--muted); border-right: 2.5px solid var(--muted); transform: rotate(45deg); }
 
 .menu-foot { margin: auto 0 0; padding-top: 24px; text-align: center; font-size: .8rem; color: var(--muted); }
+.menu-foot p { margin: 0; }
+.menu-foot p + p { margin-top: 6px; }
 /* The release version, stamped in on deploy; a local preview shows dev */
 .version { display: block; margin-top: 4px; font-size: .7rem; }
 
@@ -579,51 +555,80 @@ details.wins > * + * { margin-top: 6px; }
 .live-line.dropped { background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); }
 .live-line.left { background: color-mix(in srgb, var(--heading) 8%, var(--bg)); color: var(--muted); }
 
-/* Learn words: a card under "How you play" that opens the view below */
-.learn-card { width: 100%; margin-top: 8px; align-items: center; text-align: left; font: inherit; }
-.learn-card svg { flex: none; width: 20px; height: 20px; color: var(--accent); }
-body.dark .learn-card svg { color: var(--heading); }
-.play-card.learn-card:active { background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
-.play-card.learn-card:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
+/* How to play and Learn words: each a view that takes the game's place, dock and all, in the same column */
+body.viewing main, body.viewing .dock { display: none; }
+.view { display: grid; gap: 12px; max-width: 480px; margin: 0 auto; padding: max(12px, env(safe-area-inset-top)) 16px 48px; }
+.view[hidden], .view [hidden] { display: none; }
+.view p { margin: 0; }
+.view-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.view-head h2 { margin: 0; font-size: 1.1rem; color: var(--heading); }
+.view-head .close { display: grid; place-items: center; }
+.view-head .close svg { width: 18px; height: 18px; }
+.view-head .close:focus-visible, .view button:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
+.view-label { margin: 16px 0 0; }
 
-/* The view takes the game's place, dock and all, in the same column */
-body.learning main, body.learning .dock { display: none; }
-.learn { display: grid; gap: 14px; max-width: 480px; margin: 0 auto; padding: max(12px, env(safe-area-inset-top)) 16px 48px; }
-.learn[hidden] { display: none; }
-.learn-head { display: flex; align-items: center; gap: 12px; }
-.learn-head h2 { margin: 0; font-size: 1.1rem; color: var(--heading); }
-.learn-head .close { display: grid; place-items: center; }
-.learn-head .close svg { width: 18px; height: 18px; }
-.learn-head .close:focus-visible, .learn button:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
-
-/* The ten words, two to a row, as soft tiles in the heading's colour; each new ten fades in */
-.learn-words { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 4px 0; padding: 16px 8px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 6%, var(--bg)); list-style: none; }
-.learn-words li { display: flex; justify-content: center; gap: 4px; }
-.learn-words b {
+/* How to play: the rules in numbered circles, the example of a score, and the rest */
+.rules { display: grid; gap: 10px; margin: 4px 0 0; padding: 0; list-style: none; counter-reset: rule; }
+.rules li { display: flex; gap: 10px; counter-increment: rule; }
+.rules li::before {
+  content: counter(rule);
+  flex: none;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 38px;
-  border-radius: 7px;
-  background: var(--bg);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--heading) 18%, var(--bg));
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--heading) 14%, var(--bg));
   color: var(--heading);
-  font-size: 1.05rem;
-  text-transform: uppercase;
+  font-size: .75rem;
+  font-weight: 700;
 }
-/* Two words still fit side by side on the narrowest phones */
-@media (max-width: 360px) { .learn-words b { width: 28px; height: 34px; } }
-/* Five letters to a word: smaller tiles, so two words still fit side by side */
-.learn-words.five b { width: 26px; height: 32px; font-size: .95rem; }
-@media (max-width: 360px) {
-  .learn-words.five li { gap: 2px; }
-  .learn-words.five b { width: 23px; height: 30px; }
+[data-rules] { display: grid; gap: 12px; margin-top: 4px; }
+.example { padding: 14px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); }
+.example-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.example-label { width: 46px; font-size: .75rem; font-weight: 600; color: var(--muted); }
+.tiles { display: flex; gap: 4px; }
+.tiles b, .marks b {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  font-size: .95rem;
 }
+.tiles b:not([class]) { background: var(--key); }
+.tiles .again { box-shadow: inset 0 0 0 2px var(--line); color: var(--muted); }
+.example .score { width: 30px; height: 30px; font-size: .95rem; }
+.example p { margin: 4px 0 0; font-size: .85rem; color: var(--muted); }
+.marks { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: .9rem; }
+.marks span { display: flex; align-items: center; gap: 6px; }
+.marks b { width: 24px; height: 24px; font-size: .8rem; }
+.helpers { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: .95rem; }
+.helpers dt { font-weight: 600; color: var(--heading); }
+.helpers dd { margin: 0; }
+[data-count] { color: var(--heading); }
+
+/* Learn words' look-up: the word as tiles, its meaning, and whether the dictionary knows it */
+.lookup { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); }
+.lookup .ask-word { justify-content: flex-start; }
+.lookup .ask-word b { background: var(--bg); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--heading) 18%, var(--bg)); }
+.verdict { font-size: .8rem; font-weight: 600; color: color-mix(in srgb, var(--in) 70%, var(--fg)); }
+.verdict.no { color: var(--error); }
+.view .field input { text-transform: uppercase; letter-spacing: .1em; }
+.view .field input::placeholder { text-transform: none; letter-spacing: normal; }
+
+/* The ten words, each over its meaning; each new ten fades in */
+.learn-words { margin: 0; }
+.learn-words div { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.learn-words div:last-child { border-bottom: 0; }
+.learn-words dt { font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--heading); }
+.learn-words dd { margin: 2px 0 0; font-size: .9rem; }
 @media (prefers-reduced-motion: no-preference) {
-  .learn-words li { animation: rise .3s cubic-bezier(.2, .8, .2, 1) backwards; }
+  .learn-words div { animation: rise .3s cubic-bezier(.2, .8, .2, 1) backwards; }
 }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
-.new-words { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.new-words { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
 .new-words svg { width: 18px; height: 18px; }
 
 /* Questions and notes: a small card in the middle of the screen, in place of the browser's own */

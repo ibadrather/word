@@ -1,12 +1,12 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { ask } from "./ask.js"; // the page's own questions and notes
-import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, loadMeanings, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
 import * as group from "./group.js"; // the group game's logic and room
 import * as modes from "./modes.js"; // which way you play: the menu's choice, and what a guess or New game does in it
-import { press } from "./sheet.js"; // the Learn words chips
+import { press } from "./sheet.js"; // the chips of Learn words and How to play
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -15,7 +15,6 @@ const STORAGE_KEY = "guess-word-v2"; // old name kept so saved games survive the
 const NOT_A_WORD = "Not in the dictionary";
 const LOCKED = "Locked until New game";
 const TIME_LIMIT = 20 * 60_000; // the game's timers stop here, so one left open doesn't count up for ever
-const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 
 const $ = (id) => document.getElementById(id);
 const BACKSPACE_ICON =
@@ -30,6 +29,7 @@ let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
 let guess = ""; // the guess being typed on the page's keyboard, up to letters() long
 let learnLetters = 4; // the length of the words Learn words shows
+let dealt = 0; // how many tens Learn words has asked for, so a slow load never shows an older ten over a newer one
 
 function load() {
   const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null, held: null };
@@ -219,38 +219,90 @@ async function showWin(text, secret) {
   if (!(await ask(text, { yes: "OK", no: "Undo win", word: cleanWord(secret) }))) duel.undoWin();
 }
 
-// Learn words: ten dictionary words of the chosen length at random as tiles, each a moment after the last
-function showLearnWords() {
+// A word's meaning in `meanings` (loadMeanings), or "" for one without
+const meaningOf = (meanings, word) => (Object.hasOwn(meanings, word) ? meanings[word] : "");
+
+// Learn words: ten common words of the chosen length at random, each with its meaning, a moment after the last. Only
+// words with a meaning are picked, unless the meanings can't load.
+async function showLearnWords() {
   press($("learn-letters"), learnLetters);
-  $("learn-words").classList.toggle("five", learnLetters === 5);
-  const items = randomWords(10, Math.random, learnLetters).map((word, i) => {
-    const li = document.createElement("li");
-    li.ariaLabel = word;
-    li.style.animationDelay = `${i * 30}ms`;
-    li.append(...[...word].map((letter) => Object.assign(document.createElement("b"), { textContent: letter, ariaHidden: "true" })));
-    return li;
+  const deal = ++dealt;
+  const picked = randomWords(20, Math.random, learnLetters);
+  const meanings = await loadMeanings();
+  if (deal !== dealt) return;
+  const known = picked.filter((word) => meaningOf(meanings, word));
+  const items = (known.length >= 10 ? known : picked).slice(0, 10).map((word, i) => {
+    const row = document.createElement("div");
+    row.style.animationDelay = `${i * 30}ms`;
+    const meaning = Object.assign(document.createElement("dd"), { textContent: meaningOf(meanings, word) });
+    row.append(Object.assign(document.createElement("dt"), { textContent: word }), meaning);
+    return row;
   });
   $("learn-words").replaceChildren(...items);
 }
 
-// Learn words is a view of its own at #learn, so the phone's back button returns to the game
+// Learn words' look-up, from 4 letters on: the word as tiles, its meaning if it has one, and whether the dictionary
+// knows it
+async function lookUp() {
+  const input = $("lookup");
+  input.value = input.value.replace(/[^a-z]/gi, "").slice(0, 5);
+  const word = input.value.toLowerCase();
+  const meanings = word.length < 4 ? {} : await loadMeanings();
+  if (input.value.toLowerCase() !== word) return; // typed on while the meanings loaded
+  $("lookup-result").hidden = word.length < 4;
+  if (word.length < 4) return;
+  const known = isWord(word);
+  const meaning = meaningOf(meanings, word);
+  $("lookup-word").ariaLabel = word;
+  $("lookup-word").replaceChildren(...[...word].map((letter) => Object.assign(document.createElement("b"), { textContent: letter })));
+  $("lookup-meaning").hidden = !meaning;
+  $("lookup-meaning").textContent = meaning;
+  $("lookup-verdict").textContent = !known ? NOT_A_WORD : meaning ? "In the dictionary" : "In the dictionary. No meaning for this one.";
+  $("lookup-verdict").classList.toggle("no", !known);
+}
+
+// How to play: the rules of one way to play, picked by its chip
+function showRules(mode) {
+  press($("rules-modes"), mode);
+  for (const rules of document.querySelectorAll("[data-rules]")) rules.hidden = rules.dataset.rules !== mode;
+}
+
+// How to play and Learn words are views of their own, at #rules and #learn, in place of the game, so the phone's back
+// button returns to it
+const VIEWS = ["rules", "learn"];
+let viewing = ""; // the view shown, or "" for the game
 let openedHere = false; // opened from the menu, so going back leaves the page where it was
 
 function showView() {
-  const learning = location.hash === "#learn";
-  if (learning === document.body.classList.contains("learning")) return;
-  document.body.classList.toggle("learning", learning);
-  $("learn").hidden = !learning;
-  if (learning) {
-    showLearnWords();
-    scrollTo(0, 0);
-  }
+  const view = VIEWS.find((id) => location.hash === `#${id}`) ?? "";
+  if (view === viewing) return;
+  viewing = view;
+  document.body.classList.toggle("viewing", Boolean(view));
+  for (const id of VIEWS) $(id).hidden = id !== view;
+  if (!view) openedHere = false;
+  if (view === "rules") showRules(modes.on()); // the rules of the way you play
+  if (view === "learn") showLearnWords();
+  if (view) scrollTo(0, 0);
 }
 
-function leaveLearn() {
+function leaveView() {
   if (openedHere) return history.back();
-  history.replaceState(null, "", location.pathname + location.search); // opened straight from a #learn link
+  history.replaceState(null, "", location.pathname + location.search); // opened straight from a link
   showView();
+}
+
+// The menu's "Now playing" card: the online mode's own words (modes.js), or face to face this page's game
+function showNow() {
+  const count = state.notes.length;
+  const guesses = count ? `${count} ${count === 1 ? "guess" : "guesses"}` : "No guesses yet";
+  const face = { title: "Face to face", lines: [guesses + (state.startedAt ? ` · ${formatTime(gameTime())}` : "")] };
+  const now = modes.status() ?? face;
+  $("now-title").textContent = now.title;
+  $("now-lines").replaceChildren(...now.lines.filter(Boolean).map((line) => Object.assign(document.createElement("span"), { textContent: line })));
+  $("now-dot").className = `dot ${now.dot ?? ""}`;
+  $("now-dot").hidden = now.dot === undefined; // face to face has no other phone to be connected to
+  $("now-open").hidden = !now.open;
+  $("now-open").textContent = now.open ?? "";
 }
 
 function showSecret(show) {
@@ -382,7 +434,7 @@ function buildControls() {
   // A computer's own keyboard types too, unless you're typing in a box or a dialog is open
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey || document.querySelector("dialog[open]")) return;
-    if (document.body.classList.contains("learning")) return;
+    if (viewing) return;
     if (event.target.closest("input, select, textarea")) return;
     if (/^[a-z]$/i.test(event.key)) type(event.key.toLowerCase());
     else if (event.key === "Backspace") backspace();
@@ -399,16 +451,29 @@ function buildControls() {
   $("guess").addEventListener("click", guessWord);
   $("reset").addEventListener("click", newGame);
   $("clear").addEventListener("click", clearColours);
-  $("logo").addEventListener("click", () => $("menu").showModal());
+  $("logo").addEventListener("click", () => {
+    showNow();
+    $("menu").showModal();
+  });
   $("close").addEventListener("click", () => $("menu").close());
   $("menu").addEventListener("click", (event) => {
     if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
   });
-  $("learn-open").addEventListener("click", () => {
+  $("now-open").addEventListener("click", () => {
     $("menu").close();
-    openedHere = true;
-    location.hash = "learn";
+    modes.openSheet();
   });
+  // How to play and Learn words: the link changes the address, and showView() the page
+  for (const link of document.querySelectorAll(".menu-link")) {
+    link.addEventListener("click", () => {
+      $("menu").close();
+      openedHere = true;
+    });
+  }
+  for (const back of document.querySelectorAll(".view .back")) back.addEventListener("click", leaveView);
+  addEventListener("hashchange", showView);
+  for (const chip of $("rules-modes").children) chip.addEventListener("click", () => showRules(chip.dataset.value));
+  $("lookup").addEventListener("input", lookUp);
   $("learn-more").addEventListener("click", showLearnWords);
   for (const chip of $("learn-letters").children) {
     chip.addEventListener("click", () => {
@@ -416,18 +481,10 @@ function buildControls() {
       showLearnWords();
     });
   }
-  $("learn-back").addEventListener("click", leaveLearn);
-  addEventListener("hashchange", showView);
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
-  // The dictionaries' sizes as tiles in the logo's colours
-  const tile = (digit, i) => {
-    const el = Object.assign(document.createElement("b"), { textContent: digit });
-    if (LOGO[i % LOGO.length]) el.className = LOGO[i % LOGO.length]; // the plain grey tile has no class
-    return el;
-  };
-  for (const [id, count, letters] of [["word-count", WORD_COUNT, 4], ["word-count-5", WORD_COUNT_5, 5]]) {
-    $(id).append(...[...String(count)].map(tile));
-    $(id).ariaLabel = `${count.toLocaleString()} words of ${letters} letters`;
+  // The dictionaries' sizes, in the menu and How to play
+  for (const el of document.querySelectorAll("[data-count]")) {
+    el.textContent = (el.dataset.count === "5" ? WORD_COUNT_5 : WORD_COUNT).toLocaleString();
   }
 }
 
@@ -462,6 +519,7 @@ function render() {
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
   showGuess(page);
   modes.render();
+  if ($("menu").open) showNow();
   const { known, fitting } = deduce(notes.filter((note) => !note.hidden), book());
   settled = known;
   $("clear").disabled = !Object.keys(colours).length;
@@ -509,6 +567,7 @@ setInterval(() => {
   showTimer(page);
   if (page) showGuess(page); // a clock that ran out passes the turn with no message
   modes.tick();
+  if ($("menu").open) showNow(); // the game's time
 }, 1000);
 
 // Keeps the files for offline use, which also lets the page be installed as an app (sw.js)
