@@ -185,6 +185,8 @@ button, select {
 }
 .counts[hidden] { display: none; }
 .counts:not(.ready) button { opacity: .35; }
+/* The group game's Guess button has no label above it, so it keeps its own distance from the slots */
+#guess-row { margin-top: 24px; }
 .counts button:active { filter: brightness(.85); }
 
 /* The keyboard types the guess; its keys and the guess list's tiles share the same colours */
