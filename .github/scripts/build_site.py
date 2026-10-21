@@ -37,9 +37,6 @@ BETA_ICONS = pathlib.Path(__file__).parent.parent / "beta"
 # A file, or files to try in order: the first one the branch has is used.
 Files = str | tuple[str, ...]
 
-# A file, or files to try in order: the first one the branch has is used.
-Files = str | tuple[str, ...]
-
 # What keeps a staging copy apart from the live game: (file, text, replacement).
 # {folder} (staging/<slug>, or beta) and {name} are filled in. The app id keeps
 # the duel's and the group game's rooms apart too, so a staging phone only ever
