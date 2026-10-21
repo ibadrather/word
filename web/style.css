@@ -97,7 +97,9 @@ body.dark .mode {
   transition: background-color .15s;
 }
 .new-game svg { width: 15px; height: 15px; }
-.new-game:active { background: color-mix(in srgb, var(--heading) 14%, var(--bg)); }
+.new-game:active:not(:disabled) { background: color-mix(in srgb, var(--heading) 14%, var(--bg)); }
+/* A group game's Deal, while a game is on */
+.new-game:disabled { opacity: .4; cursor: default; }
 /* On narrow phones it says just "New", so the mode name isn't cut off */
 @media (max-width: 420px) { .new-game .wide { display: none; } }
 /* Time since your last guess: centred under the header, digits that don't jiggle as they tick */
@@ -185,8 +187,11 @@ button, select {
 }
 .counts[hidden] { display: none; }
 .counts:not(.ready) button { opacity: .35; }
-/* The group game's Guess button has no label above it, so it keeps its own distance from the slots */
+/* The group game's Guess button has no label above it, so it keeps its own distance from the slots. It says whose turn
+   it is: grey on someone else's, outlined on yours while you type, filled once the guess can go. */
 #guess-row { margin-top: 24px; }
+#guess-row:not(.ready) button { opacity: 1; background: var(--key); color: var(--muted); }
+#guess-row.mine:not(.ready) button { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); color: var(--heading); }
 .counts button:active { filter: brightness(.85); }
 
 /* The keyboard types the guess; its keys and the guess list's tiles share the same colours */
@@ -274,8 +279,12 @@ button, select {
   font-size: 1.1rem;
   font-weight: 700;
 }
-/* In a group game: who made the guess, and a winning guess kept hidden from the others until the game is over */
-.notes .who { max-width: 7em; margin-left: 8px; overflow: hidden; font-size: .75rem; font-weight: 600; color: var(--heading); text-overflow: ellipsis; white-space: nowrap; }
+/* In a group game: who made the guess, your own rows tinted, and a winning guess kept hidden from the others until the
+   game is over, then its score in green */
+.notes .who { max-width: 7em; margin-left: 8px; overflow: hidden; font-size: .75rem; font-weight: 600; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.notes li.mine { margin: 0 -8px; padding: 6px 8px; background: color-mix(in srgb, var(--accent) 6%, var(--bg)); }
+.notes li.mine .who { color: var(--heading); }
+.notes li.won .score { border-color: var(--in); background: var(--in); color: #fff; }
 .notes .got { display: grid; place-items: center; height: 40px; padding: 0 12px; border-radius: 6px; background: color-mix(in srgb, var(--in) 14%, var(--bg)); color: var(--in); font-size: .85rem; font-weight: 700; }
 .delete { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; }
 
@@ -443,6 +452,8 @@ body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .dock.many .side.running b { font-size: 1.6rem; }
 /* The middle: the clock's settings, with the connection dot under the icon */
 .dock .mid { flex: none; display: grid; place-items: center; width: 40px; padding: 0; border: 0; border-radius: 14px; background: none; color: var(--muted); }
+/* A group game's dock with no clocks, for a phone that couldn't join: the button keeps its place and its height */
+.dock .mid:first-child, .dock .note + .mid { min-height: 48px; margin-left: auto; }
 .dock .mid svg { width: 20px; height: 20px; }
 .dock .mid .dot { margin-top: -4px; }
 .dock .mid:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
@@ -503,6 +514,7 @@ body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 #duel-invite b, #group-invite b { color: var(--heading); }
 /* The room joined, under the group sheet's title, so phones can check they're in the same one */
 .in-room { margin: -4px 0 0; font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+.in-room[hidden] { display: none; }
 .in-room b { color: var(--heading); }
 .hint.foot { text-align: center; }
 /* The room's wins: a row a player, most wins first, this phone's player in the accent colour */
@@ -516,10 +528,17 @@ body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .wins li b { font-variant-numeric: tabular-nums; color: var(--heading); }
 .wins li em { font-size: .75rem; font-style: normal; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wins li.me { box-shadow: inset 0 0 0 2px var(--accent); }
+/* The group game's wins fold away under their label */
+details.wins { display: block; }
+details.wins > * + * { margin-top: 6px; }
+.wins > summary { font-size: .75rem; font-weight: 600; color: var(--muted); cursor: pointer; }
+.wins > summary:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
 /* The group game's players: a dot for whether they're here, the name, and how they're doing on the right */
 .players li em { flex: none; font-size: .8rem; font-style: normal; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 .players li.turn em { color: var(--heading); }
 .players li.out { opacity: .6; }
+/* A game's turn order */
+.players .seat { flex: none; width: 1.2em; font-size: .8rem; font-weight: 700; color: var(--muted); text-align: center; }
 .err { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); font-size: .85rem; font-weight: 600; }
 
 /* Fields: a small label over a rounded box */
@@ -529,6 +548,7 @@ body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .field input { width: 100%; padding: 9px 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--bg); color: inherit; font: inherit; font-weight: 600; }
 .field input:focus { outline: none; border-color: var(--accent); }
 .field input::placeholder { color: var(--muted); font-weight: 400; }
+.field small.hint { display: block; }
 
 /* Minutes each, as chips; the lit one is the clocks' minutes */
 .chips { display: flex; gap: 6px; }
@@ -536,7 +556,9 @@ body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .chips button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); color: var(--heading); }
 
 .primary { width: 100%; padding: 12px; border: 0; border-radius: 14px; background: var(--accent); color: #fff; font-size: 1rem; font-weight: 700; }
-.primary:active { filter: brightness(.85); }
+.primary:active:not(:disabled) { filter: brightness(.85); }
+.primary:disabled { opacity: .4; cursor: default; }
+.primary.danger { background: var(--error); }
 .secondary { min-height: 40px; padding: 8px 14px; border: 2px solid var(--line); border-radius: 20px; background: var(--bg); color: var(--heading); font-size: .85rem; font-weight: 600; }
 .secondary:active { background: var(--line); }
 .secondary.danger { color: var(--error); }
