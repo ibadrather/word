@@ -15,7 +15,7 @@ Install it from the browser (**Add to Home Screen**, or **Install app** on Andro
 ## Features
 - Note your guesses and their scores, and colour letters red, yellow or green as you work them out.
 - A dictionary of 4,983 four-letter words warns about guesses it doesn't know. The group game also knows 11,253 five-letter words.
-- **Learn words** (in the menu) shows ten common dictionary words of 4 or 5 letters at random, with a button for ten more.
+- The menu shows what's on now (the room, who's there and the wins in a duel or group game), switches how you play, and opens two pages: **How to play**, with the rules of each way to play, the letter colours, the helpers and the dictionary, and **Learn words**, which looks up a word's meaning and shows ten common words of 4 or 5 letters at random with theirs.
 - Helper modes mark letters for you: **Basic** reds out letters from 0-score guesses, **Advanced** works out letters from all your guesses.
 - **Duel clock**: a chess clock across two phones. Share a room link, and each guess passes the clock to the other player. A guess can only be noted on your turn; the first one is free for either player.
 - In a duel, a guess that scores 4 can claim the win: the other phone is asked to confirm it, then both words are shown. If the other player has a turn left, they're asked only after their last guess, which can still draw. The sheet lists the wins of everyone who has played in the room, by name, and when the last game was played (UTC). Each phone keeps its own copy; when two phones meet, the one with the later game wins. Words lock once the clocks start; **New game** frees them and restarts both clocks.
