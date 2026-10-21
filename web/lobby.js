@@ -438,7 +438,7 @@ function showSheet(v) {
   $("group-go").textContent = { error: "Try again", join: "Join game" }[screen] ?? "Connect";
   // A name first: the wins are kept by it. Try again keeps the name it tried.
   $("group-go").disabled = screen !== "error" && !$("group-name").value.trim();
-  $("group-start").textContent = alone ? "Waiting for 1 more…" : `Deal a ${v.letters}-letter word · ${v.minutes} min`;
+  $("group-start").textContent = alone ? "Waiting for 1 more…" : "Start game";
   $("group-start").disabled = alone;
   $("group-leave").textContent = screen === "error" ? "Back to face to face" : "Leave";
   $("group-leave").classList.toggle("danger", screen !== "error");

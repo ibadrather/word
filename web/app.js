@@ -390,7 +390,7 @@ function showGuess(page = modes.page()) {
   $("guess-row").classList.toggle("ready", ready);
   if (!page) return;
   $("guess-row").classList.toggle("mine", !page.waiting);
-  $("guess").textContent = page.waiting || (ready ? `Guess ${guess.toUpperCase()}` : `Your turn · type ${length} letters`);
+  $("guess").textContent = page.waiting || (ready ? `Guess ${guess.toUpperCase()}` : "Your turn");
 }
 
 // --- Rendering ---
