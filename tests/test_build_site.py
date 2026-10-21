@@ -63,6 +63,19 @@ def test_beta_has_its_own_storage(tmp_path: Path) -> None:
     assert (manifest["name"], manifest["short_name"]) == ("Word beta", "Word beta")
 
 
+def test_beta_has_its_own_icons(tmp_path: Path) -> None:
+    """The beta's icons say BETA; another branch's copy keeps the live icons."""
+    site = build_site()
+    icons = sorted(icon.name for icon in site.BETA_ICONS.glob("*.png"))
+    assert icons == sorted(icon.name for icon in WEB.glob("icon*.png"))
+    for branch, source in (("staging", site.BETA_ICONS), ("feat/x", WEB)):
+        copy = tmp_path / site.slug_of(branch)
+        shutil.copytree(WEB, copy)
+        site.separate(copy, branch)
+        for icon in icons:
+            assert (copy / icon).read_bytes() == (source / icon).read_bytes()
+
+
 APP_ID = 'const APP_ID = "ibadrather-word"'
 STAGED_APP_ID = 'const APP_ID = "ibadrather-word:staging/feat-x"'
 
