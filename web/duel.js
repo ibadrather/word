@@ -7,7 +7,7 @@ import { ask } from "./ask.js";
 import * as mode from "./clock.js";
 import { formatTime } from "./helpers.js";
 import { cleanRoom } from "./room.js";
-import { lowercase, share as shareRoom, showWins } from "./sheet.js";
+import { lowercase, press, share as shareRoom, showWins } from "./sheet.js";
 import { playerName } from "./wins.js";
 
 const $ = (id) => document.getElementById(id);
@@ -44,6 +44,7 @@ export function init() {
   for (const button of document.querySelectorAll("#duel .share")) button.addEventListener("click", share);
   for (const minutes of MINUTES) {
     const chip = Object.assign(document.createElement("button"), { type: "button", textContent: minutes });
+    chip.dataset.value = minutes;
     chip.addEventListener("click", () => setMinutes(minutes));
     $("chips").append(chip);
   }
@@ -257,5 +258,5 @@ function showSheet(v) {
   liveRoom.textContent = v.room;
   showWins($("wins-list"), $("wins-when"), v.board, v.me, v.playedAt);
   $("wins-undo").hidden = !v.last || v.phase !== "live"; // the other player has to be there to agree
-  for (const chip of $("chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
+  press($("chips"), v.minutes);
 }

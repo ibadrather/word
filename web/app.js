@@ -6,6 +6,7 @@ import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
 import * as group from "./group.js"; // the group game's logic and room
 import * as modes from "./modes.js"; // which way you play: the menu's choice, and what a guess or New game does in it
+import { press } from "./sheet.js"; // the Learn words chips
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -220,7 +221,7 @@ async function showWin(text, secret) {
 
 // Learn words: ten dictionary words of the chosen length at random as tiles, each a moment after the last
 function showLearnWords() {
-  for (const chip of $("learn-letters").children) chip.ariaPressed = String(Number(chip.dataset.letters) === learnLetters);
+  press($("learn-letters"), learnLetters);
   $("learn-words").classList.toggle("five", learnLetters === 5);
   const items = randomWords(10, Math.random, learnLetters).map((word, i) => {
     const li = document.createElement("li");
@@ -322,7 +323,7 @@ function showMessage(text) {
 // turn. A 4-letter game after a 5-letter one drops the guess's last letter. In a group game the Guess button says
 // whose turn it is: filled with the guess once it's full on yours, outlined while you type, grey on someone else's.
 function showGuess(page = modes.page()) {
-  const length = letters();
+  const length = page?.letters ?? 4;
   if (guess.length > length) guess = guess.slice(0, length);
   if ($("word").children.length !== length) {
     $("word").replaceChildren(...Array.from({ length }, () => document.createElement("span")));
@@ -332,7 +333,7 @@ function showGuess(page = modes.page()) {
     slot.classList.toggle("next", i === guess.length);
   }
   $("word").ariaLabel = guess ? `Your guess: ${guess.toUpperCase()}` : "Your guess";
-  const ready = guess.length === length && !modes.turn();
+  const ready = guess.length === length && !(page ? page.waiting : modes.turn());
   $("counts").classList.toggle("ready", ready);
   $("guess-row").classList.toggle("ready", ready);
   if (!page) return;
@@ -411,7 +412,7 @@ function buildControls() {
   $("learn-more").addEventListener("click", showLearnWords);
   for (const chip of $("learn-letters").children) {
     chip.addEventListener("click", () => {
-      learnLetters = Number(chip.dataset.letters);
+      learnLetters = Number(chip.dataset.value);
       showLearnWords();
     });
   }
@@ -504,8 +505,9 @@ render();
 showView();
 modes.openLink(); // a shared link asks to join
 setInterval(() => {
-  showTimer();
-  if (modes.page()) showGuess(); // a clock that ran out passes the turn with no message
+  const page = modes.page();
+  showTimer(page);
+  if (page) showGuess(page); // a clock that ran out passes the turn with no message
   modes.tick();
 }, 1000);
 

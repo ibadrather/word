@@ -3,10 +3,10 @@
 import { BLOCKED, COMMON } from "../web/common.js";
 import { BLOCKED as BLOCKED5, COMMON as COMMON5 } from "../web/common5.js";
 import {
-  chosen,
   dealing,
   dealt,
   guessed,
+  laterPick,
   left,
   merged,
   mergedResults,
@@ -304,15 +304,28 @@ out.fiveLetters = {
   fiveInFour: guess(table([ASHA, BEN], "stop", 1, 0), "a", "stone", 1_000),
 };
 
-// --- The room's choice for the next deal: the same whichever phone works it out, so whoever deals uses it ---
+// --- The room's choice for the next deal: every phone here ends up with the same, so whoever deals uses it ---
 
-const host = { letters: 5, minutes: 3, picked: 0 }; // here first, never picked here
-const guest = { letters: 4, minutes: 10, picked: 0 };
+// A phone holding `ours` hears another's hello with `theirs`, from a phone that has been here longer if `older`: the
+// choice it holds after
+const heard = (ours, theirs, older) => (laterPick(theirs, ours, older) ? theirs : ours);
+const host = { letters: 5, minutes: 3, picked: 0, pickedBy: "" }; // here first, nobody has picked here
+const guest = { letters: 4, minutes: 10, picked: 0, pickedBy: "" };
+const joined = heard(guest, host, true); // the guest takes up the host's choice
+const guestPick = { ...joined, letters: 4, picked: 1, pickedBy: "b" };
 out.chosen = {
-  nobodyPicked: chosen([host, guest]),
-  guestPicked: chosen([host, { ...guest, picked: 1 }]),
-  hostPickedAgain: chosen([{ ...host, picked: 2 }, { ...guest, picked: 1 }]),
-  sameTime: chosen([{ ...host, picked: 1 }, { ...guest, picked: 1 }]),
+  joined,
+  hostKeeps: heard(host, guest, false),
+  // Back from the background, the host joins again and is now the newest phone here: the guest has the host's choice
+  rejoined: heard(host, joined, true),
+  guestPicked: heard(host, guestPick, false),
+  olderUnpicked: heard(guestPick, host, true), // a pick beats having been here longer
+  hostPickedAgain: heard(guestPick, { ...guestPick, minutes: 10, picked: 2, pickedBy: "a" }, true),
+  // Both picked at once: the higher phone id's pick, on both phones
+  sameTime: [
+    heard({ ...host, picked: 1, pickedBy: "a" }, { ...guest, picked: 1, pickedBy: "b" }, false),
+    heard({ ...guest, picked: 1, pickedBy: "b" }, { ...host, picked: 1, pickedBy: "a" }, true),
+  ],
 };
 
 console.log(JSON.stringify(out));

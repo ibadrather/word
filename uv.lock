@@ -301,7 +301,7 @@ wheels = [
 
 [[package]]
 name = "word"
-version = "1.15.2"
+version = "1.15.3"
 source = { virtual = "." }
 
 [package.dev-dependencies]

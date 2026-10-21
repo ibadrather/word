@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import TypedDict
 
 import pytest
+from word_lists import COMMON_SOURCES
 
 GAMES = sorted((Path(__file__).parent / "games").glob("*.json"))
 NODE = shutil.which("node")
 LEARN_WORDS = 10  # how many the Learn words sheet shows
-COMMON_FILES = {4: "common.js", 5: "common5.js"}  # the common words by length
 
 
 class Guess(TypedDict):
@@ -74,13 +74,13 @@ def test_advanced_helper(path: Path) -> None:
 
 
 @pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
-@pytest.mark.parametrize("letters", COMMON_FILES)
+@pytest.mark.parametrize("letters", COMMON_SOURCES)
 def test_learn_words_are_ten_different_dictionary_words(letters: int) -> None:
     """Learn words shows ten words, all different, all common dictionary words."""
     assert NODE is not None
     script = (
         'import { isWord, randomWords } from "./web/helpers.js";'
-        f'import {{ COMMON }} from "./web/{COMMON_FILES[letters]}";'
+        f'import {{ COMMON }} from "./web/{COMMON_SOURCES[letters]}";'
         f"const words = randomWords({LEARN_WORDS}, Math.random, {letters});"
         "const known = (w) => isWord(w) && COMMON.includes(w);"
         "console.log(JSON.stringify(words.map((w) => [w, known(w)])));"
@@ -109,7 +109,7 @@ def test_blocked_words_are_never_picked(letters: int, crude: str) -> None:
     assert NODE is not None
     script = (
         'import { isWord, randomWords } from "./web/helpers.js";'
-        f'import {{ BLOCKED, COMMON }} from "./web/{COMMON_FILES[letters]}";'
+        f'import {{ BLOCKED, COMMON }} from "./web/{COMMON_SOURCES[letters]}";'
         "let seed = 1;"
         "const random = () => (seed = (seed * 48271) % 2147483647) / 2147483647;"
         f"const words = randomWords(COMMON.length, random, {letters});"
