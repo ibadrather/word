@@ -16,7 +16,7 @@ const SAID = 4_000; // how long what just happened stays on the dock's edge, in 
 const SCREENS = { off: "setup", lobby: "lobby", game: "game", error: "error" };
 const FOOT = {
   setup: "Every phone needs internet to find the others.",
-  lobby: "Whoever deals sets the letters and minutes. A game needs 2 phones.",
+  lobby: "The letters and minutes are the same for everyone here. A game needs 2 phones.",
   game: "Leaving counts as losing this game.",
 };
 // Why a word can't be dealt, from group.js's deal()
@@ -233,7 +233,7 @@ function edgeNote(v, now) {
     return { text: "" };
   }
   if (v.lobby.length < 2) return { text: "Waiting for others to join…", dot: "wait" };
-  return { text: `${v.lobby.length} here · tap New game to deal`, dot: "live" };
+  return { text: `${v.lobby.length} here · ${v.letters} letters · tap New game to deal`, dot: "live" };
 }
 
 function showNote({ text, dot = "", warn = false }) {
@@ -349,7 +349,8 @@ function showPlayers(v, screen) {
   $("group-players").replaceChildren(...rows);
 }
 
-// The sheet shows one of five screens. It folds away by itself when a word is dealt while it shows the lobby.
+// The sheet shows one of five screens, the room's name on each (in its field, the link's note or under the title). It
+// folds away by itself when a word is dealt while it shows the lobby.
 function showSheet(v) {
   const screen = invite ? "join" : SCREENS[v.phase];
   if (shown === "lobby" && screen === "game") $("group").close();
@@ -362,6 +363,7 @@ function showSheet(v) {
   showOn("group-here", "lobby", "game");
   showOn("group-room-field", "setup", "error");
   showOn("group-room-hint", "setup");
+  showOn("group-in-room", "lobby", "game");
   $("group-name-field").hidden = !["setup", "join"].includes(screen) && !naming;
   showOn("group-minutes", "setup", "lobby");
   showOn("group-letters", "setup", "lobby");
@@ -372,6 +374,7 @@ function showSheet(v) {
   showOn("group-end", "lobby", "game", "error");
   showOn("group-share", "lobby", "game");
   $("group-invite").firstElementChild.textContent = invite;
+  $("group-in-room").lastElementChild.textContent = v.room;
   const error = problem(v);
   $("group-error").hidden = !error || (screen === "join" && v.error !== "name"); // the link's room is a new start
   if ($("group-error").textContent !== error) $("group-error").textContent = error; // an alert: said again only when new

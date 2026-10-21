@@ -501,6 +501,9 @@ body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .hint { margin: 0; font-size: .78rem; color: var(--muted); }
 #duel-room-hint, #group-room-hint { margin-top: -8px; } /* it belongs to the Room field above */
 #duel-invite b, #group-invite b { color: var(--heading); }
+/* The room joined, under the group sheet's title, so phones can check they're in the same one */
+.in-room { margin: -4px 0 0; font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+.in-room b { color: var(--heading); }
 .hint.foot { text-align: center; }
 /* The room's wins: a row a player, most wins first, this phone's player in the accent colour */
 .wins { display: grid; gap: 6px; }

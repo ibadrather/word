@@ -247,3 +247,19 @@ def test_five_letters(steps: dict[str, dict[str, object]]) -> None:
         "sent": ["notes", "stone"],
         "fiveInFour": {"why": "word"},
     }
+
+
+def test_the_room_chooses_the_letters(steps: dict[str, dict[str, object]]) -> None:
+    """Every phone deals with the room's letters and minutes, not its own.
+
+    The latest pick wins; before anyone picks, or for picks made at once,
+    the phone that has been in the room longest.
+    """
+    host = {"letters": 5, "minutes": 3}
+    guest = {"letters": 4, "minutes": 10}
+    assert steps["chosen"] == {
+        "nobodyPicked": host,
+        "guestPicked": guest,
+        "hostPickedAgain": host,
+        "sameTime": host,
+    }
