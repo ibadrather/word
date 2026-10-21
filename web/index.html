@@ -300,11 +300,13 @@
     </div>
   </dialog>
 
-  <!-- The page's own questions and notes (ask.js): a line of text, a word as tiles if any, and one or two buttons -->
+  <!-- The page's own questions and notes (ask.js): a line of text, a word as tiles and its meaning if any, and one or
+       two buttons -->
   <dialog id="ask" class="ask" aria-labelledby="ask-text">
     <form method="dialog">
       <p id="ask-text"></p>
       <p id="ask-word" class="ask-word" role="img" hidden></p>
+      <p id="ask-meaning" class="ask-meaning" hidden></p>
       <div class="row-flex">
         <button id="ask-no" class="secondary grow" value="no"></button>
         <button id="ask-yes" class="primary grow" value="yes"></button>
