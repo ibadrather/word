@@ -227,3 +227,23 @@ def test_results(steps: dict[str, dict[str, object]]) -> None:
         },
         "kept": 200,
     }
+
+
+def test_five_letters(steps: dict[str, dict[str, object]]) -> None:
+    """A 5-letter deal is a common word; only 5-letter guesses count in it."""
+    assert steps["fiveLetters"] == {
+        "lengths": [5],
+        "common": True,
+        "blocked": False,
+        "fourInFive": {"why": "word"},
+        "fiveNote": {
+            "seat": ASHA,
+            "word": "notes",
+            "count": 5,
+            "at": 1_000,
+            "won": False,
+        },
+        "wins": over([BEN]),
+        "sent": ["notes", "stone"],
+        "fiveInFour": {"why": "word"},
+    }

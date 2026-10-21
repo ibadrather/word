@@ -1,26 +1,33 @@
 // Word: the helpers. Plain functions of the guesses (and your marks), and of times, so tests can run them in Node.
 // Notes are [{ word, count }]; a result is { letter: "in" | "out" }. Repeated letters in a guess count once.
 
-import { BLOCKED, COMMON } from "./common.js";
+import * as common4 from "./common.js";
+import * as common5 from "./common5.js";
 import { WORDS } from "./words.js";
+import { WORDS as WORDS5 } from "./words5.js";
 
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
-// --- The dictionary: asked about a word or for a count. Learn words picks from the common ones (common.js). ---
+// --- The dictionaries, of 4 letters (words.js) and of 5 (words5.js, for the group game): asked about a word or for a
+//     count. Learn words and the group game pick from the common ones (common.js, common5.js). ---
 
+const DICTIONARIES = { 4: WORDS, 5: WORDS5 };
 export const WORD_COUNT = WORDS.size;
+export const WORD_COUNT_5 = WORDS5.size;
 
+// A word of either length
 export function isWord(word) {
-  return WORDS.has(word);
+  return DICTIONARIES[word.length]?.has(word) ?? false;
 }
 
-// The common words that can be picked: all but the blocked ones
-const PICKABLE = COMMON.filter((word) => !BLOCKED.has(word));
+// The common words that can be picked, by length: all but the blocked ones
+const pickable = ({ COMMON, BLOCKED }) => COMMON.filter((word) => !BLOCKED.has(word));
+const PICKABLE = { 4: pickable(common4), 5: pickable(common5) };
 
-// Some different common words picked at random (a partial shuffle), for the Learn words view; all of them, shuffled,
-// when more are asked for than there are
-export function randomWords(count, random = Math.random) {
-  const words = [...PICKABLE];
+// Some different common words of `letters` letters picked at random (a partial shuffle), for the Learn words view and
+// the group game's deal; all of them, shuffled, when more are asked for than there are
+export function randomWords(count, random = Math.random, letters = 4) {
+  const words = [...PICKABLE[letters]];
   count = Math.min(count, words.length);
   for (let i = 0; i < count; i++) {
     const j = i + Math.floor(random() * (words.length - i));

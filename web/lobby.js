@@ -16,7 +16,7 @@ const SAID = 4_000; // how long what just happened stays on the dock's edge, in 
 const SCREENS = { off: "setup", lobby: "lobby", game: "game", error: "error" };
 const FOOT = {
   setup: "Every phone needs internet to find the others.",
-  lobby: "Whoever deals sets the minutes. A game needs 2 phones.",
+  lobby: "Whoever deals sets the letters and minutes. A game needs 2 phones.",
   game: "Leaving counts as losing this game.",
 };
 // Why a word can't be dealt, from group.js's deal()
@@ -51,6 +51,12 @@ export function init() {
     const chip = Object.assign(document.createElement("button"), { type: "button", textContent: minutes });
     chip.addEventListener("click", () => mode.setMinutes(minutes));
     $("group-chips").append(chip);
+  }
+  for (const letters of mode.LETTERS) {
+    const chip = Object.assign(document.createElement("button"), { type: "button", textContent: `${letters} letters` });
+    chip.dataset.letters = letters;
+    chip.addEventListener("click", () => mode.setLetters(letters));
+    $("group-letter-chips").append(chip);
   }
 }
 
@@ -138,7 +144,7 @@ export async function newGame() {
   const v = mode.view();
   if (v.phase === "game") await ask("A game is on. Leave it to quit.", { no: null });
   else if (v.phase !== "lobby") open();
-  else if (await ask("Deal a new word to everyone here?", { yes: "Deal" })) start();
+  else if (await ask(`Deal a new ${v.letters}-letter word to everyone here?`, { yes: "Deal" })) start();
   return false;
 }
 
@@ -147,7 +153,8 @@ export const timesUp = () => false;
 
 // What the main page shows in a group game: the table's guesses, newest last, with who made each; another player's
 // winning guess stays hidden until the game is over, as the players after them still get a last guess at the word.
-// Times are from the deal. `book` is this phone's own key colours and helper for the group game.
+// Times are from the deal. `book` is this phone's own key colours and helper for the group game. `letters` is how
+// long a guess is: the game's word, or between games the next deal's.
 export function page(v = mode.view()) {
   const p = v.seated ? v.play : null;
   const notes = (p?.notes ?? []).map(({ seat, word, count, at, won }) => ({
@@ -157,7 +164,8 @@ export function page(v = mode.view()) {
     who: seat === v.id ? "You" : nameOf(v, seat),
     hidden: won && !p.over && seat !== v.id,
   }));
-  return { book: mode.book(), notes, time: p && { game: p.time, turn: p.running, over: p.over } };
+  const letters = v.phase === "game" ? v.table.word.length : v.letters;
+  return { book: mode.book(), notes, letters, time: p && { game: p.time, turn: p.running, over: p.over } };
 }
 
 // --- Drawing ---
@@ -244,7 +252,9 @@ function announce(v) {
   const before = told;
   told = now;
   if (!before || !v.active || !p) return; // the game as it was on loading the page has been said already
-  if (now.game !== before.game) return say(`${v.table.dealer === v.id ? "You" : nameOf(v, v.table.dealer)} dealt a new word`);
+  if (now.game !== before.game) {
+    return say(`${v.table.dealer === v.id ? "You" : nameOf(v, v.table.dealer)} dealt a new ${v.table.word.length}-letter word`);
+  }
   for (const [id, reason] of Object.entries(p.out)) {
     if (!before.out[id] && id !== v.id) say(`${nameOf(v, id)} ${reason === "time" ? "ran out of time" : "left the game"}`);
   }
@@ -354,6 +364,7 @@ function showSheet(v) {
   showOn("group-room-hint", "setup");
   $("group-name-field").hidden = !["setup", "join"].includes(screen) && !naming;
   showOn("group-minutes", "setup", "lobby");
+  showOn("group-letters", "setup", "lobby");
   showOn("group-go", "setup", "join", "error");
   showOn("group-start", "lobby");
   showOn("group-not-now", "join");
@@ -374,4 +385,5 @@ function showSheet(v) {
   if (screen === "lobby" || screen === "game") showPlayers(v, screen);
   showWins($("group-wins-list"), $("group-wins-when"), v.board, v.name, v.playedAt);
   for (const chip of $("group-chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
+  for (const chip of $("group-letter-chips").children) chip.ariaPressed = String(Number(chip.dataset.letters) === v.letters);
 }

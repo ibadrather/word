@@ -1,7 +1,7 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { ask } from "./ask.js"; // the page's own questions and notes
-import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
 import * as group from "./group.js"; // the group game's logic and room
@@ -27,7 +27,8 @@ const BACKSPACE_ICON =
 
 let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
-let guess = ""; // the guess being typed on the page's keyboard, up to 4 letters
+let guess = ""; // the guess being typed on the page's keyboard, up to letters() long
+let learnLetters = 4; // the length of the words Learn words shows
 
 function load() {
   const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null, held: null };
@@ -40,6 +41,8 @@ function load() {
 
 // The key colours and helper the page shows: this game's, or a group game's own on this phone (modes.js)
 const book = () => modes.page()?.book ?? state;
+// How long a guess is: 4 letters, or a group game's 4 or 5
+const letters = () => modes.page()?.letters ?? 4;
 
 function update(change) {
   change();
@@ -54,7 +57,7 @@ function update(change) {
 
 // The page's keyboard only types: any key, whatever its colour. Colours are set from the guess list's tiles.
 function type(letter) {
-  if (guess.length < 4) setGuess(guess + letter);
+  if (guess.length < letters()) setGuess(guess + letter);
 }
 
 function backspace() {
@@ -63,7 +66,7 @@ function backspace() {
 
 function setGuess(word) {
   guess = word;
-  showMessage(guess.length === 4 && !isWord(guess) ? NOT_A_WORD : ""); // a warning only: you can still note it, except in a group game
+  showMessage(guess.length === letters() && !isWord(guess) ? NOT_A_WORD : ""); // a warning only: you can still note it, except in a group game
   showGuess();
 }
 
@@ -114,7 +117,7 @@ async function addNote(count) {
 // In a group game the phone scores the guess itself. One it can't take (not a word, already guessed, not your turn)
 // is refused, and the turn isn't used.
 function guessWord() {
-  if (guess.length !== 4) return showMessage("Type a 4-letter word first");
+  if (guess.length !== letters()) return showMessage(`Type a ${letters()}-letter word first`);
   const refused = modes.guess(guess);
   if (refused) return showMessage(refused);
   setGuess("");
@@ -215,9 +218,11 @@ async function showWin(text, secret) {
   if (!(await ask(text, { yes: "OK", no: "Undo win", word: cleanWord(secret) }))) duel.undoWin();
 }
 
-// Learn words: ten dictionary words at random as tiles, each a moment after the last
+// Learn words: ten dictionary words of the chosen length at random as tiles, each a moment after the last
 function showLearnWords() {
-  const items = randomWords(10).map((word, i) => {
+  for (const chip of $("learn-letters").children) chip.ariaPressed = String(Number(chip.dataset.letters) === learnLetters);
+  $("learn-words").classList.toggle("five", learnLetters === 5);
+  const items = randomWords(10, Math.random, learnLetters).map((word, i) => {
     const li = document.createElement("li");
     li.ariaLabel = word;
     li.style.animationDelay = `${i * 30}ms`;
@@ -316,14 +321,20 @@ function showMessage(text) {
   $("msg").textContent = text;
 }
 
-// The guess in its four slots, the next one to fill underlined; the scores light up once it's full, on your turn
+// The guess in its slots, one a letter, the next one to fill underlined; the scores light up once it's full, on your
+// turn. A 4-letter game after a 5-letter one drops the guess's last letter.
 function showGuess() {
+  const length = letters();
+  if (guess.length > length) guess = guess.slice(0, length);
+  if ($("word").children.length !== length) {
+    $("word").replaceChildren(...Array.from({ length }, () => document.createElement("span")));
+  }
   for (const [i, slot] of [...$("word").children].entries()) {
     slot.textContent = guess[i] ?? "";
     slot.classList.toggle("next", i === guess.length);
   }
   $("word").ariaLabel = guess ? `Your guess: ${guess.toUpperCase()}` : "Your guess";
-  const ready = guess.length === 4 && !modes.turn();
+  const ready = guess.length === length && !modes.turn();
   $("counts").classList.toggle("ready", ready);
   $("guess-row").classList.toggle("ready", ready);
 }
@@ -397,17 +408,25 @@ function buildControls() {
     location.hash = "learn";
   });
   $("learn-more").addEventListener("click", showLearnWords);
+  for (const chip of $("learn-letters").children) {
+    chip.addEventListener("click", () => {
+      learnLetters = Number(chip.dataset.letters);
+      showLearnWords();
+    });
+  }
   $("learn-back").addEventListener("click", leaveLearn);
   addEventListener("hashchange", showView);
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
-  // The dictionary's size as tiles in the logo's colours
+  // The dictionaries' sizes as tiles in the logo's colours
   const tile = (digit, i) => {
     const el = Object.assign(document.createElement("b"), { textContent: digit });
     if (LOGO[i % LOGO.length]) el.className = LOGO[i % LOGO.length]; // the plain grey tile has no class
     return el;
   };
-  $("word-count").append(...[...String(WORD_COUNT)].map(tile));
-  $("word-count").ariaLabel = `${WORD_COUNT.toLocaleString()} words`;
+  for (const [id, count, letters] of [["word-count", WORD_COUNT, 4], ["word-count-5", WORD_COUNT_5, 5]]) {
+    $(id).append(...[...String(count)].map(tile));
+    $(id).ariaLabel = `${count.toLocaleString()} words of ${letters} letters`;
+  }
 }
 
 function render() {
@@ -454,6 +473,7 @@ function render() {
   // that they got it, until the game is over.
   const items = [...notes].reverse().map((note) => {
     const li = document.createElement("li");
+    li.classList.toggle("five", note.word.length === 5);
     const span = (className, textContent) => Object.assign(document.createElement("span"), { className, textContent });
     if (note.hidden) li.append(span("got", "Got it"));
     else li.append(...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)));

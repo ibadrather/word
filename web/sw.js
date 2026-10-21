@@ -11,6 +11,8 @@ const FILES = [
   "helpers.js",
   "words.js",
   "common.js",
+  "words5.js",
+  "common5.js",
   "room.js",
   "wins.js",
   "clock.js",

@@ -28,6 +28,7 @@
     <p id="timer" class="timer" aria-label="Time since your last guess" hidden></p>
     <p id="times-up" class="times-up" hidden>Your time is up. Play on if you like.</p>
 
+    <!-- One slot a letter: 4, or a 5-letter group game's 5 (app.js) -->
     <p id="word" class="slots" role="status" aria-label="Your guess"><span></span><span></span><span></span><span></span></p>
     <p id="counts-label" class="label">How many letters are right?</p>
     <div id="counts" class="counts"></div>
@@ -65,7 +66,8 @@
     </div>
   </main>
 
-  <!-- Learn words: a view of its own at #learn, in place of the game. Ten common words at random, and ten more. -->
+  <!-- Learn words: a view of its own at #learn, in place of the game. Ten common words of 4 or 5 letters at random,
+       and ten more. -->
   <section id="learn" class="learn" aria-labelledby="learn-title" hidden>
     <div class="learn-head">
       <button id="learn-back" class="close" type="button" aria-label="Back to the game">
@@ -74,6 +76,10 @@
       <h2 id="learn-title">Learn words</h2>
     </div>
     <p class="hint">Common words the game knows, picked at random.</p>
+    <div id="learn-letters" class="chips" role="group" aria-label="Letters in a word">
+      <button type="button" data-letters="4">4 letters</button>
+      <button type="button" data-letters="5">5 letters</button>
+    </div>
     <ul id="learn-words" class="learn-words"></ul>
     <button id="learn-more" class="primary new-words" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>
@@ -120,12 +126,12 @@
         </label>
         <label class="play-card">
           <input id="play-group" type="radio" name="play" value="group"><i class="radio" aria-hidden="true"></i>
-          <span><b>Group game</b>2 to 4 phones guess one word the computer picks.</span>
+          <span><b>Group game</b>2 to 4 phones guess one word of 4 or 5 letters the computer picks.</span>
         </label>
       </div>
       <button id="learn-open" class="play-card learn-card" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/></svg>
-        <span><b>Learn words</b>Ten common words at random.</span>
+        <span><b>Learn words</b>Ten common words of 4 or 5 letters at random.</span>
       </button>
 
       <p class="intro">
@@ -144,6 +150,7 @@
       </ol>
       <p class="intro">
         <b>Group game.</b> 2 to 4 phones guess one word the computer picks, taking turns, with a clock each.
+        Whoever deals picks a word of 4 or 5 letters.
         Every guess is scored for you and shows on every phone. Only dictionary words count, and never one already
         guessed. Once someone gets it, the players after them in the round get one last guess: more than one right is a
         draw. Run out of time or leave, and you're out.
@@ -165,12 +172,16 @@
 
       <h3>Dictionary</h3>
       <div class="example">
-        <div class="example-row">
+        <div class="example-row dictionary-row">
           <span id="word-count" class="tiles" role="img"></span>
-          <span class="dictionary-label">words it knows</span>
+          <span class="dictionary-label">4 letters</span>
         </div>
-        <p>Every 4-letter word in British and American spelling, from the SCOWL word list. Type a word it doesn't know and it tells you.
-          Advanced Helper Mode counts how many your partner's word could still be.</p>
+        <div class="example-row dictionary-row">
+          <span id="word-count-5" class="tiles" role="img"></span>
+          <span class="dictionary-label">5 letters</span>
+        </div>
+        <p>Every 4- and 5-letter word in British and American spelling, from the SCOWL word list. Type a word it doesn't know and it tells you.
+          The 5-letter words are for the group game. Advanced Helper Mode counts how many your partner's word could still be.</p>
       </div>
 
       <p class="menu-foot">Built by Asna and Ibad for you ❤️<span class="version">dev</span></p>
@@ -235,7 +246,7 @@
         <h2 id="group-title">Group game</h2>
         <button id="group-close" class="close" type="button" aria-label="Close">×</button>
       </div>
-      <p id="group-intro" class="hint">2 to 4 phones guess one word the computer picks. Everyone has a clock: noting a guess stops yours and starts the next player's.</p>
+      <p id="group-intro" class="hint">2 to 4 phones guess one word of 4 or 5 letters the computer picks. Everyone has a clock: noting a guess stops yours and starts the next player's.</p>
       <p id="group-invite" class="hint">This link is for the room <b></b>. Join it to play with the phones in it.</p>
       <p id="group-error" class="err" role="alert" hidden></p>
       <div id="group-here" class="wins" role="group" aria-labelledby="group-here-label" hidden>
@@ -254,6 +265,10 @@
         <span>Your name</span>
         <input id="group-name" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="The wins are kept by name">
       </label>
+      <div id="group-letters" class="field">
+        <span id="group-letters-label">Letters in the word</span>
+        <div id="group-letter-chips" class="chips" role="group" aria-labelledby="group-letters-label"></div>
+      </div>
       <div id="group-minutes" class="field">
         <span id="group-minutes-label">Minutes each</span>
         <div id="group-chips" class="chips" role="group" aria-labelledby="group-minutes-label"></div>
