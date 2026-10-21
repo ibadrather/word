@@ -42,15 +42,17 @@ export function lowercase(input) {
 export const utc = (ms) => `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
 // The room's wins into `list`, one row a player who has played here, this phone's player (`me`) marked, and when the
-// last game was played into `when`
+// last game was played into `when`. A group game's row also says how many of the wins were of 4 letters and of 5.
 export function showWins(list, when, board, me, playedAt) {
-  const rows = board.map(({ name, won }) => {
+  const rows = board.map(({ name, won, letters }) => {
     const li = document.createElement("li");
     li.classList.toggle("me", name === me);
-    li.append(
-      Object.assign(document.createElement("span"), { textContent: name }),
-      Object.assign(document.createElement("b"), { textContent: won }),
-    );
+    li.append(Object.assign(document.createElement("span"), { textContent: name }));
+    if (letters) {
+      const split = Object.entries(letters).map(([length, count]) => `${length} letters: ${count}`);
+      li.append(Object.assign(document.createElement("em"), { textContent: split.join(" · ") }));
+    }
+    li.append(Object.assign(document.createElement("b"), { textContent: won }));
     return li;
   });
   list.replaceChildren(...rows);

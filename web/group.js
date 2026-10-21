@@ -294,7 +294,7 @@ export function chosen(phones) {
 }
 
 // --- Results and the wins board. A room's results: { [game]: { at: when it ended, in UTC ms, players: [names],
-//     winners: [names], moves: how many turns it took } }. Every phone records a game when its own fold says it's
+//     winners: [names], moves: how many turns it took, letters: in its word } }. Every phone records a game when its own fold says it's
 //     over, so a dropout never loses one. ---
 
 // A game's result once it's over, or null while it's on
@@ -302,7 +302,8 @@ export function result(table, now) {
   const p = play(table, now);
   if (!p.over) return null;
   const name = (id) => table.seats.find((seat) => seat.id === id).name;
-  return { at: now, players: table.seats.map((seat) => seat.name), winners: p.winners.map(name), moves: p.moves.length };
+  const players = table.seats.map((seat) => seat.name);
+  return { at: now, players, winners: p.winners.map(name), moves: p.moves.length, letters: table.word.length };
 }
 
 const names = (list) => (Array.isArray(list) ? list.slice(0, SEATS).map((name) => String(name).slice(0, NAME)) : []);
@@ -315,22 +316,32 @@ export function mergedResults(ours, theirs) {
     const at = Number(entry?.at) || 0;
     const moves = Math.max(0, Number(entry?.moves) || 0);
     if (all[game] && all[game].moves >= moves) continue;
-    all[game] = { at, players: names(entry?.players), winners: names(entry?.winners), moves };
+    const letters = LETTERS.includes(Number(entry?.letters)) ? Number(entry.letters) : 4;
+    all[game] = { at, players: names(entry?.players), winners: names(entry?.winners), moves, letters };
   }
   return Object.fromEntries(Object.entries(all).sort(([, a], [, b]) => b.at - a.at).slice(0, KEPT));
 }
 
 // The room's wins from its results: a win for each game with exactly one winner (several are a draw), everyone who
-// played listed, most wins first; and when the last game was played
+// played listed, most wins first, with how many of their wins were of 4 letters and of 5 (games recorded before the
+// letters were are 4); and when the last game was played
 export function wins(results) {
   const players = {};
+  const by = {};
   let at = 0;
   for (const entry of Object.values(results)) {
-    for (const name of entry.players) players[name] ??= 0;
-    if (entry.winners.length === 1) players[entry.winners[0]] = (players[entry.winners[0]] ?? 0) + 1;
+    for (const name of entry.players) {
+      players[name] ??= 0;
+      by[name] ??= Object.fromEntries(LETTERS.map((letters) => [letters, 0]));
+    }
+    const [winner] = entry.winners;
+    if (entry.winners.length === 1 && Object.hasOwn(by, winner)) {
+      players[winner] += 1;
+      by[winner][entry.letters ?? 4] += 1;
+    }
     at = Math.max(at, entry.at);
   }
-  return { board: ranked({ players }), at };
+  return { board: ranked({ players }).map((row) => ({ ...row, letters: by[row.name] })), at };
 }
 
 // --- The mode in the browser ---

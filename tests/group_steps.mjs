@@ -276,6 +276,10 @@ const longer = { g1: { at: 6_000, players: ["Asha", "Ben"], winners: ["Asha", "B
 const all = mergedResults(early, longer);
 out.results.merged = { games: Object.keys(all).sort(), g1: all.g1.winners, back: mergedResults(all, early).g1.moves };
 out.results.board = wins({ won: { ...won }, drawn: { ...drawn }, lost: { ...lost } });
+// Wins of both lengths count on one board; a game recorded before its letters were is a 4-letter one
+const five = { at: 10_000, players: ["Asha", "Cleo"], winners: ["Cleo"], moves: 2, letters: 5 };
+const old = { at: 1_000, players: ["Asha", "Ben"], winners: ["Asha"], moves: 3 };
+out.results.bothLengths = wins(mergedResults({ won: { ...won }, five }, { old })).board;
 out.results.kept = Object.keys(
   mergedResults({}, Object.fromEntries(Array.from({ length: 250 }, (_, i) => [`g${i}`, { at: i, players: [], winners: [], moves: 1 }]))),
 ).length;

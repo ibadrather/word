@@ -205,26 +205,46 @@ def test_results(steps: dict[str, dict[str, object]]) -> None:
     """Every phone records the game; the board counts a lone winner only."""
     players = ["Asha", "Ben", "Cleo", "Dev"]
     assert steps["results"] == {
-        "won": {"at": 9_000, "players": players, "winners": ["Cleo"], "moves": 4},
+        "won": {
+            "at": 9_000,
+            "players": players,
+            "winners": ["Cleo"],
+            "moves": 4,
+            "letters": 4,
+        },
         "drawn": {
             "at": 8_000,
             "players": players,
             "winners": ["Cleo", "Dev"],
             "moves": 4,
+            "letters": 4,
         },
-        "lost": {"at": 300_000, "players": ["Asha", "Ben"], "winners": [], "moves": 4},
+        "lost": {
+            "at": 300_000,
+            "players": ["Asha", "Ben"],
+            "winners": [],
+            "moves": 4,
+            "letters": 4,
+        },
         "onGoing": None,
         # The entry with more moves wins, from either side
         "merged": {"games": ["g1", "g2"], "g1": ["Asha", "Ben"], "back": 6},
         "board": {
             "board": [
-                {"name": "Cleo", "won": 1},
-                {"name": "Asha", "won": 0},
-                {"name": "Ben", "won": 0},
-                {"name": "Dev", "won": 0},
+                {"name": "Cleo", "won": 1, "letters": {"4": 1, "5": 0}},
+                {"name": "Asha", "won": 0, "letters": {"4": 0, "5": 0}},
+                {"name": "Ben", "won": 0, "letters": {"4": 0, "5": 0}},
+                {"name": "Dev", "won": 0, "letters": {"4": 0, "5": 0}},
             ],
             "at": 300_000,
         },
+        # 4- and 5-letter wins on one board, each length counted
+        "bothLengths": [
+            {"name": "Cleo", "won": 2, "letters": {"4": 1, "5": 1}},
+            {"name": "Asha", "won": 1, "letters": {"4": 1, "5": 0}},
+            {"name": "Ben", "won": 0, "letters": {"4": 0, "5": 0}},
+            {"name": "Dev", "won": 0, "letters": {"4": 0, "5": 0}},
+        ],
         "kept": 200,
     }
 

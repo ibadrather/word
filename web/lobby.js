@@ -366,7 +366,7 @@ function showSheet(v) {
   showOn("group-in-room", "lobby", "game");
   $("group-name-field").hidden = !["setup", "join"].includes(screen) && !naming;
   showOn("group-minutes", "setup", "lobby");
-  showOn("group-letters", "setup", "lobby");
+  showOn("group-letters", "setup", "lobby", "game"); // during a game, for the next one
   showOn("group-go", "setup", "join", "error");
   showOn("group-start", "lobby");
   showOn("group-not-now", "join");
@@ -385,6 +385,7 @@ function showSheet(v) {
   $("group-foot").textContent = out ? "You're out of this game. Stay to watch it end, or leave." : (FOOT[screen] ?? "");
   $("group-foot").hidden = !$("group-foot").textContent;
   $("group-here-label").textContent = screen === "game" ? "Players" : `Here (${v.lobby.length} of ${mode.SEATS})`;
+  $("group-letters-label").textContent = screen === "game" ? "Letters in the next word" : "Letters in the word";
   if (screen === "lobby" || screen === "game") showPlayers(v, screen);
   showWins($("group-wins-list"), $("group-wins-when"), v.board, v.name, v.playedAt);
   for (const chip of $("group-chips").children) chip.ariaPressed = String(Number(chip.textContent) === v.minutes);
