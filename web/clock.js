@@ -1,10 +1,11 @@
-// The duel clock: a chess clock shared between the two phones. Trystero (trystero.js) finds the other phone
-// through public Nostr relays, then the phones talk directly over WebRTC. Its saved state lives under its own key,
-// apart from the game's, so the normal game is never affected. The pure functions at the top are what
-// tests/test_clock.py runs in Node; everything below them touches the browser and the room.
+// The duel clock: a chess clock shared between the two phones, which meet in a room (room.js). Its saved state lives
+// under its own key, apart from the game's, so the normal game is never affected. The pure functions at the top are
+// what tests/test_clock.py runs in Node; everything below them touches the browser and the room.
+
+import { cleanRoom, onVisible, open, roomName } from "./room.js";
+import { NO_WINS, board, counted, latestWins, playerName, uncounted } from "./wins.js";
 
 const STORAGE_KEY = "word-clock";
-const APP_ID = "ibadrather-word";
 const MINUTE = 60_000;
 
 // --- A view of the clocks: { mine, theirs: ms left on each side at `at`, running: "mine" | "theirs" | null,
@@ -83,75 +84,6 @@ export const started = (view, minutes) =>
 export const inPlay = (view, minutes, now) =>
   started(view, minutes) && left(view, "mine", now) > 0 && left(view, "theirs", now) > 0;
 
-// A room's wins: { players: { name: games won }, at: when its last game ended, in UTC ms }. Everyone who has played
-// in the room is listed, whoever they played. When the two phones' tallies differ, the one whose last game ended
-// later is kept on both.
-export const NO_WINS = { players: {}, at: 0 };
-export function latestWins(ours, sent) {
-  const at = Number(sent?.at) || 0;
-  if (at <= (ours?.at ?? 0)) return ours;
-  const players = Object.entries(sent.players ?? {}).map(([name, won]) => [String(name).slice(0, 12), Number(won) || 0]);
-  return { players: Object.fromEntries(players), at };
-}
-
-// After a game between two players: both listed, the winner (if it wasn't a draw) with one more win
-export function counted(wins, players, winner, at) {
-  const tally = { ...wins.players };
-  for (const name of players) tally[name] ??= 0;
-  if (winner) tally[winner] += 1;
-  return { players: tally, at };
-}
-
-// A win both players agreed to undo: one fewer for the winner. It counts as later than the tally it changes, even on a
-// phone whose clock is behind the other's, so the other phone adopts it.
-export function uncounted(wins, winner, now) {
-  const tally = { ...wins.players };
-  if (tally[winner]) tally[winner] -= 1;
-  return { players: tally, at: Math.max(now, wins.at + 1) };
-}
-
-// The room's players, most wins first, then by name
-export const board = (wins) =>
-  Object.entries(wins.players)
-    .map(([name, won]) => ({ name, won }))
-    .sort((a, b) => b.won - a.won || a.name.localeCompare(b.name));
-
-// What a player is called until their phone sends a name: the host is player one
-export const playerName = (host) => (host ? "Player one" : "Player two");
-
-// A room made up for you, like mint-owl-42: words that are easy to say across a table and to spell, and a number.
-// The longest result has 6 + 6 letters and 4 more, well inside the room's 20.
-export const ADJECTIVES = [
-  "amber", "brave", "breezy", "bright", "calm", "cheery", "clever", "cosmic", "crisp", "eager", "fancy", "fluffy", "fresh",
-  "frosty", "fuzzy", "gentle", "giddy", "glad", "golden", "green", "happy", "jazzy", "jolly", "keen", "kind", "lively",
-  "lucky", "mellow", "mighty", "mint", "misty", "nimble", "olive", "peachy", "polite", "proud", "quick", "royal", "rusty",
-  "shiny", "silver", "sleepy", "smart", "snowy", "snug", "steady", "swift", "tidy", "velvet", "witty", "zesty",
-];
-export const NOUNS = [
-  "acorn", "badger", "bison", "camel", "cedar", "cobra", "comet", "crab", "daisy", "duck", "eagle", "falcon", "finch",
-  "fox", "frog", "gecko", "goose", "hippo", "kitten", "kiwi", "koala", "lark", "lemur", "lion", "lotus", "mango", "maple",
-  "melon", "mole", "moth", "mouse", "newt", "otter", "owl", "panda", "parrot", "pony", "puffin", "rabbit", "raven",
-  "rhino", "robin", "shark", "sloth", "squid", "swan", "tiger", "tulip", "turtle", "vole", "walrus", "yak", "zebra",
-];
-export function roomName(random = Math.random) {
-  const pick = (words) => words[Math.floor(random() * words.length)];
-  return `${pick(ADJECTIVES)}-${pick(NOUNS)}-${10 + Math.floor(random() * 90)}`;
-}
-
-// A room as typed or linked: trimmed, lowercase and at most 20 characters
-export const cleanRoom = (typed) => typed.trim().toLowerCase().slice(0, 20);
-
-// The link that opens this page on a room: the page's own address with ?room=, any other query or hash dropped
-export function shareLink(href, room) {
-  const url = new URL(href);
-  url.search = new URLSearchParams({ room }).toString();
-  url.hash = "";
-  return url.href;
-}
-
-// The room in a page's query string, as the link carries it; "" when there's none
-export const roomFromLink = (search) => cleanRoom(new URLSearchParams(search).get("room") ?? "");
-
 // --- The mode in the browser ---
 // Saved: { id: this phone's, kept for good, name, room: as typed, madeUp: the room made up for this phone,
 //         host: whether it joined its made-up room, joined: whether the duel is on (the room is rejoined on load),
@@ -160,21 +92,20 @@ export const roomFromLink = (search) => cleanRoom(new URLSearchParams(search).ge
 //         last: { winner: name, side: "mine" | "theirs" }, this room's last game if it was won, until it's undone }
 
 const EMPTY = { id: "", name: "", room: "", madeUp: "", host: false, joined: false, opponent: null, minutes: 10, clock: fresh(10), wins: {}, last: null };
-const REJOIN_AFTER = 60_000; // back after this long away, a phone still waiting rejoins: its connection may be gone
 
 let state = { ...EMPTY };
 let onChange = () => {};
 let onGame = () => {}; // app.js's handler for the other phone's "game" messages
-let room = null; // the Trystero room while joined
-let action = null; // the room's "clock" messages
-let game = null; // the room's "game" messages: a claimed win, its answer, a New game and undoing a win (app.js words them)
-let farewell = null; // the room's "bye", sent when leaving so the other phone can tell it from a dropout
+// The room while joined, with its channels: "clock" for the views; "game" for a claimed win, its answer, a New game and
+// undoing a win (app.js words them); and "bye", sent when leaving so the other phone can tell it from a dropout, apart
+// from "clock" so its seq order stays as it is
+let room = null;
+const CHANNELS = ["clock", "game", "bye"];
 let peer = ""; // the opponent's peer id, "" while it isn't here
 let names = {}; // peer id → name, for every phone in the room
 let gone = null; // the name of the player who dropped out ("" if they sent none), until someone connects
 let departed = null; // the name of the player who tapped Leave ("" if they sent none), until someone connects
 let joinedAt = 0; // when the other phone last arrived, for the dock's "joined" note
-let hiddenAt = 0; // when the page last went out of view
 let error = ""; // what went wrong, for duel.js to word: "room" (none typed), "https" or "join", "" when all is well
 
 // An older save lacks the newer fields, so the defaults fill them in
@@ -198,17 +129,20 @@ export function init(change, heard) {
   onGame = heard;
   state = load();
   if (!state.id) state.id = Math.random().toString(36).slice(2); // breaks ties between the two phones' views
-  if (state.joined) join();
   // Back from a locked phone or another app: a message may have been missed, or the connection dropped. A quick trip
   // away, like the share sheet while sending the link, keeps a waiting phone's room as it is, so a friend joining
   // just then isn't missed.
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return void (hiddenAt = Date.now());
+  onVisible(({ away }) => {
     if (!state.joined) return;
     if (peer) share();
-    else if (gone !== null || Date.now() - hiddenAt > REJOIN_AFTER) rejoin();
+    else if (gone !== null || away) rejoin();
     onChange();
   });
+}
+
+// On load, when modes.js finds the duel was the mode on: the saved room is rejoined
+export function resume() {
+  if (state.joined) join();
 }
 
 // The setup screen opened: the room is made up the first time and kept from then on, and an old complaint goes
@@ -304,7 +238,7 @@ export function forget() {
 
 // A "game" message to the other phone, if it's here
 export function send(data) {
-  if (game && peer) game.send(data, { target: peer }).catch(() => {});
+  if (room && peer) room.send("game", data, peer);
 }
 
 // duel.js asks first while a game is going on the clocks
@@ -365,8 +299,8 @@ function isHost() {
 const myId = () => phoneId(state.host, state.id);
 
 // The names the room's wins are kept under: as typed, or player one and two
-const myName = () => state.name || playerName(isHost());
-const theirName = () => (peer ? names[peer] : (departed ?? gone)) || playerName(!isHost());
+const myName = () => state.name || playerName(isHost() ? 0 : 1);
+const theirName = () => (peer ? names[peer] : (departed ?? gone)) || playerName(isHost() ? 1 : 0);
 
 // This room's wins; an older save's two-sided tally starts again
 const roomWins = () => (state.wins[state.room]?.players ? state.wins[state.room] : NO_WINS);
@@ -386,47 +320,19 @@ function commit(clock) {
 // This phone's view, to the opponent or to a phone that has just joined. The name goes as typed: when it's empty the
 // other phone works out the default itself, once it knows which of the two is player one.
 function share(to = peer) {
-  if (!action || !to) return;
+  if (!room || !to) return;
   const data = { ...message(state.clock, Date.now(), state.name, state.minutes), id: state.id, host: state.host };
   data.wins = roomWins();
-  action.send(data, { target: to }).catch(() => {});
+  room.send("clock", data, to);
 }
 
-// The library is loaded only here, so a problem in it can never reach the normal game
-async function join() {
-  if (room) return;
-  if (!isSecureContext) return tell("https"); // the library's crypto isn't there on plain http
-  try {
-    const { joinRoom } = await import("./trystero.js");
-    if (room || !state.joined) return; // left, or joined again, while the library loaded
-    room = joinRoom({ appId: APP_ID }, state.room);
-    action = room.makeAction("clock");
-    farewell = room.makeAction("bye"); // apart from "clock", so its seq order stays as it is
-    game = room.makeAction("game");
-  } catch {
-    return tell("join");
-  }
-  if (error) tell(""); // a rejoin that worked clears an earlier failure
-  // A phone that joins is told this one's view, and becomes the opponent once it answers. The opponent is whichever
-  // phone spoke first, by its own saved id: a third phone that opened the same link is ignored, and the opponent's
-  // phone coming back with a new peer id (after being locked, while its old connection can take a while to be seen
-  // as gone) takes its place at once. A room we have left can still report events for a moment; those are not about
-  // the room we are in now.
-  const joined = room;
-  joined.onPeerJoin = (id) => {
-    if (joined === room) share(id);
-  };
-  joined.onPeerLeave = (id) => {
-    if (joined !== room) return;
-    const name = names[id] ?? "";
-    delete names[id];
-    if (id !== peer) return;
-    peer = "";
-    gone = name;
-    onChange();
-  };
-  action.onMessage = (data, { peerId }) => {
-    if (joined !== room || typeof data?.seq !== "number") return;
+// A phone that joins is told this one's view, and becomes the opponent once it answers. The opponent is whichever
+// phone spoke first, by its own saved id: a third phone that opened the same link is ignored, and the opponent's phone
+// coming back with a new peer id (after being locked, while its old connection can take a while to be seen as gone)
+// takes its place at once.
+const received = {
+  clock(data, peerId) {
+    if (typeof data?.seq !== "number") return;
     const from = { id: String(data.id ?? peerId), host: Boolean(data.host) };
     if (state.opponent && state.opponent.id !== from.id) return;
     const arrived = peerId !== peer;
@@ -447,35 +353,52 @@ async function join() {
     // (it adopts it, so this can't go back and forth)
     if (arrived || newer(state.clock, theirs) || wins.at > (Number(data.wins?.at) || 0)) share();
     onChange();
-  };
-  game.onMessage = (data, { peerId }) => {
-    if (joined === room && peerId === peer && typeof data?.type === "string") onGame(data);
-  };
+  },
+  game(data, peerId) {
+    if (peerId === peer && typeof data?.type === "string") onGame(data);
+  },
   // The other player tapped Leave: both clocks stop until they come back. Their phone's leave, which follows, finds
   // no peer to drop, so it doesn't turn "left" into "dropped out".
-  farewell.onMessage = (data, { peerId }) => {
-    if (joined !== room || peerId !== peer) return;
+  bye(data, peerId) {
+    if (peerId !== peer) return;
     state.clock = paused(state.clock, Date.now(), myId());
     save();
     departed = names[peerId] ?? "";
     peer = "";
     onChange();
-  };
+  },
+};
+
+function join() {
+  if (room) return;
+  if (!isSecureContext) return tell("https"); // the library's crypto isn't there on plain http
+  room = open(state.room, CHANNELS, {
+    ready: () => {
+      if (error) tell(""); // a rejoin that worked clears an earlier failure
+    },
+    failed: () => {
+      room = null;
+      tell("join");
+    },
+    peerJoin: (id) => share(id),
+    peerLeave: (id) => {
+      const name = names[id] ?? "";
+      delete names[id];
+      if (id !== peer) return;
+      peer = "";
+      gone = name;
+      onChange();
+    },
+    message: (channel, data, peerId) => received[channel](data, peerId),
+  });
 }
 
-// The page's state lets go of the room at once. The room itself is left in the background, after a goodbye to the
-// other phone has gone or half a second has passed: a send that fails or hangs never keeps it open.
+// The page's state lets go of the room at once, and the other phone is told this one has left
 function leaveRoom() {
-  const [old, to, bye] = [room, peer, farewell];
-  room = action = farewell = game = null;
+  room?.close(peer ? { channel: "bye", data: true, to: peer } : undefined);
+  room = null;
   peer = "";
   names = {};
-  if (!old) return;
-  const sent = to ? Promise.resolve().then(() => bye.send(true, { target: to })) : Promise.resolve();
-  const halfSecond = new Promise((resolve) => setTimeout(resolve, 500));
-  Promise.race([sent, halfSecond])
-    .catch(() => {})
-    .finally(() => old.leave().catch(() => {}));
 }
 
 function rejoin() {

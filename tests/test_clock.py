@@ -78,7 +78,7 @@ def test_clock_steps() -> None:
             "runOut": False,
             "pausedAtZero": False,
         },
-        "playerName": ["Player one", "Player two"],
+        "playerName": ["Player one", "Player two", "Player three", "Player four"],
         "formatTime": ["0:00", "0:59", "1:00", "59:59", "1:00:00", "0:00"],
         # The host's fresh clock wins from both sides, so the joiner takes its
         # 10 minutes; the joiner's next press is seq 1 and wins as usual
@@ -115,9 +115,12 @@ def test_clock_steps() -> None:
             "https://ibadrather.github.io/word/?room=mint-owl-42",
             "http://localhost:8000/?room=mint-owl-42",
             "https://ibadrather.github.io/word/staging/feat-duel/index.html?room=a+b%26c",
+            "https://ibadrather.github.io/word/?group=mint-owl-42",
         ],
         "roomFromLink": ["mint-owl-42", "mint-owl-42", "x" * 20, "", "", ""],
         "roundTrip": "a b&c",
+        "groupFromLink": ["mint-owl-42", "", "b"],
+        "groupRoundTrip": "a b&c",
         "latestWins": {
             "theirsLater": {"players": {"Asha": 2, "Ben": 2, "Cleo": 1}, "at": 9_000},
             "oursLater": {"players": {"Asha": 2, "Ben": 1}, "at": 5_000},

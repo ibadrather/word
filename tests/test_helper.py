@@ -48,7 +48,10 @@ def test_scores_match_the_secret(path: Path) -> None:
 @pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
 @pytest.mark.parametrize("path", GAMES, ids=[path.stem for path in GAMES])
 def test_advanced_helper(path: Path) -> None:
-    """After each guess, the advanced helper shows the expected greens and counts."""
+    """After each guess, the advanced helper shows the expected greens and counts.
+
+    The page scores each guess against the secret as the game file does, too.
+    """
     assert NODE is not None
     result = subprocess.run(  # noqa: S603 - our own script, run with the local node
         [NODE, Path(__file__).parent / "helper_steps.mjs", path],
@@ -59,6 +62,7 @@ def test_advanced_helper(path: Path) -> None:
     expected = [
         {
             "word": g["word"],
+            "score": g["count"],
             "green": g["green"],
             "letterSetsLeft": g["letterSetsLeft"],
             "wordsLeft": g["wordsLeft"],
@@ -89,3 +93,41 @@ def test_learn_words_are_ten_different_dictionary_words() -> None:
     words = json.loads(result.stdout)
     assert len({word for word, _ in words}) == LEARN_WORDS
     assert all(known for _, known in words)
+
+
+@pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
+def test_blocked_words_are_never_picked() -> None:
+    """The blocked words are common words, and no pick ever includes one.
+
+    Asked for every common word, with a fixed random, the picks are every
+    common word but the blocked ones, each once.
+    """
+    assert NODE is not None
+    script = (
+        'import { isWord, randomWords } from "./web/helpers.js";'
+        'import { BLOCKED, COMMON } from "./web/common.js";'
+        "let seed = 1;"
+        "const random = () => (seed = (seed * 48271) % 2147483647) / 2147483647;"
+        "const words = randomWords(COMMON.length, random);"
+        "console.log(JSON.stringify({"
+        "  blocked: [...BLOCKED],"
+        "  notCommon: [...BLOCKED].filter((w) => !COMMON.includes(w) || !isWord(w)),"
+        "  picked: words.length,"
+        "  different: new Set(words).size,"
+        "  pickedBlocked: words.filter((w) => BLOCKED.has(w)),"
+        "  common: COMMON.length,"
+        "}));"
+    )
+    result = subprocess.run(  # noqa: S603 - our own code, run with the local node
+        [NODE, "--input-type=module", "-e", script],
+        capture_output=True,
+        check=True,
+        text=True,
+        cwd=Path(__file__).parent.parent,
+    )
+    steps = json.loads(result.stdout)
+    assert "rape" in steps["blocked"]
+    assert steps["notCommon"] == []  # no typos: each one is a common, guessable word
+    assert steps["pickedBlocked"] == []
+    assert steps["picked"] == steps["different"]
+    assert steps["picked"] == steps["common"] - len(steps["blocked"])

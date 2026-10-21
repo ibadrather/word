@@ -30,6 +30,9 @@ import tomllib
 DEFAULT_BRANCH = "main"
 BETA_BRANCH = "staging"  # its copy is the beta, at beta/ rather than staging/staging/
 VERSION_SLOT = '<span class="version">dev</span>'
+# The beta's app icons, with BETA across them, so its installed app stands
+# apart from the live one on a home screen
+BETA_ICONS = pathlib.Path(__file__).parent.parent / "beta"
 
 # A file, or files to try in order: the first one the branch has is used.
 Files = str | tuple[str, ...]
@@ -146,7 +149,10 @@ def first_file(site: pathlib.Path, files: Files) -> pathlib.Path | None:
 
 
 def separate(site: pathlib.Path, branch: str) -> None:
-    """Give a staging copy its own storage, offline cache and app name."""
+    """Give a staging copy its own storage, offline cache and app name.
+
+    The beta gets its own icons too.
+    """
     folder, name = folder_of(branch), app_name(branch)
     for files, old, new in SEPARATE:
         path = first_file(site, files)
@@ -158,6 +164,10 @@ def separate(site: pathlib.Path, branch: str) -> None:
         data["name"] = name
         data["short_name"] = "Word beta" if branch == BETA_BRANCH else "Word test"
         manifest.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    if branch == BETA_BRANCH:
+        for icon in BETA_ICONS.glob("*.png"):
+            if (site / icon.name).is_file():
+                shutil.copyfile(icon, site / icon.name)
 
 
 def branches() -> list[str]:

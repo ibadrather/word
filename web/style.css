@@ -183,7 +183,10 @@ button, select {
   font-weight: 700;
   transition: opacity .15s;
 }
+.counts[hidden] { display: none; }
 .counts:not(.ready) button { opacity: .35; }
+/* The group game's Guess button has no label above it, so it keeps its own distance from the slots */
+#guess-row { margin-top: 24px; }
 .counts button:active { filter: brightness(.85); }
 
 /* The keyboard types the guess; its keys and the guess list's tiles share the same colours */
@@ -269,6 +272,9 @@ button, select {
   font-size: 1.1rem;
   font-weight: 700;
 }
+/* In a group game: who made the guess, and a winning guess kept hidden from the others until the game is over */
+.notes .who { max-width: 7em; margin-left: 8px; overflow: hidden; font-size: .75rem; font-weight: 600; color: var(--heading); text-overflow: ellipsis; white-space: nowrap; }
+.notes .got { display: grid; place-items: center; height: 40px; padding: 0 12px; border-radius: 6px; background: color-mix(in srgb, var(--in) 14%, var(--bg)); color: var(--in); font-size: .85rem; font-weight: 700; }
 .delete { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; }
 
 /* Menu: a drawer from the left, 80% of the screen; tap outside or × to close */
@@ -393,7 +399,7 @@ button, select {
 /* Duel clock: the clocks in a dock pinned to the bottom, like a real chess clock. The side that's ticking grows
    and fills in, so whose turn it is shows from across the table. Its background spans the screen, its sides stay
    within main's column, and the page gets room underneath so the secret word scrolls clear of it. */
-body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .dock {
   position: fixed;
   left: 0;
@@ -425,8 +431,12 @@ body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .dock .side.running { flex: 1.6; background: var(--accent); color: #fff; }
 .dock .side.running b { font-size: 2rem; }
 .dock .side.over { background: color-mix(in srgb, var(--out) 12%, var(--bg)); color: var(--out); }
-/* Waiting with nobody there: both sides dimmed */
+.dock .side.won { background: var(--in); color: #fff; }
+/* Waiting with nobody there: both sides dimmed; in a group game, a player who dropped out */
 .dock .side.idle { opacity: .55; }
+/* A group game's 3 or 4 sides and the menu button still fit a 360 px phone */
+.dock.many .side b { font-size: 1.1rem; }
+.dock.many .side.running b { font-size: 1.6rem; }
 /* The middle: the clock's settings, with the connection dot under the icon */
 .dock .mid { flex: none; display: grid; place-items: center; width: 40px; padding: 0; border: 0; border-radius: 14px; background: none; color: var(--muted); }
 .dock .mid svg { width: 20px; height: 20px; }
@@ -485,8 +495,8 @@ body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .sheet-head { display: flex; align-items: center; gap: 10px; }
 .sheet h2 { flex: 1; margin: 0; font-size: 1.1rem; color: var(--heading); }
 .hint { margin: 0; font-size: .78rem; color: var(--muted); }
-#duel-room-hint { margin-top: -8px; } /* it belongs to the Room field above */
-#duel-invite b { color: var(--heading); }
+#duel-room-hint, #group-room-hint { margin-top: -8px; } /* it belongs to the Room field above */
+#duel-invite b, #group-invite b { color: var(--heading); }
 .hint.foot { text-align: center; }
 /* The room's wins: a row a player, most wins first, this phone's player in the accent colour */
 .wins { display: grid; gap: 6px; }
@@ -498,6 +508,10 @@ body.duel main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .wins li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wins li b { font-variant-numeric: tabular-nums; color: var(--heading); }
 .wins li.me { box-shadow: inset 0 0 0 2px var(--accent); }
+/* The group game's players: a dot for whether they're here, the name, and how they're doing on the right */
+.players li em { flex: none; font-size: .8rem; font-style: normal; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.players li.turn em { color: var(--heading); }
+.players li.out { opacity: .6; }
 .err { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--out) 9%, var(--bg)); color: var(--error); font-size: .85rem; font-weight: 600; }
 
 /* Fields: a small label over a rounded box */

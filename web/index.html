@@ -29,8 +29,10 @@
     <p id="times-up" class="times-up" hidden>Your time is up. Play on if you like.</p>
 
     <p id="word" class="slots" role="status" aria-label="Your guess"><span></span><span></span><span></span><span></span></p>
-    <p class="label">How many letters are right?</p>
+    <p id="counts-label" class="label">How many letters are right?</p>
     <div id="counts" class="counts"></div>
+    <!-- In a group game the phone knows the word, so one button notes the guess and scores it -->
+    <div id="guess-row" class="counts" hidden><button id="guess" type="button">Guess</button></div>
     <p id="msg" class="msg"></p>
     <p id="progress" class="progress" hidden></p>
 
@@ -44,7 +46,7 @@
     <button id="clear" class="clear" type="button">Clear</button>
 
     <div class="guesses-head">
-      <h2>Your guesses</h2>
+      <h2 id="guesses-title">Your guesses</h2>
       <p id="game-stats" class="game-stats" hidden>
         <span>Guesses: <b id="guess-count"></b></span>
         <span>Game Timer: <b id="game-time"></b></span>
@@ -52,13 +54,15 @@
     </div>
     <ul id="notes" class="notes"></ul>
 
-    <h2><label for="secret">Your secret word</label></h2>
-    <div class="secret">
-      <input id="secret" type="password" maxlength="4" placeholder="Type it here"
-             autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
-      <button id="reveal" class="pill" type="button">Show</button>
+    <div id="secret-part">
+      <h2><label for="secret">Your secret word</label></h2>
+      <div class="secret">
+        <input id="secret" type="password" maxlength="4" placeholder="Type it here"
+               autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
+        <button id="reveal" class="pill" type="button">Show</button>
+      </div>
+      <p id="secret-msg" class="msg"></p>
     </div>
-    <p id="secret-msg" class="msg"></p>
   </main>
 
   <!-- Learn words: a view of its own at #learn, in place of the game. Ten common words at random, and ten more. -->
@@ -87,6 +91,15 @@
     <div id="theirs" class="side" role="timer"><span></span><b></b></div>
   </div>
 
+  <!-- The group game's clocks, one side a seat (lobby.js fills them in), with the menu button at the end -->
+  <div id="group-dock" class="dock" role="group" aria-label="Group game clocks" hidden>
+    <span id="group-note" class="note" hidden><i class="dot" aria-hidden="true"></i><span></span></span>
+    <button id="group-menu" class="mid" type="button" aria-label="Group game">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>
+      <i class="dot" aria-hidden="true"></i>
+    </button>
+  </div>
+
   <dialog id="menu" class="menu" aria-labelledby="about">
     <div class="menu-body" tabindex="-1" autofocus>
       <div class="menu-head">
@@ -105,6 +118,10 @@
           <input id="play-duel" type="radio" name="play" value="duel"><i class="radio" aria-hidden="true"></i>
           <span><b>Duel clock</b>The same, plus a chess clock shared by both phones.</span>
         </label>
+        <label class="play-card">
+          <input id="play-group" type="radio" name="play" value="group"><i class="radio" aria-hidden="true"></i>
+          <span><b>Group game</b>2 to 4 phones guess one word the computer picks.</span>
+        </label>
       </div>
       <button id="learn-open" class="play-card learn-card" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/></svg>
@@ -114,7 +131,7 @@
       <p class="intro">
         <b>Play it face to face.</b> Say your guesses and scores out loud to each other.
         This page only helps you keep track of letters.
-        It tells you when a word isn't in its dictionary, but never checks a score.
+        Face to face, it tells you when a word isn't in its dictionary, but never checks a score.
       </p>
 
       <h3>Rules</h3>
@@ -125,6 +142,12 @@
         <li>A repeated letter counts once.</li>
         <li>First to guess the word wins, unless the other player then gets theirs on their last turn: that's a draw.</li>
       </ol>
+      <p class="intro">
+        <b>Group game.</b> 2 to 4 phones guess one word the computer picks, taking turns, with a clock each.
+        Every guess is scored for you and shows on every phone. Only dictionary words count, and never one already
+        guessed. Once someone gets it, the players after them in the round get one last guess: more than one right is a
+        draw. Run out of time or leave, and you're out.
+      </p>
 
       <h3>Example</h3>
       <div class="example">
@@ -201,6 +224,53 @@
         <button id="duel-leave" class="secondary grow" type="button"></button>
       </div>
       <p id="duel-foot" class="hint foot"></p>
+    </div>
+  </dialog>
+
+  <!-- The group game's sheet: lobby.js shows the parts for setting up, joining from a link, the lobby, the game and a
+       phone that can't play -->
+  <dialog id="group" class="sheet" aria-labelledby="group-title">
+    <div class="sheet-body" tabindex="-1" autofocus>
+      <div class="sheet-head">
+        <h2 id="group-title">Group game</h2>
+        <button id="group-close" class="close" type="button" aria-label="Close">×</button>
+      </div>
+      <p id="group-intro" class="hint">2 to 4 phones guess one word the computer picks. Everyone has a clock: noting a guess stops yours and starts the next player's.</p>
+      <p id="group-invite" class="hint">This link is for the room <b></b>. Join it to play with the phones in it.</p>
+      <p id="group-error" class="err" role="alert" hidden></p>
+      <div id="group-here" class="wins" role="group" aria-labelledby="group-here-label" hidden>
+        <span id="group-here-label"></span>
+        <ol id="group-players" class="players"></ol>
+      </div>
+      <div id="group-room-field" class="field">
+        <label for="group-room">Room</label>
+        <div class="row-flex">
+          <input id="group-room" maxlength="20" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
+          <button class="secondary share" type="button">Share link</button>
+        </div>
+      </div>
+      <p id="group-room-hint" class="hint">Made up for you. Joining friends? Type their room instead.</p>
+      <label id="group-name-field" class="field">
+        <span>Your name</span>
+        <input id="group-name" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="The wins are kept by name">
+      </label>
+      <div id="group-minutes" class="field">
+        <span id="group-minutes-label">Minutes each</span>
+        <div id="group-chips" class="chips" role="group" aria-labelledby="group-minutes-label"></div>
+      </div>
+      <button id="group-go" class="primary" type="button"></button>
+      <button id="group-start" class="primary" type="button">Start game</button>
+      <button id="group-not-now" class="secondary" type="button">Not now, just play</button>
+      <div id="group-wins" class="wins" role="group" aria-labelledby="group-wins-label" hidden>
+        <span id="group-wins-label">Wins in this room</span>
+        <ol id="group-wins-list"></ol>
+        <span id="group-wins-when" class="hint"></span>
+      </div>
+      <div id="group-end" class="row-flex">
+        <button id="group-share" class="secondary grow share" type="button">Share link</button>
+        <button id="group-leave" class="secondary grow" type="button"></button>
+      </div>
+      <p id="group-foot" class="hint foot"></p>
     </div>
   </dialog>
 

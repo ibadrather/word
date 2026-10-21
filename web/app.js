@@ -3,7 +3,9 @@
 import { ask } from "./ask.js"; // the page's own questions and notes
 import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
-import * as duel from "./duel.js"; // the duel clock's screens: the dock, the sheet and the menu's choice
+import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
+import * as group from "./group.js"; // the group game's logic and room
+import * as modes from "./modes.js"; // which way you play: the menu's choice, and what a guess or New game does in it
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -36,11 +38,15 @@ function load() {
   }
 }
 
+// The key colours and helper the page shows: this game's, or a group game's own on this phone (modes.js)
+const book = () => modes.page()?.book ?? state;
+
 function update(change) {
   change();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {}
+  modes.saveBook(); // a group game's colours and helper
   render();
 }
 
@@ -57,28 +63,30 @@ function backspace() {
 
 function setGuess(word) {
   guess = word;
-  showMessage(guess.length === 4 && !isWord(guess) ? NOT_A_WORD : ""); // a warning only: you can still note it
+  showMessage(guess.length === 4 && !isWord(guess) ? NOT_A_WORD : ""); // a warning only: you can still note it, except in a group game
   showGuess();
 }
 
 function cycleColour(letter) {
   if (settled[letter]) return; // the helper has settled this letter, so it stays put
   update(() => {
-    const next = NEXT_COLOUR[state.colours[letter] || ""];
-    if (next) state.colours[letter] = next;
-    else delete state.colours[letter];
+    const { colours } = book();
+    const next = NEXT_COLOUR[colours[letter] || ""];
+    if (next) colours[letter] = next;
+    else delete colours[letter];
   });
 }
 
 // Only your own marks: letters a helper set stay, as they come from the scores
 async function clearColours() {
-  if (await ask("Clear the key colours you set?", { yes: "Clear" })) update(() => (state.colours = {}));
+  if (await ask("Clear the key colours you set?", { yes: "Clear" })) update(() => (book().colours = {}));
 }
 
 async function addNote(count) {
   const word = guess;
   // In a duel, a guess is noted only on your turn: it's what passes the clock (typing the next one is fine)
-  if (!mode.view().myTurn) return showMessage(`It's ${duel.otherName(mode.view())}'s turn`);
+  const notYet = modes.turn();
+  if (notYet) return showMessage(notYet);
   if (word.length !== 4) return showMessage("Type a 4-letter word first");
   if (state.notes.some((note) => note.word === word)) return showMessage("Already noted");
 
@@ -86,7 +94,7 @@ async function addNote(count) {
   const at = state.startedAt ? gameTime() : undefined;
   update(() => {
     state.notes.push({ word, count, at });
-    mode.press(); // in a duel, my clock stops and the other player's starts
+    modes.note(word, count); // in a duel, my clock stops and the other player's starts
   });
   // All four letters in could be their word: in a duel, the other player is asked to say so (heard() below)
   if (mode.view().phase !== "live") return;
@@ -103,19 +111,24 @@ async function addNote(count) {
   if (gotIt) mode.send({ type: "claim", guess: word, secret: state.secret, guesses: state.notes.length });
 }
 
+// In a group game the phone scores the guess itself. One it can't take (not a word, already guessed, not your turn)
+// is refused, and the turn isn't used.
+function guessWord() {
+  if (guess.length !== 4) return showMessage("Type a 4-letter word first");
+  const refused = modes.guess(guess);
+  if (refused) return showMessage(refused);
+  setGuess("");
+}
+
 async function deleteNote(note) {
   if (await ask(`Remove ${note.word.toUpperCase()} (scored ${note.count})?`, { yes: "Remove" })) {
     update(() => (state.notes = state.notes.filter((n) => n !== note)));
   }
 }
 
-// In a duel, New game restarts both clocks too: that's the only way to change a word once the game is on
+// In a duel, New game restarts both clocks too (modes.js asks in the mode's own words)
 async function newGame() {
-  const duelling = mode.view().active;
-  const question = `Clear your word, guesses and key colours${duelling ? ", and restart both clocks" : ""}?`;
-  if (!(await ask(question, { yes: "New game" }))) return;
-  mode.newGame(); // tells the other phone too
-  clearGame();
+  if (await modes.newGame()) clearGame();
 }
 
 function clearGame() {
@@ -247,16 +260,16 @@ const HELPER_QUESTIONS = {
 };
 
 async function chooseHelper(helper) {
-  if (await ask(HELPER_QUESTIONS[helper], { yes: "Switch" })) update(() => (state.helper = helper));
+  if (await ask(HELPER_QUESTIONS[helper], { yes: "Switch" })) update(() => (book().helper = helper));
   else render(); // put the dropdown back
 }
 
 // What the chosen helper has settled ({ letter: "in" | "out" }), and for the advanced one the letter sets that fit.
-function deduce() {
-  if (state.helper === "basic") return { known: zeroGuesses(state.notes) };
-  if (state.helper === "advanced") {
-    const fitting = fittingSets(state.notes);
-    return { known: knownLetters(fitting, state.colours), fitting };
+function deduce(notes, { helper, colours }) {
+  if (helper === "basic") return { known: zeroGuesses(notes) };
+  if (helper === "advanced") {
+    const fitting = fittingSets(notes);
+    return { known: knownLetters(fitting, colours), fitting };
   }
   return { known: {} };
 }
@@ -274,10 +287,21 @@ function progress(fitting) {
 
 // On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
 // In a duel the two players' clocks tick in the dock at the bottom (duel.js); the game's own times stay as they are.
-// Both stop at TIME_LIMIT into the game and turn red.
+// Both stop at TIME_LIMIT into the game and turn red. A group game's times come from its table: the turn being played,
+// and the time since the deal, stopping when the game ends.
 const gameTime = () => Math.min(Date.now() - state.startedAt, TIME_LIMIT);
 
-function showTimer() {
+function showTimer(page = modes.page()) {
+  $("timer").ariaLabel = page ? "Time this turn" : "Time since your last guess";
+  if (page) {
+    $("timer").hidden = $("game-stats").hidden = !page.time;
+    $("timer").classList.remove("over");
+    $("game-stats").classList.remove("over");
+    if (!page.time) return;
+    $("timer").textContent = formatTime(page.time.turn);
+    $("game-time").textContent = formatTime(page.time.game);
+    return;
+  }
   $("timer").hidden = $("game-stats").hidden = !state.startedAt;
   if (!state.startedAt) return;
   const elapsed = gameTime();
@@ -299,7 +323,9 @@ function showGuess() {
     slot.classList.toggle("next", i === guess.length);
   }
   $("word").ariaLabel = guess ? `Your guess: ${guess.toUpperCase()}` : "Your guess";
-  $("counts").classList.toggle("ready", guess.length === 4 && mode.view().myTurn);
+  const ready = guess.length === 4 && !modes.turn();
+  $("counts").classList.toggle("ready", ready);
+  $("guess-row").classList.toggle("ready", ready);
 }
 
 // --- Rendering ---
@@ -347,6 +373,8 @@ function buildControls() {
     if (event.target.closest("input, select, textarea")) return;
     if (/^[a-z]$/i.test(event.key)) type(event.key.toLowerCase());
     else if (event.key === "Backspace") backspace();
+    // Enter notes a group game's guess, unless it's pressing another button (the page's keys and Guess don't count)
+    else if (event.key === "Enter" && modes.page() && !event.target.closest("button:not(.key, #guess)")) guessWord();
     else return;
     event.preventDefault();
   });
@@ -355,6 +383,7 @@ function buildControls() {
     update(() => (state.secret = event.target.value.toLowerCase()));
   });
   $("reveal").addEventListener("click", () => showSecret($("secret").type === "password"));
+  $("guess").addEventListener("click", guessWord);
   $("reset").addEventListener("click", newGame);
   $("clear").addEventListener("click", clearColours);
   $("logo").addEventListener("click", () => $("menu").showModal());
@@ -382,6 +411,17 @@ function buildControls() {
 }
 
 function render() {
+  // A group game shows its table's guesses, with this phone's own colours and helper, and has no secret to type
+  const page = modes.page();
+  const notes = page ? page.notes : state.notes;
+  const { colours, helper } = book();
+  $("secret-part").hidden = Boolean(page);
+  $("counts-label").hidden = $("counts").hidden = Boolean(page);
+  $("guess-row").hidden = !page;
+  $("guesses-title").textContent = page ? "Guesses" : "Your guesses";
+  // Advanced Helper Mode isn't offered in a group game: it would work out the word from everyone's guesses
+  const advanced = $("helper").querySelector('[value="advanced"]');
+  advanced.hidden = advanced.disabled = Boolean(page);
   // Only write the secret back when it differs, so typing doesn't jump the cursor to the end.
   if ($("secret").value.toLowerCase() !== state.secret) $("secret").value = state.secret;
   // In a duel, a word is locked once the game is on the clocks, until either player taps New game
@@ -391,50 +431,54 @@ function render() {
   const secretMessage = state.secret.length === 4 && !isWord(state.secret) ? NOT_A_WORD : locked ? LOCKED : "";
   $("secret-msg").textContent = secretMessage;
   $("secret-msg").classList.toggle("calm", secretMessage === LOCKED);
-  $("helper").value = state.helper;
-  document.body.classList.toggle("dark", state.helper === "advanced");
+  $("helper").value = helper;
+  document.body.classList.toggle("dark", helper === "advanced");
   // The installed app's status or title bar follows the page into dark and back
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
   showGuess();
-  duel.render();
-  const { known, fitting } = deduce();
+  modes.render();
+  const { known, fitting } = deduce(notes.filter((note) => !note.hidden), book());
   settled = known;
-  $("clear").disabled = !Object.keys(state.colours).length;
-  $("guess-count").textContent = state.notes.length;
-  showTimer();
+  $("clear").disabled = !Object.keys(colours).length;
+  $("guess-count").textContent = notes.length;
+  showTimer(page);
   $("progress").hidden = !fitting;
   if (fitting) $("progress").textContent = progress(fitting);
-  const colour = (letter) => (known[letter] ? `${known[letter]} locked` : state.colours[letter] || "");
+  const colour = (letter) => (known[letter] ? `${known[letter]} locked` : colours[letter] || "");
 
   for (const key of $("keyboard").querySelectorAll(".key[data-letter]")) {
     key.className = `key ${colour(key.dataset.letter)}`;
   }
 
-  const items = [...state.notes].reverse().map((note) => {
+  // In a group game each guess says who made it, and can't be removed. Another player's winning guess shows only
+  // that they got it, until the game is over.
+  const items = [...notes].reverse().map((note) => {
     const li = document.createElement("li");
-    li.append(
-      ...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)),
-      Object.assign(document.createElement("span"), { className: "at", textContent: note.at == null ? "" : formatTime(note.at) }),
-      Object.assign(document.createElement("span"), { className: "score", textContent: note.count }),
-      button("×", "delete", () => deleteNote(note)),
-    );
+    const span = (className, textContent) => Object.assign(document.createElement("span"), { className, textContent });
+    if (note.hidden) li.append(span("got", "Got it"));
+    else li.append(...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)));
+    if (page) li.append(span("who", note.who));
+    li.append(span("at", note.at == null ? "" : formatTime(note.at)), span("score", note.hidden ? "✓" : note.count));
+    if (!page) li.append(button("×", "delete", () => deleteNote(note)));
     return li;
   });
   if (!items.length) {
-    items.push(Object.assign(document.createElement("li"), { className: "empty", textContent: "No guesses yet. Type one above and tap its score." }));
+    const empty = !page ? "No guesses yet. Type one above and tap its score." : page.time ? "No guesses yet." : "No game yet. Tap New game to deal a word.";
+    items.push(Object.assign(document.createElement("li"), { className: "empty", textContent: empty }));
   }
   $("notes").replaceChildren(...items);
 }
 
 buildControls();
-duel.init();
-mode.init(render, heard); // rejoins a saved room; the clock calls render whenever it changes
+mode.init(render, heard); // the clock calls render whenever it changes
+group.init(render); // and so does the group game
+modes.init(); // rejoins the saved mode's room
 render();
 showView();
-duel.openLink(); // a shared duel link asks to join
+modes.openLink(); // a shared link asks to join
 setInterval(() => {
   showTimer();
-  duel.tick();
+  modes.tick();
 }, 1000);
 
 // Keeps the files for offline use, which also lets the page be installed as an app (sw.js)

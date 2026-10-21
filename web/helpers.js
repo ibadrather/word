@@ -1,7 +1,7 @@
 // Word: the helpers. Plain functions of the guesses (and your marks), and of times, so tests can run them in Node.
 // Notes are [{ word, count }]; a result is { letter: "in" | "out" }. Repeated letters in a guess count once.
 
-import { COMMON } from "./common.js";
+import { BLOCKED, COMMON } from "./common.js";
 import { WORDS } from "./words.js";
 
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
@@ -14,15 +14,24 @@ export function isWord(word) {
   return WORDS.has(word);
 }
 
-// Some different common words picked at random (a partial shuffle), for the Learn words view
+// The common words that can be picked: all but the blocked ones
+const PICKABLE = COMMON.filter((word) => !BLOCKED.has(word));
+
+// Some different common words picked at random (a partial shuffle), for the Learn words view; all of them, shuffled,
+// when more are asked for than there are
 export function randomWords(count, random = Math.random) {
-  const words = [...COMMON];
+  const words = [...PICKABLE];
+  count = Math.min(count, words.length);
   for (let i = 0; i < count; i++) {
     const j = i + Math.floor(random() * (words.length - i));
     [words[i], words[j]] = [words[j], words[i]];
   }
   return words.slice(0, count);
 }
+
+// --- Scoring: how many of a guess's letters are in the word. ---
+
+export const score = (guess, word) => [...new Set(guess)].filter((letter) => word.includes(letter)).length;
 
 // --- Basic helper: a guess that scored 0 has none of its letters in the word. ---
 
@@ -51,9 +60,7 @@ function allSets(chosen, from) {
 // The letter sets (like "ackr") that give every guess its count.
 // knownLetters then says which letters those sets settle as "in" or "out".
 export function fittingSets(notes) {
-  return LETTER_SETS.filter((set) =>
-    notes.every(({ word, count }) => [...new Set(word)].filter((letter) => set.includes(letter)).length === count),
-  );
+  return LETTER_SETS.filter((set) => notes.every(({ word, count }) => score(word, set) === count));
 }
 
 export function knownLetters(fitting, colours) {
