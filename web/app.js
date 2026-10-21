@@ -292,19 +292,16 @@ function progress(fitting) {
 
 // On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
 // In a duel the two players' clocks tick in the dock at the bottom (duel.js); the game's own times stay as they are.
-// Both stop at TIME_LIMIT into the game and turn red. A group game's times come from its table: the turn being played,
-// and the time since the deal, stopping when the game ends.
+// Both stop at TIME_LIMIT into the game and turn red. A group game has only the time since the deal, from its table,
+// stopping when the game ends: each player's own clock is in the dock, and a second one on top read as yours.
 const gameTime = () => Math.min(Date.now() - state.startedAt, TIME_LIMIT);
 
 function showTimer(page = modes.page()) {
-  $("timer").ariaLabel = page ? "Time this turn" : "Time since your last guess";
   if (page) {
-    $("timer").hidden = $("game-stats").hidden = !page.time;
-    $("timer").classList.remove("over");
+    $("timer").hidden = true;
+    $("game-stats").hidden = !page.time;
     $("game-stats").classList.remove("over");
-    if (!page.time) return;
-    $("timer").textContent = formatTime(page.time.turn);
-    $("game-time").textContent = formatTime(page.time.game);
+    if (page.time) $("game-time").textContent = formatTime(page.time.game);
     return;
   }
   $("timer").hidden = $("game-stats").hidden = !state.startedAt;
@@ -322,8 +319,9 @@ function showMessage(text) {
 }
 
 // The guess in its slots, one a letter, the next one to fill underlined; the scores light up once it's full, on your
-// turn. A 4-letter game after a 5-letter one drops the guess's last letter.
-function showGuess() {
+// turn. A 4-letter game after a 5-letter one drops the guess's last letter. In a group game the Guess button says
+// whose turn it is: filled with the guess once it's full on yours, outlined while you type, grey on someone else's.
+function showGuess(page = modes.page()) {
   const length = letters();
   if (guess.length > length) guess = guess.slice(0, length);
   if ($("word").children.length !== length) {
@@ -337,6 +335,9 @@ function showGuess() {
   const ready = guess.length === length && !modes.turn();
   $("counts").classList.toggle("ready", ready);
   $("guess-row").classList.toggle("ready", ready);
+  if (!page) return;
+  $("guess-row").classList.toggle("mine", !page.waiting);
+  $("guess").textContent = page.waiting || (ready ? `Guess ${guess.toUpperCase()}` : `Your turn · type ${length} letters`);
 }
 
 // --- Rendering ---
@@ -438,6 +439,10 @@ function render() {
   $("counts-label").hidden = $("counts").hidden = Boolean(page);
   $("guess-row").hidden = !page;
   $("guesses-title").textContent = page ? "Guesses" : "Your guesses";
+  // In a group game the header's button deals, and only between games
+  $("reset-new").hidden = Boolean(page);
+  $("reset-deal").hidden = !page;
+  $("reset").disabled = Boolean(page?.playing);
   // Advanced Helper Mode isn't offered in a group game: it would work out the word from everyone's guesses
   const advanced = $("helper").querySelector('[value="advanced"]');
   advanced.hidden = advanced.disabled = Boolean(page);
@@ -454,7 +459,7 @@ function render() {
   document.body.classList.toggle("dark", helper === "advanced");
   // The installed app's status or title bar follows the page into dark and back
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
-  showGuess();
+  showGuess(page);
   modes.render();
   const { known, fitting } = deduce(notes.filter((note) => !note.hidden), book());
   settled = known;
@@ -474,6 +479,8 @@ function render() {
   const items = [...notes].reverse().map((note) => {
     const li = document.createElement("li");
     li.classList.toggle("five", note.word.length === 5);
+    li.classList.toggle("mine", Boolean(page && note.mine));
+    li.classList.toggle("won", Boolean(note.won));
     const span = (className, textContent) => Object.assign(document.createElement("span"), { className, textContent });
     if (note.hidden) li.append(span("got", "Got it"));
     else li.append(...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)));
@@ -483,7 +490,7 @@ function render() {
     return li;
   });
   if (!items.length) {
-    const empty = !page ? "No guesses yet. Type one above and tap its score." : page.time ? "No guesses yet." : "No game yet. Tap New game to deal a word.";
+    const empty = !page ? "No guesses yet. Type one above and tap its score." : page.time ? "No guesses yet." : page.empty;
     items.push(Object.assign(document.createElement("li"), { className: "empty", textContent: empty }));
   }
   $("notes").replaceChildren(...items);
@@ -498,6 +505,7 @@ showView();
 modes.openLink(); // a shared link asks to join
 setInterval(() => {
   showTimer();
+  if (modes.page()) showGuess(); // a clock that ran out passes the turn with no message
   modes.tick();
 }, 1000);
 

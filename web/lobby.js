@@ -16,7 +16,7 @@ const SAID = 4_000; // how long what just happened stays on the dock's edge, in 
 const SCREENS = { off: "setup", lobby: "lobby", game: "game", error: "error" };
 const FOOT = {
   setup: "Every phone needs internet to find the others.",
-  lobby: "The letters and minutes are the same for everyone here. A game needs 2 phones.",
+  lobby: "Anyone here can change the letters and minutes. Whoever deals goes first.",
   game: "Leaving counts as losing this game.",
 };
 // Why a word can't be dealt, from group.js's deal()
@@ -88,7 +88,7 @@ function connect() {
   $("group").firstElementChild.focus(); // Connect is gone, so focus stays in the sheet
 }
 
-// Start game, or New game in the lobby: a word for everyone here
+// Deal, from the lobby or the page's header: a word for everyone here
 function start() {
   const why = mode.deal();
   if (why) return ask(NO_DEAL[why], { no: null });
@@ -104,7 +104,7 @@ function leave() {
 export function leaving() {
   const v = mode.view();
   if (v.phase !== "game" || v.play.out[v.id]) return Promise.resolve(true);
-  return ask("Leave the group game? Leaving counts as losing this game.", { yes: "Leave" });
+  return ask("Leave the group game? Leaving counts as losing this game.", { yes: "Leave", danger: true });
 }
 
 // Share link sends the page's address with the room: the room being set up, from beside its field, or the one joined
@@ -121,7 +121,7 @@ function share(event) {
 // Whether a guess can be noted now: "" if it can, or else why not
 export function turn(v = mode.view()) {
   if (v.phase === "error") return "Not connected. Open the group game to try again";
-  if (v.phase !== "game") return v.seated && v.play?.over ? "This game is over. Tap New game for another" : "Tap New game to deal a word";
+  if (v.phase !== "game") return v.seated && v.play?.over ? "This game is over. Tap Deal for another" : "Tap Deal for a word";
   const out = v.play.out[v.id];
   if (out) return out === "time" ? "You're out of time" : "You left this game";
   if (v.play.winners.includes(v.id)) return "You got it! The others get their last guess";
@@ -139,7 +139,7 @@ export function guess(word) {
   return turn(v);
 }
 
-// New game deals a word, only between games. app.js never clears its own game for it.
+// The header's Deal deals a word, only between games. app.js never clears its own game for it.
 export async function newGame() {
   const v = mode.view();
   if (v.phase === "game") await ask("A game is on. Leave it to quit.", { no: null });
@@ -154,18 +154,30 @@ export const timesUp = () => false;
 // What the main page shows in a group game: the table's guesses, newest last, with who made each; another player's
 // winning guess stays hidden until the game is over, as the players after them still get a last guess at the word.
 // Times are from the deal. `book` is this phone's own key colours and helper for the group game. `letters` is how
-// long a guess is: the game's word, or between games the next deal's.
+// long a guess is: the game's word, or between games the next deal's. `waiting` is what the Guess button says when
+// it isn't this phone's turn ("" when it is), `playing` that a game is on, so the header's Deal can't be used, and
+// `empty` what the guess list says before a deal.
 export function page(v = mode.view()) {
   const p = v.seated ? v.play : null;
-  const notes = (p?.notes ?? []).map(({ seat, word, count, at, won }) => ({
-    word,
-    count,
-    at,
-    who: seat === v.id ? "You" : nameOf(v, seat),
-    hidden: won && !p.over && seat !== v.id,
-  }));
+  const notes = (p?.notes ?? []).map(({ seat, word, count, at, won }) => {
+    const hidden = won && !p.over && seat !== v.id;
+    return { word, count, at, who: seat === v.id ? "You" : nameOf(v, seat), mine: seat === v.id, won: won && !hidden, hidden };
+  });
   const letters = v.phase === "game" ? v.table.word.length : v.letters;
-  return { book: mode.book(), notes, letters, time: p && { game: p.time, turn: p.running, over: p.over } };
+  const time = p && { game: p.time, turn: p.running, over: p.over };
+  const empty = v.phase === "error" ? `${turn(v)}.` : "No game yet. Tap Deal for a word."; // the guess list, before a deal
+  return { book: mode.book(), notes, letters, time, waiting: waiting(v), playing: v.phase === "game", empty };
+}
+
+// The Guess button's words when this phone can't guess: turn() says it at length, under the button, when it's tapped
+function waiting(v) {
+  if (v.phase === "error") return "Not connected";
+  if (v.phase !== "game") return v.seated && v.play?.over ? "Game over · tap Deal" : "No game yet · tap Deal";
+  const out = v.play.out[v.id];
+  if (out) return out === "time" ? "You're out of time" : "You left this game";
+  if (v.play.winners.includes(v.id)) return "You got it!";
+  if (v.play.turn !== v.id) return `${nameOf(v, v.play.turn)}'s turn`;
+  return "";
 }
 
 // --- Drawing ---
@@ -187,7 +199,8 @@ function draw(v) {
   announce(v);
   if (!v.active) return;
   const p = v.seated ? v.play : null;
-  const players = p ? v.table.seats : v.lobby.slice(0, mode.SEATS);
+  // A phone that couldn't join, or was turned away, has no clock here: the dock only says why
+  const players = v.phase === "error" ? [] : p ? v.table.seats : v.lobby.slice(0, mode.SEATS);
   buildSides(players);
   for (const side of $("group-dock").querySelectorAll(".side")) {
     const { id } = side.dataset;
@@ -233,7 +246,7 @@ function edgeNote(v, now) {
     return { text: "" };
   }
   if (v.lobby.length < 2) return { text: "Waiting for others to join…", dot: "wait" };
-  return { text: `${v.lobby.length} here · ${v.letters} letters · tap New game to deal`, dot: "live" };
+  return { text: `${v.lobby.length} here · ${v.letters} letters · tap Deal`, dot: "live" };
 }
 
 function showNote({ text, dot = "", warn = false }) {
@@ -248,9 +261,20 @@ function showNote({ text, dot = "", warn = false }) {
 // players' on the dock's edge, not in a queue of notes
 function announce(v) {
   const p = v.seated ? v.play : null;
-  const now = { game: v.table?.game ?? "", winners: p?.winners.length ?? 0, over: p?.over ?? false, out: { ...p?.out }, skips: skips(p) };
+  const picks = Object.fromEntries(v.lobby.map(({ id, picked }) => [id, picked]));
+  const now = {
+    game: v.table?.game ?? "",
+    winners: p?.winners.length ?? 0,
+    over: p?.over ?? false,
+    out: { ...p?.out },
+    skips: skips(p),
+    letters: v.letters,
+    minutes: v.minutes,
+    picks,
+  };
   const before = told;
   told = now;
+  if (before && v.active) switched(v, before);
   if (!before || !v.active || !p) return; // the game as it was on loading the page has been said already
   if (now.game !== before.game) {
     return say(`${v.table.dealer === v.id ? "You" : nameOf(v, v.table.dealer)} dealt a new ${v.table.word.length}-letter word`);
@@ -265,6 +289,17 @@ function announce(v) {
 }
 
 const skips = (p) => p?.moves.filter((move) => move.kind === "skip").length ?? 0;
+
+// Another phone here changed the letters or the minutes: said on the dock's edge, so nobody is caught out by a change
+// they didn't make. It's the phone whose pick went up, one that was here already: a phone just joined takes up the
+// room's choice from the others, which says nothing.
+function switched(v, before) {
+  const changes = [v.letters !== before.letters && `${v.letters} letters`, v.minutes !== before.minutes && `${v.minutes} minutes each`];
+  if (!changes.some(Boolean)) return;
+  const by = v.lobby.find(({ id, me, picked }) => !me && Object.hasOwn(before.picks, id) && picked > before.picks[id]);
+  const next = v.phase === "game" ? " for the next word" : "";
+  if (by) say(`${by.name || "Someone"} switched to ${changes.filter(Boolean).join(" and ")}${next}`);
+}
 
 function say(text) {
   said = { text, at: Date.now() };
@@ -328,17 +363,19 @@ function problem(v) {
   );
 }
 
-// The players in the lobby or the game: a dot for whether they're here, the name, and how they're doing
+// The players in the lobby or the game: a dot for whether they're here, the name, and how they're doing. In a game
+// they're numbered in turn order, which is the dealer first and so isn't the lobby's.
 function showPlayers(v, screen) {
   const game = screen === "game";
   const players = game ? v.table.seats : v.lobby;
-  const rows = players.map(({ id, name }) => {
+  const rows = players.map(({ id, name }, i) => {
     const li = document.createElement("li");
     const away = game && Object.hasOwn(v.away, id);
     const status = game ? statusOf(v, id) || time(v.play.left[id]) : v.lobby.find((phone) => phone.id === id)?.taken ? "name taken" : "";
     li.classList.toggle("me", id === v.id);
     li.classList.toggle("turn", game && v.play.turn === id);
     li.classList.toggle("out", game && Boolean(v.play.out[id]));
+    if (game) li.append(Object.assign(document.createElement("small"), { className: "seat", textContent: i + 1 }));
     li.append(
       Object.assign(document.createElement("i"), { className: `dot ${away ? "wait" : "live"}`, ariaHidden: "true" }),
       Object.assign(document.createElement("span"), { textContent: id === v.id ? `${name || "You"} (you)` : name }),
@@ -349,42 +386,51 @@ function showPlayers(v, screen) {
   $("group-players").replaceChildren(...rows);
 }
 
-// The sheet shows one of five screens, the room's name on each (in its field, the link's note or under the title). It
-// folds away by itself when a word is dealt while it shows the lobby.
+// The sheet shows one of five screens, the room's name on each (in its field, the link's note, the waiting box or
+// under the title). Alone in the lobby, the room is shown big to invite the others, and Deal waits for them. It folds
+// away by itself when a word is dealt while it shows the lobby.
 function showSheet(v) {
   const screen = invite ? "join" : SCREENS[v.phase];
   if (shown === "lobby" && screen === "game") $("group").close();
   shown = screen;
   const showOn = (id, ...screens) => ($(id).hidden = !screens.includes(screen));
   const naming = screen === "lobby" && (!v.name || v.taken); // the lobby asks for another name
+  const alone = screen === "lobby" && v.lobby.length < 2;
   $("group-title").textContent = screen === "join" ? "Join the group game?" : "Group game";
   showOn("group-intro", "setup");
   showOn("group-invite", "join");
   showOn("group-here", "lobby", "game");
   showOn("group-room-field", "setup", "error");
+  showOn("group-room-share", "setup"); // a room that turned this phone away isn't one to send
   showOn("group-room-hint", "setup");
-  showOn("group-in-room", "lobby", "game");
+  $("group-wait").hidden = !alone;
+  $("group-in-room").hidden = alone || !["lobby", "game"].includes(screen);
+  showOn("group-share", "lobby"); // mid-game, a phone that joins is turned away
   $("group-name-field").hidden = !["setup", "join"].includes(screen) && !naming;
   showOn("group-minutes", "setup", "lobby");
   showOn("group-letters", "setup", "lobby", "game"); // during a game, for the next one
   showOn("group-go", "setup", "join", "error");
   showOn("group-start", "lobby");
   showOn("group-not-now", "join");
+  showOn("group-leave", "lobby", "game", "error");
   showOn("group-wins", "lobby", "game");
-  showOn("group-end", "lobby", "game", "error");
-  showOn("group-share", "lobby", "game");
   $("group-invite").firstElementChild.textContent = invite;
-  $("group-in-room").lastElementChild.textContent = v.room;
+  $("group-wait").querySelector(".room-big").textContent = v.room;
+  $("group-in-room").querySelector("b").textContent = v.room;
   const error = problem(v);
   $("group-error").hidden = !error || (screen === "join" && v.error !== "name"); // the link's room is a new start
   if ($("group-error").textContent !== error) $("group-error").textContent = error; // an alert: said again only when new
   $("group-go").textContent = { error: "Try again", join: "Join game" }[screen] ?? "Connect";
+  // A name first: the wins are kept by it. Try again keeps the name it tried.
+  $("group-go").disabled = screen !== "error" && !$("group-name").value.trim();
+  $("group-start").textContent = alone ? "Waiting for 1 more…" : `Deal a ${v.letters}-letter word · ${v.minutes} min`;
+  $("group-start").disabled = alone;
   $("group-leave").textContent = screen === "error" ? "Back to face to face" : "Leave";
   $("group-leave").classList.toggle("danger", screen !== "error");
   const out = screen === "game" && v.play.out[v.id];
   $("group-foot").textContent = out ? "You're out of this game. Stay to watch it end, or leave." : (FOOT[screen] ?? "");
   $("group-foot").hidden = !$("group-foot").textContent;
-  $("group-here-label").textContent = screen === "game" ? "Players" : `Here (${v.lobby.length} of ${mode.SEATS})`;
+  $("group-here-label").textContent = screen === "game" ? "Turn order" : `Players (${v.lobby.length} of ${mode.SEATS})`;
   $("group-letters-label").textContent = screen === "game" ? "Letters in the next word" : "Letters in the word";
   if (screen === "lobby" || screen === "game") showPlayers(v, screen);
   showWins($("group-wins-list"), $("group-wins-when"), v.board, v.name, v.playedAt);
