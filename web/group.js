@@ -347,11 +347,12 @@ export function wins(results) {
 // --- The mode in the browser ---
 // Saved: { id: this phone's, kept for good, name: required, room: as typed, madeUp: the room made up for this phone,
 //         joined: whether the group game is on (the room is rejoined on load), minutes and letters: this phone's
-//         choice for the next deal, picked: how many picks in this room led to it (0 until it picks here), table: the game this phone is seated in, or the last one, book: { colours, helper } the key
-//         colours and helper this phone uses in the group game, apart from the solo game's,
-//         results: { room: results } }
+//         choice for the next deal, picked: how many picks in this room led to it (0 until it picks here), table: the
+//         game this phone is seated in, or the last one, played: the room that game is in (the room typed on the setup
+//         screen may already be another), book: { colours, helper } the key colours and helper this phone uses in the
+//         group game, apart from the solo game's, results: { room: results }, each room's own games }
 
-const EMPTY = { id: "", name: "", room: "", madeUp: "", joined: false, minutes: 5, letters: 4, picked: 0, table: null, book: { colours: {}, helper: "" }, results: {} };
+const EMPTY = { id: "", name: "", room: "", madeUp: "", joined: false, minutes: 5, letters: 4, picked: 0, table: null, played: "", book: { colours: {}, helper: "" }, results: {} };
 const CHANNELS = ["hello", "table", "results", "bye"];
 
 let state = { ...EMPTY };
@@ -371,7 +372,9 @@ let error = ""; // for lobby.js to word: "room", "name", "https", "join", "full"
 function load() {
   try {
     const saved = { ...EMPTY, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
-    return { ...saved, book: { ...EMPTY.book, ...saved.book } };
+    // An older save's table is the joined room's; one that isn't joined can't say which room it was
+    const played = saved.played || (saved.joined ? saved.room : "");
+    return { ...saved, played, table: played ? saved.table : null, book: { ...EMPTY.book, ...saved.book } };
   } catch {
     return { ...EMPTY };
   }
@@ -434,10 +437,10 @@ export function connect(name, typed) {
   if (!name) return tell("name");
   leaveRoom(); // Try again comes here too, from whatever is left of the failed join
   error = "";
-  // A game from another room is dropped; in the same room, a seated phone takes its seat again. The letters and
-  // minutes are the room's until this phone picks there.
-  const table = typed === state.room ? state.table : null;
-  state = { ...state, name, room: typed, joined: true, table, picked: 0 };
+  // A game from another room is dropped, so it's never recorded in this one; in the same room, a seated phone takes its
+  // seat again. The letters and minutes are the room's until this phone picks there.
+  const table = typed === state.played ? state.table : null;
+  state = { ...state, name, room: typed, joined: true, table, played: table ? typed : "", picked: 0 };
   save();
   join();
   onChange();
@@ -598,6 +601,7 @@ function adopt(table) {
     awaySince = {};
   }
   state.table = table;
+  state.played = state.room;
   save();
   if (gameOf(table) !== was) hello();
 }
@@ -612,7 +616,9 @@ function commit(table) {
   onChange();
 }
 
+// A game that's over, in the results of the room it was played in, which is the room joined
 function record(now) {
+  if (state.played !== state.room) return;
   const results = state.results[state.room] ?? {};
   const entry = result(state.table, now);
   if (!entry || (results[state.table.game]?.moves ?? -1) >= entry.moves) return;

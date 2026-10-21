@@ -283,3 +283,23 @@ def test_the_room_chooses_the_letters(steps: dict[str, dict[str, object]]) -> No
         "hostPickedAgain": host,
         "sameTime": host,
     }
+
+
+def test_a_game_stays_in_its_room() -> None:
+    """A game saved from one room is dropped on joining another.
+
+    Otherwise it would be recorded on the new room's wins board.
+    """
+    assert NODE is not None
+    result = subprocess.run(  # noqa: S603 - our own script, run with the local node
+        [NODE, Path(__file__).parent / "group_room_steps.mjs"],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {
+        "otherRoom": {"game": None, "played": ""},
+        "sameRoom": {"game": "a:1", "played": "x"},
+        "olderJoined": {"game": "a:1", "played": "x"},
+        "olderTyped": {"game": None, "played": ""},
+    }
