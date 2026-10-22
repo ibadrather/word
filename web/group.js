@@ -2,16 +2,15 @@
 // Its saved state lives under its own key, apart from the solo game's and the duel's. The pure functions at the top are
 // what tests/test_group.py runs in Node; everything below them touches the browser and the room.
 
-import { isWord, randomWords, score } from "./helpers.js";
+import { MINUTE, isWord, randomWords, score } from "./helpers.js";
 import { cleanRoom, onVisible, open, roomName } from "./room.js";
-import { board as ranked } from "./wins.js";
+import { isObject, readObject, writeObject } from "./storage.js";
+import { NAME_LENGTH, board as ranked } from "./wins.js";
 
 const STORAGE_KEY = "word-group";
-const MINUTE = 60_000;
 export const SEATS = 4; // phones in a game, at most
 const AWAY = 30_000; // how long the player whose turn it is has to come back before their turn is skipped
 const KEPT = 200; // games kept in each room's results
-const NAME = 12; // characters in a name, as in the duel
 
 // --- The table: one game, shared by its seats. { game: its id, deal: one more than the room's last deal, dealer: the
 //     id of the phone that dealt it, word: of 4 or 5 letters, minutes: each player's, seats: [{ id, name }] in turn
@@ -83,11 +82,11 @@ const free = (f, word) => fits(f.table, word) && (!f.guessed.has(word) || word =
 // time-out. A time-out fits only once the clock has run down.
 function fit(f, move) {
   if (f.over || !Object.hasOwn(RANK, move.kind) || move.seat !== f.table.seats[f.turn].id) return null;
-  const left = timeLeft(f, move.seat);
-  const late = clockOn(f) && move.used >= left;
+  const remaining = timeLeft(f, move.seat);
+  const late = clockOn(f) && move.used >= remaining;
   if (move.kind === "guess") return free(f, move.word) && !late ? shape(move) : null;
-  if (move.kind === "time") return late ? shape({ ...move, used: left }) : null;
-  return shape(late ? { ...move, kind: "time", used: left } : move);
+  if (move.kind === "time") return late ? shape({ ...move, used: remaining }) : null;
+  return shape(late ? { ...move, kind: "time", used: remaining } : move);
 }
 
 function apply(f, move) {
@@ -125,10 +124,10 @@ function fold(table, now) {
   let running = Math.max(0, now - table.at);
   while (clockOn(f) && !f.over) {
     const id = table.seats[f.turn].id;
-    const left = timeLeft(f, id);
-    if (running < left) break;
-    running -= left;
-    const out = shape({ seat: id, kind: "time", used: left, by: "" });
+    const remaining = timeLeft(f, id);
+    if (running < remaining) break;
+    running -= remaining;
+    const out = shape({ seat: id, kind: "time", used: remaining, by: "" });
     f.due.push(out);
     apply(f, out);
   }
@@ -142,7 +141,7 @@ export function play(table, now = table.at) {
   const f = fold(table, now);
   const { seats } = table;
   const turn = f.over ? null : seats[f.turn].id;
-  const left = Object.fromEntries(
+  const timesLeft = Object.fromEntries(
     seats.map(({ id }) => [id, Math.max(0, timeLeft(f, id) - (id === turn && clockOn(f) ? f.running : 0))]),
   );
   // In the last round, the seats still to play their last guess, this turn's first
@@ -152,7 +151,7 @@ export function play(table, now = table.at) {
     over: f.over,
     winners: f.winners,
     out: f.out,
-    left,
+    left: timesLeft,
     lastGuesses,
     notes: f.notes,
     guessed: f.guessed,
@@ -260,7 +259,7 @@ const LETTER = (value) => (LETTERS.includes(Number(value)) ? Number(value) : 4);
 // if it isn't one. Everything in it is checked, as it comes from another phone.
 export function received(data, now) {
   if (!data || typeof data !== "object" || !Array.isArray(data.seats) || !Array.isArray(data.moves)) return null;
-  const seats = data.seats.slice(0, SEATS).map((seat) => ({ id: String(seat?.id ?? ""), name: String(seat?.name ?? "").slice(0, NAME) }));
+  const seats = data.seats.slice(0, SEATS).map((seat) => ({ id: String(seat?.id ?? ""), name: String(seat?.name ?? "").slice(0, NAME_LENGTH) }));
   const ids = new Set(seats.map((seat) => seat.id));
   const word = String(data.word ?? "");
   if (seats.length < 2 || ids.size < seats.length || ids.has("") || !isWord(word)) return null;
@@ -309,7 +308,7 @@ export function result(table, now) {
   return { at: now, players, winners: p.winners.map(name), moves: p.moves.length, letters: table.word.length };
 }
 
-const names = (list) => (Array.isArray(list) ? list.slice(0, SEATS).map((name) => String(name).slice(0, NAME)) : []);
+const names = (list) => (Array.isArray(list) ? list.slice(0, SEATS).map((name) => String(name).slice(0, NAME_LENGTH)) : []);
 
 // Two phones' results as one: every game either has, and for a game both have, the one with more moves, as a late
 // guess can change how it ended. The newest 200 games are kept.
@@ -373,21 +372,16 @@ let heardDeal = 0; // the room's latest deal, so a new one is always later
 let error = ""; // for lobby.js to word: "room", "name", "https", "join", "full", "busy", "" when all is well
 
 function load() {
-  try {
-    const saved = { ...EMPTY, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
-    // An older save's table is the joined room's; one that isn't joined can't say which room it was
-    const played = saved.played || (saved.joined ? saved.room : "");
-    return { ...saved, played, table: played ? saved.table : null, book: { ...EMPTY.book, ...saved.book } };
-  } catch {
-    return { ...EMPTY };
-  }
+  const saved = { ...EMPTY, ...readObject(STORAGE_KEY) };
+  // An older save's table is the joined room's; one that isn't joined can't say which room it was
+  const played = saved.played || (saved.joined ? saved.room : "");
+  const savedBook = isObject(saved.book) ? saved.book : {};
+  const book = { ...EMPTY.book, ...savedBook, colours: isObject(savedBook.colours) ? savedBook.colours : {} };
+  const results = isObject(saved.results) ? saved.results : {};
+  return { ...saved, played, table: played ? saved.table : null, book, results };
 }
 
-export function save() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
-}
+export const save = () => writeObject(STORAGE_KEY, state);
 
 export function init(change) {
   onChange = change;
@@ -425,7 +419,7 @@ export function setUp() {
 // Typed into the sheet. The name can change in the lobby too (when it's taken), never during a game.
 export function edit(field, value) {
   if (field === "room" && !state.joined) state.room = value;
-  else if (field === "name" && !(state.joined && gameOn())) state.name = value.trim().slice(0, NAME);
+  else if (field === "name" && !(state.joined && gameOn())) state.name = value.trim().slice(0, NAME_LENGTH);
   else return;
   save();
   if (state.joined) hello();
@@ -433,9 +427,9 @@ export function edit(field, value) {
   onChange();
 }
 
-export function connect(name, typed) {
-  name = name.trim().slice(0, NAME);
-  typed = cleanRoom(typed);
+export function connect(typedName, typedRoom) {
+  const name = typedName.trim().slice(0, NAME_LENGTH);
+  const typed = cleanRoom(typedRoom);
   if (!typed) return tell("room");
   if (!name) return tell("name");
   leaveRoom(); // Try again comes here too, from whatever is left of the failed join
@@ -676,7 +670,7 @@ const heard = {
     const seats = Array.isArray(data.game?.seats) ? data.game.seats.slice(0, SEATS).map(String) : null;
     const game = seats && { deal: Number(data.game.deal) || 0, dealer: String(data.game.dealer ?? ""), seats };
     const since = peers[peerId]?.since ?? Date.now() - Math.max(0, Number(data.joined) || 0);
-    peers[peerId] = { id, name: String(data.name ?? "").slice(0, NAME), since, game };
+    peers[peerId] = { id, name: String(data.name ?? "").slice(0, NAME_LENGTH), since, game };
     // The room's choice is kept here too, so it stays the room's after the phone that made it has gone
     const picked = Math.max(0, Math.floor(Number(data.picked)) || 0);
     const theirs = { letters: LETTER(data.letters), minutes: MINUTES(data.minutes), picked, pickedBy: String(data.pickedBy ?? "") };

@@ -23,6 +23,8 @@ const FILES = [
   "sheet.js",
   "modes.js",
   "ask.js",
+  "dom.js",
+  "storage.js",
   "trystero.js",
   "manifest.webmanifest",
   "icon.png",

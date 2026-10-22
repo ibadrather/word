@@ -28,12 +28,12 @@ const PICKABLE = { 4: pickable(common4), 5: pickable(common5) };
 // the group game's deal; all of them, shuffled, when more are asked for than there are
 export function randomWords(count, random = Math.random, letters = 4) {
   const words = [...PICKABLE[letters]];
-  count = Math.min(count, words.length);
-  for (let i = 0; i < count; i++) {
+  const picks = Math.min(count, words.length);
+  for (let i = 0; i < picks; i++) {
     const j = i + Math.floor(random() * (words.length - i));
     [words[i], words[j]] = [words[j], words[i]];
   }
-  return words.slice(0, count);
+  return words.slice(0, picks);
 }
 
 // The common words' brief meanings (meanings.js): { word: meaning }. It's big, so it loads the first time it's asked
@@ -49,6 +49,9 @@ export function loadMeanings() {
   );
   return meanings;
 }
+
+// A word's meaning in `meanings` (loadMeanings), or "" for one without
+export const meaningOf = (meanings, word) => (Object.hasOwn(meanings, word) ? meanings[word] : "");
 
 // --- Scoring: how many of a guess's letters are in the word. ---
 
@@ -112,6 +115,8 @@ export function wordsLeft(fitting, notes) {
 }
 
 // --- Times: a stretch of time as m:ss, or h:mm:ss past an hour, for the game's timers and the duel's clocks. ---
+
+export const MINUTE = 60_000;
 
 export function formatTime(ms) {
   const seconds = Math.max(0, Math.floor(ms / 1000));

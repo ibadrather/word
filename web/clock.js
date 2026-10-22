@@ -2,11 +2,12 @@
 // under its own key, apart from the game's, so the normal game is never affected. The pure functions at the top are
 // what tests/test_clock.py runs in Node; everything below them touches the browser and the room.
 
+import { MINUTE } from "./helpers.js";
 import { cleanRoom, onVisible, open, roomName } from "./room.js";
-import { NO_WINS, board, counted, latestWins, playerName, uncounted } from "./wins.js";
+import { isObject, readObject, writeObject } from "./storage.js";
+import { NAME_LENGTH, NO_WINS, board, counted, latestWins, playerName, uncounted } from "./wins.js";
 
 const STORAGE_KEY = "word-clock";
-const MINUTE = 60_000;
 
 // --- A view of the clocks: { mine, theirs: ms left on each side at `at`, running: "mine" | "theirs" | null,
 //     at: this phone's wall-clock ms when the running clock last (re)started, seq: one more on every press or reset,
@@ -110,19 +111,11 @@ let error = ""; // what went wrong, for duel.js to word: "room" (none typed), "h
 
 // An older save lacks the newer fields, so the defaults fill them in
 function load() {
-  try {
-    const saved = { ...EMPTY, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
-    return { ...saved, clock: { ...EMPTY.clock, ...saved.clock } };
-  } catch {
-    return { ...EMPTY };
-  }
+  const saved = { ...EMPTY, ...readObject(STORAGE_KEY) };
+  return { ...saved, clock: { ...EMPTY.clock, ...saved.clock }, wins: isObject(saved.wins) ? saved.wins : {} };
 }
 
-function save() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
-}
+const save = () => writeObject(STORAGE_KEY, state);
 
 export function init(change, heard) {
   onChange = change;
@@ -161,9 +154,9 @@ export function edit(field, value) {
 }
 
 // `joining`: from a shared link, which is always someone else's room to join
-export function connect(name, typed, joining = false) {
-  name = name.trim().slice(0, 12);
-  typed = cleanRoom(typed);
+export function connect(typedName, typedRoom, joining = false) {
+  const name = typedName.trim().slice(0, NAME_LENGTH);
+  const typed = cleanRoom(typedRoom);
   if (!typed) return tell("room");
   leaveRoom(); // Try again comes here too, from whatever is left of the failed join
   error = "";
@@ -246,6 +239,7 @@ export function setMinutes(value) {
   const minutes = clampMinutes(value, state.minutes);
   if (minutes === state.minutes) return onChange(); // puts a rejected value back
   const now = Date.now();
+  state.minutes = minutes;
   if (state.joined) commit(reset(state.clock, minutes, now, myId()));
   else save();
   onChange();
@@ -332,14 +326,15 @@ function share(to = peer) {
 // takes its place at once.
 const received = {
   clock(data, peerId) {
-    if (typeof data?.seq !== "number") return;
+    // Only a view this phone can show: its times have to be numbers
+    if (typeof data?.seq !== "number" || ![data.mine, data.theirs, data.elapsed].every(Number.isFinite)) return;
     const from = { id: String(data.id ?? peerId), host: Boolean(data.host) };
     if (state.opponent && state.opponent.id !== from.id) return;
     const arrived = peerId !== peer;
     if (!peer) joinedAt = Date.now();
     peer = peerId;
     gone = departed = null;
-    names[peerId] = String(data.name ?? "").slice(0, 12);
+    names[peerId] = String(data.name ?? "").slice(0, NAME_LENGTH);
     state.opponent = from;
     const theirs = mirrored(data, Date.now());
     if (newer(theirs, state.clock)) {

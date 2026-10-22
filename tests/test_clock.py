@@ -150,3 +150,24 @@ def test_clock_steps() -> None:
             "none": {"Asha": 2, "Ben": 1, "Cleo": 1},
         },
     }
+
+
+@pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
+def test_picked_minutes_are_kept() -> None:
+    """A minutes chip sets the duel's minutes, before connecting and after.
+
+    Once connected, both clocks restart on the new minutes and the first guess
+    is still free, as the clocks are full again.
+    """
+    assert NODE is not None
+    result = subprocess.run(  # noqa: S603 - our own script, run with the local node
+        [NODE, Path(__file__).parent / "clock_room_steps.mjs"],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {
+        "setUp": {"minutes": 5, "mine": 10 * MINUTE, "started": False, "saved": 5},
+        "connected": {"minutes": 5, "mine": 5 * MINUTE, "started": False},
+        "changed": {"minutes": 3, "mine": 3 * MINUTE, "started": False},
+    }

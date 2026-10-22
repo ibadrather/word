@@ -26,9 +26,10 @@ const cleo = (ashaTime) => ashaTime - 7_000; // and on Cleo's
 
 // A seeded random, so a deal can be played again
 function seeded(seed) {
+  let state = seed;
   return () => {
-    seed = (seed * 16_807) % 2_147_483_647;
-    return (seed - 1) / 2_147_483_646;
+    state = (state * 16_807) % 2_147_483_647;
+    return (state - 1) / 2_147_483_646;
   };
 }
 

@@ -5,15 +5,24 @@
 
 import { ask } from "./ask.js";
 import * as mode from "./clock.js";
-import { formatTime } from "./helpers.js";
+import { $ } from "./dom.js";
 import { cleanRoom } from "./room.js";
-import { lowercase, press, share as shareRoom, showWins, winsLine } from "./sheet.js";
+import {
+  MINUTE_CHIPS,
+  addChips,
+  clockTime as time,
+  closable,
+  lowercase,
+  press,
+  share as shareRoom,
+  showEdgeNote,
+  showWins,
+  winsLine,
+} from "./sheet.js";
 import { playerName } from "./wins.js";
 
-const $ = (id) => document.getElementById(id);
 const JOINED_NOTE = 4_000; // how long "… joined" stays on the dock's edge, in ms
 const SIDES = ["mine", "theirs"];
-const MINUTES = [3, 5, 10, 15, 30]; // the chips; minutes off this list (an older save, or sent) light none and are kept
 const SCREENS = { off: "setup", waiting: "waiting", live: "connected", dropped: "connected", left: "connected", error: "error" };
 const DOTS = { live: "live", left: "" }; // the dot for each phase: green, hollow and still, or else hollow and pulsing
 const dotFor = (phase) => DOTS[phase] ?? "wait";
@@ -30,24 +39,16 @@ let invite = ""; // the room from a shared link while the sheet asks "Join the d
 
 export function init() {
   $("dock-menu").addEventListener("click", open);
-  $("duel-close").addEventListener("click", () => $("duel").close());
-  $("duel-not-now").addEventListener("click", () => $("duel").close());
+  closable($("duel"), $("duel-close"), $("duel-not-now"));
   $("duel").addEventListener("close", () => (invite = "")); // ×, Escape, Not now or a tap outside: nothing changes
-  $("duel").addEventListener("click", (event) => {
-    if (event.target === $("duel")) $("duel").close(); // a tap on the dimmed page below the sheet
-  });
   $("duel-room").addEventListener("input", typeRoom);
   $("duel-name").addEventListener("input", (event) => mode.edit("name", event.target.value));
   $("duel-go").addEventListener("click", connect);
   $("duel-leave").addEventListener("click", leave);
   $("wins-undo").addEventListener("click", undoWin);
   for (const button of document.querySelectorAll("#duel .share")) button.addEventListener("click", share);
-  for (const minutes of MINUTES) {
-    const chip = Object.assign(document.createElement("button"), { type: "button", textContent: minutes });
-    chip.dataset.value = minutes;
-    chip.addEventListener("click", () => setMinutes(minutes));
-    $("chips").append(chip);
-  }
+  // Minutes off the chips (an older save, or sent) light none and are kept
+  addChips($("chips"), MINUTE_CHIPS, setMinutes);
 }
 
 // New minutes restart both clocks, so it asks first while a game is going on them
@@ -137,7 +138,7 @@ export function tick(v = mode.view()) {
     $(which).classList.toggle("over", v[which].left === 0);
   }
   label(v);
-  showNote(edgeNote(v, Date.now()));
+  showEdgeNote($("dock-note"), edgeNote(v, Date.now()));
 }
 
 // My own time has run out: modes.js shows "Your time is up" above the guess
@@ -191,9 +192,6 @@ const problem = (v) =>
     join: `Couldn't join ${v.room}. Check this phone is online and try again.`,
   })[v.error] ?? "";
 
-// Rounded up: 0:00 only once the time is really gone
-const time = (ms) => formatTime(ms + 999);
-
 // What a screen reader hears for each clock, written again when the turn, a stopped time or a name changes
 function label(v) {
   const key = JSON.stringify([otherName(v), ...SIDES.map((which) => v[which].running || v[which].left)]);
@@ -214,14 +212,6 @@ function edgeNote(v, now) {
     return { text: `${otherName(v)} joined${v.started ? "" : " · first guess is free"}`, dot: "live" };
   }
   return { text: "" };
-}
-
-function showNote({ text, dot = "", warn = false }) {
-  const el = $("dock-note");
-  el.hidden = !text;
-  el.classList.toggle("warn", warn);
-  el.firstElementChild.className = `dot ${dot}`;
-  el.lastElementChild.textContent = text;
 }
 
 // The sheet shows one of five screens. It folds away by itself when the other phone arrives while it shows Waiting,
