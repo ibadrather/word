@@ -6,13 +6,14 @@
 
 import { ask } from "./ask.js";
 import * as clock from "./clock.js";
+import { $ } from "./dom.js";
 import * as duel from "./duel.js";
 import * as group from "./group.js";
 import * as lobby from "./lobby.js";
 import { roomFromLink } from "./room.js";
+import { readText, writeText } from "./storage.js";
 
 const STORAGE_KEY = "word-mode";
-const $ = (id) => document.getElementById(id);
 
 // The modes that go online, by their value in the menu: their logic and screens, their dock, the query parameter their
 // links carry the room in, and what the page calls them
@@ -31,18 +32,14 @@ function current() {
 
 // A save from before this file came from the online mode that was joined
 function load() {
-  try {
-    const mode = localStorage.getItem(STORAGE_KEY);
-    if (mode === "face" || Object.hasOwn(ONLINE, mode)) return mode;
-  } catch {}
+  const mode = readText(STORAGE_KEY);
+  if (mode === "face" || Object.hasOwn(ONLINE, mode)) return mode;
   return Object.keys(ONLINE).find((name) => ONLINE[name].logic.view().active) ?? "face";
 }
 
 function save(mode) {
   saved = mode;
-  try {
-    localStorage.setItem(STORAGE_KEY, mode);
-  } catch {}
+  writeText(STORAGE_KEY, mode);
 }
 
 // After the modes' own init(), which load their saves: only the saved mode rejoins its room. Any other still joined

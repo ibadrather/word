@@ -4,3 +4,4 @@ __pycache__/
 .venv.nosync/
 .DS_Store
 plan.md
+node_modules/

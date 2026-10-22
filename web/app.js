@@ -1,12 +1,26 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { ask } from "./ask.js"; // the page's own questions and notes
-import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, loadMeanings, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
+import { $, create, tiles } from "./dom.js";
+import {
+  WORD_COUNT,
+  WORD_COUNT_5,
+  fittingSets,
+  formatTime,
+  isWord,
+  knownLetters,
+  loadMeanings,
+  meaningOf,
+  randomWords,
+  wordsLeft,
+  zeroGuesses,
+} from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
 import * as group from "./group.js"; // the group game's logic and room
 import * as modes from "./modes.js"; // which way you play: the menu's choice, and what a guess or New game does in it
-import { press } from "./sheet.js"; // the chips of Learn words and How to play
+import { closable, press } from "./sheet.js"; // the menu folding away, and the chips of Learn words and How to play
+import { isObject, readObject, writeObject } from "./storage.js";
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -16,7 +30,6 @@ const NOT_A_WORD = "Not in the dictionary";
 const LOCKED = "Locked until New game";
 const TIME_LIMIT = 20 * 60_000; // the game's timers stop here, so one left open doesn't count up for ever
 
-const $ = (id) => document.getElementById(id);
 const BACKSPACE_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-5 6M12 9l5 6"/></svg>';
 
@@ -25,19 +38,23 @@ const BACKSPACE_ICON =
 //              startedAt: when New game was last pressed, in ms, or null before the first one,
 //              held: in a duel, the other player's claim waiting for my last guess, or null } ---
 
+// A game with no word, guesses or colours yet
+const blank = (helper, startedAt) => ({ notes: [], colours: {}, secret: "", helper, startedAt, held: null });
+
 let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
 let guess = ""; // the guess being typed on the page's keyboard, up to letters() long
 let learnLetters = 4; // the length of the words Learn words shows
 let dealt = 0; // how many tens Learn words has asked for, so a slow load never shows an older ten over a newer one
 
+// An older save lacks the newer fields, so the defaults fill them in; a damaged one can't break the page, as the parts
+// it draws from are checked
 function load() {
-  const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null, held: null };
-  try {
-    return { ...empty, ...JSON.parse(localStorage.getItem(STORAGE_KEY)) };
-  } catch {
-    return empty;
-  }
+  const saved = { ...blank("", null), ...readObject(STORAGE_KEY) };
+  const notes = Array.isArray(saved.notes) ? saved.notes.filter((note) => typeof note?.word === "string") : [];
+  const colours = isObject(saved.colours) ? saved.colours : {};
+  const secret = typeof saved.secret === "string" ? saved.secret : "";
+  return { ...saved, notes, colours, secret };
 }
 
 // The key colours and helper the page shows: this game's, or a group game's own on this phone (modes.js)
@@ -47,9 +64,7 @@ const letters = () => modes.page()?.letters ?? 4;
 
 function update(change) {
   change();
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+  writeObject(STORAGE_KEY, state);
   modes.saveBook(); // a group game's colours and helper
   render();
 }
@@ -137,50 +152,61 @@ async function newGame() {
 
 function clearGame() {
   showSecret(false);
-  update(() => (state = { notes: [], colours: {}, secret: "", helper: state.helper, startedAt: Date.now(), held: null }));
+  update(() => (state = blank(state.helper, Date.now())));
 }
 
 // The other phone's "game" messages in a duel: a claimed win, its answer, "last", a New game and undoing a win. A claim
 // carries the claimer's word, shown only once the win is confirmed; the answer carries the other word back. A claim made
 // with fewer guesses here waits for this phone's last guess (addNote), which can still draw; "last" tells the claimer.
 async function heard(data) {
-  const them = duel.otherName(mode.view());
-  if (data.type === "claim" && data.draw) {
-    // Their last guess also got it, and they said ours was right: a draw, unless theirs is wrong
-    const right = await confirm(data, "Yes, it's a draw");
-    mode.send({ type: "answer", right, draw: true, guess: data.guess, secret: state.secret });
-    mode.stop();
-    if (right) drew(data.secret);
-    else won(data.secret);
-  } else if (data.type === "claim" && state.notes.length < Number(data.guesses)) {
-    update(() => (state.held = data));
-    mode.send({ type: "last" });
-  } else if (data.type === "claim") {
-    answer(data, await confirm(data, "Yes, they won"));
-  } else if (data.type === "answer" && data.draw) {
-    if (data.right) drew(data.secret);
-    else lost(data.secret, `${them} says ${cleanWord(data.guess).toUpperCase()} isn't their word. ${them} wins!`);
-  } else if (data.type === "answer") {
-    if (data.right) won(data.secret);
-    else ask(`${them} says ${cleanWord(data.guess).toUpperCase()} isn't their word. Play on.`, { no: null });
-  } else if (data.type === "last") {
+  if (Object.hasOwn(GAME_MESSAGES, data.type)) await GAME_MESSAGES[data.type](data, duel.otherName(mode.view()));
+}
+
+// Each message type's handler, with the other player's name (`them`)
+const GAME_MESSAGES = {
+  async claim(data) {
+    if (data.draw) {
+      // Their last guess also got it, and they said ours was right: a draw, unless theirs is wrong
+      const right = await confirm(data, "Yes, it's a draw");
+      mode.send({ type: "answer", right, draw: true, guess: data.guess, secret: state.secret });
+      mode.stop();
+      if (right) drew(data.secret);
+      else won(data.secret);
+    } else if (state.notes.length < Number(data.guesses)) {
+      update(() => (state.held = data));
+      mode.send({ type: "last" });
+    } else {
+      answer(data, await confirm(data, "Yes, they won"));
+    }
+  },
+  answer(data, them) {
+    const wrong = `${them} says ${cleanWord(data.guess).toUpperCase()} isn't their word.`;
+    if (data.draw && data.right) drew(data.secret);
+    else if (data.draw) lost(data.secret, `${wrong} ${them} wins!`);
+    else if (data.right) won(data.secret);
+    else ask(`${wrong} Play on.`, { no: null });
+  },
+  last(data, them) {
     ask(`${them} gets one last guess to draw.`, { no: null });
-  } else if (data.type === "new") {
+  },
+  async new(data, them) {
     update(() => (state.held = null));
     const question = `${them} started a new game, and both clocks restarted. Start a new game too?`;
     if (await ask(question, { yes: "New game", no: "Not now" })) clearGame();
-  } else if (data.type === "undo") {
-    // They asked to undo the last win (duel.undoWin): it's undone here only if this player agrees
+  },
+  // They asked to undo the last win (duel.undoWin): it's undone here only if this player agrees
+  async undo(data, them) {
     const v = mode.view();
     const question = v.last && `${them} asks to undo ${duel.lastWin(v, "their win")}, so it doesn't count. Agree?`;
     const agree = Boolean(question) && (await ask(question, { yes: "Undo it", no: "Keep it" }));
     mode.send({ type: "undone", agree });
     if (agree) mode.undo();
-  } else if (data.type === "undone") {
+  },
+  undone(data, them) {
     if (data.agree) mode.forget();
     ask(data.agree ? `${them} agreed. The win is undone and doesn't count.` : `${them} said no. The win still counts.`, { no: null });
-  }
-}
+  },
+};
 
 const cleanWord = (value) => String(value ?? "").slice(0, 4);
 
@@ -219,9 +245,6 @@ async function showWin(text, secret) {
   if (!(await ask(text, { yes: "OK", no: "Undo win", word: cleanWord(secret) }))) duel.undoWin();
 }
 
-// A word's meaning in `meanings` (loadMeanings), or "" for one without
-const meaningOf = (meanings, word) => (Object.hasOwn(meanings, word) ? meanings[word] : "");
-
 // Learn words: ten common words of the chosen length at random, each with its meaning, a moment after the last. Only
 // words with a meaning are picked, unless the meanings can't load.
 async function showLearnWords() {
@@ -232,10 +255,9 @@ async function showLearnWords() {
   if (deal !== dealt) return;
   const known = picked.filter((word) => meaningOf(meanings, word));
   const items = (known.length >= 10 ? known : picked).slice(0, 10).map((word, i) => {
-    const row = document.createElement("div");
+    const row = create("div");
     row.style.animationDelay = `${i * 30}ms`;
-    const meaning = Object.assign(document.createElement("dd"), { textContent: meaningOf(meanings, word) });
-    row.append(Object.assign(document.createElement("dt"), { textContent: word }), meaning);
+    row.append(create("dt", { textContent: word }), create("dd", { textContent: meaningOf(meanings, word) }));
     return row;
   });
   $("learn-words").replaceChildren(...items);
@@ -254,7 +276,7 @@ async function lookUp() {
   const known = isWord(word);
   const meaning = meaningOf(meanings, word);
   $("lookup-word").ariaLabel = word;
-  $("lookup-word").replaceChildren(...[...word].map((letter) => Object.assign(document.createElement("b"), { textContent: letter })));
+  $("lookup-word").replaceChildren(...tiles(word));
   $("lookup-meaning").hidden = !meaning;
   $("lookup-meaning").textContent = meaning;
   $("lookup-verdict").textContent = !known ? NOT_A_WORD : meaning ? "In the dictionary" : "In the dictionary. No meaning for this one.";
@@ -262,9 +284,9 @@ async function lookUp() {
 }
 
 // How to play: the rules of one way to play, picked by its chip
-function showRules(mode) {
-  press($("rules-modes"), mode);
-  for (const rules of document.querySelectorAll("[data-rules]")) rules.hidden = rules.dataset.rules !== mode;
+function showRules(way) {
+  press($("rules-modes"), way);
+  for (const rules of document.querySelectorAll("[data-rules]")) rules.hidden = rules.dataset.rules !== way;
 }
 
 // How to play and Learn words are views of their own, at #rules and #learn, in place of the game, so the phone's back
@@ -298,7 +320,7 @@ function showNow() {
   const face = { title: "Face to face", lines: [guesses + (state.startedAt ? ` · ${formatTime(gameTime())}` : "")] };
   const now = modes.status() ?? face;
   $("now-title").textContent = now.title;
-  $("now-lines").replaceChildren(...now.lines.filter(Boolean).map((line) => Object.assign(document.createElement("span"), { textContent: line })));
+  $("now-lines").replaceChildren(...now.lines.filter(Boolean).map((line) => create("span", { textContent: line })));
   $("now-dot").className = `dot ${now.dot ?? ""}`;
   $("now-dot").hidden = now.dot === undefined; // face to face has no other phone to be connected to
   $("now-open").hidden = !now.open;
@@ -378,7 +400,7 @@ function showGuess(page = modes.page()) {
   const length = page?.letters ?? 4;
   if (guess.length > length) guess = guess.slice(0, length);
   if ($("word").children.length !== length) {
-    $("word").replaceChildren(...Array.from({ length }, () => document.createElement("span")));
+    $("word").replaceChildren(...Array.from({ length }, () => create("span")));
   }
   for (const [i, slot] of [...$("word").children].entries()) {
     slot.textContent = guess[i] ?? "";
@@ -396,10 +418,7 @@ function showGuess(page = modes.page()) {
 // --- Rendering ---
 
 function button(text, className, onPress) {
-  const el = document.createElement("button");
-  el.type = "button";
-  el.className = className;
-  el.textContent = text;
+  const el = create("button", { type: "button", className, textContent: text });
   el.addEventListener("click", onPress);
   return el;
 }
@@ -412,10 +431,9 @@ function letterButton(letter, className) {
 }
 
 function buildControls() {
-  for (const [i, letters] of ROWS.entries()) {
-    const row = document.createElement("div");
-    row.className = "row";
-    for (const letter of letters) {
+  for (const [i, keys] of ROWS.entries()) {
+    const row = create("div", { className: "row" });
+    for (const letter of keys) {
       const key = button(letter, "key", () => type(letter));
       key.dataset.letter = letter;
       row.append(key);
@@ -455,10 +473,7 @@ function buildControls() {
     showNow();
     $("menu").showModal();
   });
-  $("close").addEventListener("click", () => $("menu").close());
-  $("menu").addEventListener("click", (event) => {
-    if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
-  });
+  closable($("menu"), $("close")); // or a tap on the dimmed page outside the drawer
   $("now-open").addEventListener("click", () => {
     $("menu").close();
     modes.openSheet();
@@ -536,11 +551,11 @@ function render() {
   // In a group game each guess says who made it, and can't be removed. Another player's winning guess shows only
   // that they got it, until the game is over.
   const items = [...notes].reverse().map((note) => {
-    const li = document.createElement("li");
+    const li = create("li");
     li.classList.toggle("five", note.word.length === 5);
     li.classList.toggle("mine", Boolean(page && note.mine));
     li.classList.toggle("won", Boolean(note.won));
-    const span = (className, textContent) => Object.assign(document.createElement("span"), { className, textContent });
+    const span = (className, textContent) => create("span", { className, textContent });
     if (note.hidden) li.append(span("got", "Got it"));
     else li.append(...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)));
     if (page) li.append(span("who", note.who));
@@ -550,7 +565,7 @@ function render() {
   });
   if (!items.length) {
     const empty = !page ? "No guesses yet. Type one above and tap its score." : page.time ? "No guesses yet." : page.empty;
-    items.push(Object.assign(document.createElement("li"), { className: "empty", textContent: empty }));
+    items.push(create("li", { className: "empty", textContent: empty }));
   }
   $("notes").replaceChildren(...items);
 }

@@ -1,6 +1,8 @@
 // A room's wins, kept by player name, and what players are called before they give one. Pure functions, so the tests
 // run them in Node.
 
+export const NAME_LENGTH = 12; // characters in a player's name, in the duel and the group game
+
 // A room's wins: { players: { name: games won }, at: when its last game ended, in UTC ms }. Everyone who has played
 // in the room is listed, whoever they played. When the two phones' tallies differ, the one whose last game ended
 // later is kept on both.
@@ -8,7 +10,7 @@ export const NO_WINS = { players: {}, at: 0 };
 export function latestWins(ours, sent) {
   const at = Number(sent?.at) || 0;
   if (at <= (ours?.at ?? 0)) return ours;
-  const players = Object.entries(sent.players ?? {}).map(([name, won]) => [String(name).slice(0, 12), Number(won) || 0]);
+  const players = Object.entries(sent.players ?? {}).map(([name, won]) => [String(name).slice(0, NAME_LENGTH), Number(won) || 0]);
   return { players: Object.fromEntries(players), at };
 }
 

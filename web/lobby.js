@@ -4,14 +4,23 @@
 // hides the dock, and goes through turn(), guess(), newGame() and page() for app.js while the group game is on.
 
 import { ask } from "./ask.js";
+import { $, create } from "./dom.js";
 import * as mode from "./group.js";
-import { formatTime, loadMeanings } from "./helpers.js";
+import { MINUTE, loadMeanings, meaningOf } from "./helpers.js";
 import { cleanRoom } from "./room.js";
-import { lowercase, press, share as shareRoom, showWins, winsLine } from "./sheet.js";
+import {
+  MINUTE_CHIPS,
+  addChips,
+  clockTime as time,
+  closable,
+  lowercase,
+  press,
+  share as shareRoom,
+  showEdgeNote,
+  showWins,
+  winsLine,
+} from "./sheet.js";
 
-const $ = (id) => document.getElementById(id);
-const MINUTE = 60_000;
-const MINUTES = [3, 5, 10, 15, 30]; // the chips
 const SAID = 4_000; // how long what just happened stays on the dock's edge, in ms
 const SCREENS = { off: "setup", lobby: "lobby", game: "game", error: "error" };
 const FOOT = {
@@ -35,30 +44,16 @@ let said = { text: "", at: 0 }; // what just happened, for the dock's edge
 
 export function init() {
   $("group-menu").addEventListener("click", open);
-  $("group-close").addEventListener("click", () => $("group").close());
-  $("group-not-now").addEventListener("click", () => $("group").close());
+  closable($("group"), $("group-close"), $("group-not-now"));
   $("group").addEventListener("close", () => (invite = "")); // ×, Escape, Not now or a tap outside: nothing changes
-  $("group").addEventListener("click", (event) => {
-    if (event.target === $("group")) $("group").close(); // a tap on the dimmed page below the sheet
-  });
   $("group-room").addEventListener("input", (event) => mode.edit("room", lowercase(event.target)));
   $("group-name").addEventListener("input", (event) => mode.edit("name", event.target.value));
   $("group-go").addEventListener("click", connect);
   $("group-start").addEventListener("click", start);
   $("group-leave").addEventListener("click", leave);
   for (const button of document.querySelectorAll("#group .share")) button.addEventListener("click", share);
-  for (const minutes of MINUTES) {
-    const chip = Object.assign(document.createElement("button"), { type: "button", textContent: minutes });
-    chip.dataset.value = minutes;
-    chip.addEventListener("click", () => mode.setMinutes(minutes));
-    $("group-chips").append(chip);
-  }
-  for (const letters of mode.LETTERS) {
-    const chip = Object.assign(document.createElement("button"), { type: "button", textContent: `${letters} letters` });
-    chip.dataset.value = letters;
-    chip.addEventListener("click", () => mode.setLetters(letters));
-    $("group-letter-chips").append(chip);
-  }
+  addChips($("group-chips"), MINUTE_CHIPS, mode.setMinutes);
+  addChips($("group-letter-chips"), mode.LETTERS, mode.setLetters, (letters) => `${letters} letters`);
 }
 
 export function open() {
@@ -225,7 +220,7 @@ function draw(v) {
   }
   const alone = v.lobby.length < 2;
   $("group-menu").lastElementChild.className = `dot ${v.phase === "error" ? "" : alone ? "wait" : "live"}`;
-  showNote(edgeNote(v, Date.now()));
+  showEdgeNote($("group-note"), edgeNote(v, Date.now()));
 }
 
 // One side a player, in turn order (or the lobby's, between games), built again only when the players change
@@ -235,9 +230,9 @@ function buildSides(players) {
   sides = key;
   for (const side of $("group-dock").querySelectorAll(".side")) side.remove();
   for (const { id } of players) {
-    const side = Object.assign(document.createElement("div"), { className: "side", role: "timer" });
+    const side = create("div", { className: "side", role: "timer" });
     side.dataset.id = id;
-    side.append(document.createElement("span"), document.createElement("b"));
+    side.append(create("span"), create("b"));
     $("group-menu").before(side);
   }
   $("group-dock").classList.toggle("many", players.length > 2);
@@ -256,14 +251,6 @@ function edgeNote(v, now) {
   }
   if (v.lobby.length < 2) return { text: "Waiting for others to join…", dot: "wait" };
   return { text: `${v.lobby.length} here · ${v.letters} letters · tap Deal`, dot: "live" };
-}
-
-function showNote({ text, dot = "", warn = false }) {
-  const el = $("group-note");
-  el.hidden = !text;
-  el.classList.toggle("warn", warn);
-  el.firstElementChild.className = `dot ${dot}`;
-  el.lastElementChild.textContent = text;
 }
 
 // What happens in the game, said once on this phone: your own news and the game's end in a note (ask.js), the other
@@ -331,17 +318,17 @@ function ending(v) {
   let text = Object.values(p.out).every((reason) => reason === "time") ? "Time's up for everyone. Nobody got it." : "Nobody got it.";
   if (winners.length === 1) text = winners[0] === "you" ? "You win!" : `${winners[0]} wins!`;
   if (winners.length > 1) text = `${capital(listed(winners))} ${winners.length === 2 ? "both" : "all"} got it: a draw.`;
-  ask(`${text} The word was`, { no: null, word: v.table.word, meaning: meaningOf(v.table.word) });
+  ask(`${text} The word was`, { no: null, word: v.table.word, meaning: meaningFor(v.table.word) });
 }
 
 // The word's brief meaning, or "" for a word without one
-const meaningOf = (word) => loadMeanings().then((meanings) => (Object.hasOwn(meanings, word) ? meanings[word] : ""));
+const meaningFor = (word) => loadMeanings().then((meanings) => meaningOf(meanings, word));
 
 // The players' names, "you" first if you're one of them
 const names = (v, ids) => [...ids].sort((a, b) => (b === v.id) - (a === v.id)).map((id) => (id === v.id ? "you" : nameOf(v, id)));
 
 // Ben, Cleo and Dev
-const listed = (names) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? ""));
+const listed = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : (list[0] ?? ""));
 const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 // A seat's name, or a lobby phone's
@@ -357,9 +344,6 @@ function statusOf(v, id) {
   if (p.turn === id) return "playing";
   return "";
 }
-
-// Rounded up: 0:00 only once the time is really gone
-const time = (ms) => formatTime(ms + 999);
 
 // What went wrong, in the sheet's words
 function problem(v) {
@@ -383,17 +367,17 @@ function showPlayers(v, screen) {
   const game = screen === "game";
   const players = game ? v.table.seats : v.lobby;
   const rows = players.map(({ id, name }, i) => {
-    const li = document.createElement("li");
+    const li = create("li");
     const away = game && Object.hasOwn(v.away, id);
-    const status = game ? statusOf(v, id) || time(v.play.left[id]) : v.lobby.find((phone) => phone.id === id)?.taken ? "name taken" : "";
+    const doing = game ? statusOf(v, id) || time(v.play.left[id]) : v.lobby.find((phone) => phone.id === id)?.taken ? "name taken" : "";
     li.classList.toggle("me", id === v.id);
     li.classList.toggle("turn", game && v.play.turn === id);
     li.classList.toggle("out", game && Boolean(v.play.out[id]));
-    if (game) li.append(Object.assign(document.createElement("small"), { className: "seat", textContent: i + 1 }));
+    if (game) li.append(create("small", { className: "seat", textContent: i + 1 }));
     li.append(
-      Object.assign(document.createElement("i"), { className: `dot ${away ? "wait" : "live"}`, ariaHidden: "true" }),
-      Object.assign(document.createElement("span"), { textContent: id === v.id ? `${name || "You"} (you)` : name }),
-      Object.assign(document.createElement("em"), { textContent: status }),
+      create("i", { className: `dot ${away ? "wait" : "live"}`, ariaHidden: "true" }),
+      create("span", { textContent: id === v.id ? `${name || "You"} (you)` : name }),
+      create("em", { textContent: doing }),
     );
     return li;
   });

@@ -77,9 +77,13 @@ export function open(roomId, channels, handlers) {
   })();
 
   return {
-    // To one phone, or to every phone in the room when `to` is left out. Nothing is sent before the room is joined.
+    // To one phone, or to every phone in the room when `to` is left out. Nothing is sent before the room is joined. A
+    // send that fails, at once or later, is dropped: the phones share their state again on the next change.
     send(channel, data, to) {
-      if (!closed && actions[channel]) actions[channel].send(data, { target: to }).catch(() => {});
+      if (closed || !actions[channel]) return;
+      try {
+        actions[channel].send(data, { target: to }).catch(() => {});
+      } catch {}
     },
     // The room is left in the background, after a goodbye ({ channel, data, to }, if one is given) has gone or half
     // a second has passed: a send that fails or hangs never keeps it open
