@@ -49,6 +49,17 @@ def test_page_has_a_version_slot() -> None:
     ) == 1
 
 
+def test_every_element_the_scripts_find_is_on_the_page() -> None:
+    """Each $("id") in web/ names an element in index.html.
+
+    A renamed or removed id would otherwise only show as a broken page.
+    """
+    ids = set(re.findall(r'\bid="([^"]+)"', (WEB / "index.html").read_text()))
+    for path in WEB.glob("*.js"):
+        for found in re.findall(r'\$\("([^"]+)"\)', path.read_text()):
+            assert found in ids, f"{path.name}: {found}"
+
+
 def test_page_loads_nothing_from_other_sites() -> None:
     """Every file the page uses lives in web/, so it opens the same offline."""
     links = re.findall(r'(?:href|src)="([^"]*)"', (WEB / "index.html").read_text())

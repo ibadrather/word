@@ -1,6 +1,6 @@
 [project]
 name = "word"
-version = "1.16.2"
+version = "1.17.0"
 description = "Word notes and a colour-marking keyboard for a two-player word guessing game"
 readme = "README.md"
 authors = [

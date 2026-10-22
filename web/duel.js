@@ -1,7 +1,7 @@
 // The duel clock's screens: the dock of two clocks pinned to the bottom of the page, like a real chess clock, and the
 // sheet that drops from the top to set the duel up, to join one from a shared link and to show it while it's on.
 // Everything they show comes from clock.js's view(). modes.js calls render() on every change and tick() every second,
-// shows or hides the dock, and goes through turn(), note() and newGame() for app.js while the duel is on.
+// shows or hides the dock, and goes through turn(), line(), note() and newGame() for app.js while the duel is on.
 
 import { ask } from "./ask.js";
 import * as mode from "./clock.js";
@@ -132,6 +132,7 @@ export function render(v = mode.view()) {
 // The times, which side runs or has run out, and the note on the dock's edge
 export function tick(v = mode.view()) {
   if (!v.active) return;
+  $("mine").firstElementChild.textContent = v.mine.left === 0 ? "You · time up" : "You";
   for (const which of SIDES) {
     $(which).lastElementChild.textContent = time(v[which].left);
     $(which).classList.toggle("running", v[which].running);
@@ -141,11 +142,17 @@ export function tick(v = mode.view()) {
   showEdgeNote($("dock-note"), edgeNote(v, Date.now()));
 }
 
-// My own time has run out: modes.js shows "Your time is up" above the guess
-export const timesUp = (v = mode.view()) => v.active && v.mine.left === 0;
-
 // A guess can be noted unless the other player's clock is running: "" if it can, or else why not
 export const turn = (v = mode.view()) => (v.myTurn ? "" : `It's ${otherName(v)}'s turn`);
+
+// The line over the scores (app.js draws it): my time being up, else the other player's turn, when I can only type
+// the next guess, or else "Your turn" on its right while the other phone is here. { text, tone, aside }, or null.
+export function line(v = mode.view()) {
+  if (!v.active) return null;
+  if (v.mine.left === 0) return { text: "Your time is up. Play on if you like.", tone: "over" };
+  if (!v.myTurn) return { text: `${otherName(v)}'s turn. Type your next guess while you wait.`, tone: "turn" };
+  return v.phase === "live" ? { aside: "Your turn" } : null;
+}
 
 // A guess was noted: my clock stops and the other player's starts
 export function note() {

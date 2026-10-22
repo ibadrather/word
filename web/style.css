@@ -17,6 +17,21 @@
   --out: #dc2626;
   --unsure: #facc15;
   --error: #dc2626;
+  --soft: #4a4f5c; /* text that's quieter than the page's, louder than muted */
+  --pill: #ecebfa; /* the mode pill, and the ring round the next letter of your word */
+  --ring: #c7c1f0; /* outlines in the accent's family: New game, a guess's empty score */
+  --tint: #f3f2fc; /* the info line's chip and the card that offers to set your word */
+  --tint-fg: #4a4f5c;
+  --panel: #fafafa; /* behind the keyboard */
+  --rule: #f0f0f0; /* between guesses */
+  --mine: #f6f5fd; /* your own guesses in a group game */
+  --waiting: #4b5563; /* a button that waits for another player's turn */
+  --warn-bg: #fef3c7;
+  --warn: #92400e;
+  --over-bg: #fde8e8;
+  --over: #b91c1c;
+  --won: #15803d;
+  --won-bg: #e3f4e9;
 }
 
 /* The advanced helper switches to dark */
@@ -29,6 +44,20 @@ body.dark {
   --key: #3a3a3c;
   --heading: #a497ff;
   --error: #f87171;
+  --soft: #c4c7cf;
+  --pill: #2a2650;
+  --ring: #4b4580;
+  --tint: #24223a;
+  --tint-fg: #c9c3ff;
+  --panel: #18181a;
+  --rule: #232325;
+  --mine: #1d1b2e;
+  --waiting: #9ca3af;
+  --warn-bg: #3a2d0c;
+  --warn: #fcd34d;
+  --over-bg: #3b1717;
+  --over: #f87171;
+  --won-bg: #12301e;
 }
 
 * { box-sizing: border-box; }
@@ -40,10 +69,20 @@ body {
   font: 16px/1.4 "Poppins", system-ui, -apple-system, sans-serif;
 }
 
-main { max-width: 480px; margin: 0 auto; padding: 12px 16px 48px; }
+/* The game fills the screen: header and info line on top, the guesses in the middle, scrolling, and the scores and
+   keyboard at the thumb, over the clocks' dock in a duel or group game */
+main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 16px 0;
+}
 
 /* Header: logo, mode, New game on one line */
-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+header { display: flex; align-items: center; gap: 10px; padding-top: 12px; }
 
 /* Logo: WORD as a 2×2 block of tiles in the four marking colours; tapping it opens the menu */
 .logo { display: grid; grid-template-columns: repeat(2, 20px); gap: 2px; flex: none; margin: 0; padding: 0; border: 0; background: none; }
@@ -66,7 +105,7 @@ header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
   padding: 8px 26px 8px 12px;
   border: 0;
   border-radius: 20px;
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg))
+  background: var(--pill)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%234531cc' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")
     no-repeat right 10px center / 10px;
   color: var(--heading);
@@ -76,7 +115,6 @@ header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 }
 .mode:focus-visible, .new-game:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
 body.dark .mode {
-  background-color: color-mix(in srgb, var(--heading) 18%, var(--bg));
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a497ff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
@@ -88,7 +126,7 @@ body.dark .mode {
   gap: 6px;
   margin-left: auto;
   padding: 6px 14px 6px 11px;
-  border: 2px solid color-mix(in srgb, var(--heading) 30%, var(--bg));
+  border: 2px solid var(--ring);
   border-radius: 20px;
   background: var(--bg);
   color: var(--heading);
@@ -102,20 +140,6 @@ body.dark .mode {
 .new-game:disabled { opacity: .4; cursor: default; }
 /* On narrow phones it says just "New", so the mode name isn't cut off */
 @media (max-width: 420px) { .new-game .wide { display: none; } }
-/* Time since your last guess: centred under the header, digits that don't jiggle as they tick */
-.timer { margin: -6px 0 10px; text-align: center; font-size: 1.1rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
-/* Duel clock: one quiet line once your own clock has run out */
-.times-up { margin: -4px 0 10px; text-align: center; font-size: .85rem; font-weight: 600; color: var(--out); }
-h2 { margin: 28px 0 8px; font-size: .95rem; }
-/* "Your guesses" on the left, the guess count and game time on the right of the same line */
-.guesses-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin: 28px 0 8px; }
-.guesses-head h2 { margin: 0; }
-.game-stats { display: flex; gap: 16px; margin: 0; font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.game-stats[hidden] { display: none; }
-.game-stats b { color: var(--fg); font-weight: 600; }
-/* Past the game's time limit both timers stop, in red */
-.timer.over, .game-stats.over #game-time { color: var(--out); }
-
 button, select {
   font: inherit;
   color: inherit;
@@ -124,96 +148,173 @@ button, select {
   -webkit-tap-highlight-color: transparent;
 }
 
-.pill {
-  padding: 6px 16px;
-  border: 2px solid var(--line);
-  border-radius: 20px;
-  background: transparent;
+/* The info line: your word or the group game's room on the left, the guesses and game time on the right */
+.info { display: flex; align-items: center; gap: 8px; min-height: 36px; margin: 0 -16px; padding: 10px 16px 8px; border-bottom: 1px solid var(--line); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--tint);
+  color: var(--tint-fg);
+  font-size: .8125rem;
   font-weight: 600;
 }
+.chip[hidden] { display: none; }
+.chip svg { flex: none; width: 16px; height: 16px; color: var(--heading); }
+.chip b { font-size: .9375rem; letter-spacing: .3em; color: var(--fg); }
+/* No word set yet: amber, the icon too */
+.chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.warn svg { color: currentColor; }
+.chip:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
+.room-line { margin: 0; font-size: .8125rem; color: var(--soft); overflow-wrap: anywhere; }
+.room-line[hidden] { display: none; }
+.room-line b { color: var(--heading); }
+.stat { flex: none; margin: 0 0 0 auto; font-size: .8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stat b { color: var(--fg); }
+/* Past the game's time limit the time stops, in red */
+.stat b.over { color: var(--out); }
 
-.label { margin: 14px 0 8px; font-size: .9rem; font-weight: 600; text-align: center; }
-.progress { margin: 0 0 12px; text-align: center; font-size: .9rem; font-weight: 600; color: var(--heading); }
-.msg { min-height: 1.4em; margin: 4px 0; text-align: center; font-size: .9rem; font-weight: 600; color: var(--error); }
-.msg.calm { color: var(--muted); }
-
-/* The guess: a slot a letter filled from the page's keyboard, the next one to fill underlined */
-.slots { display: flex; justify-content: center; gap: 12px; margin: 0; }
-.slots span {
+/* Guess list: oldest first, the guess being typed last, scrolled to the newest. The first row's auto margin keeps a
+   short list at the bottom, by the scores, while a long one still scrolls to its top. */
+.notes { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; margin: 0 -16px; padding: 0 16px; overflow-y: auto; list-style: none; overscroll-behavior: contain; }
+.notes > :first-child { margin-top: auto; }
+.notes li { display: flex; flex: none; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
+.notes .n { flex: none; width: 18px; font-size: .75rem; font-weight: 600; color: var(--muted); text-align: right; }
+.notes .tiles { gap: 5px; margin-left: 4px; }
+/* When in the game it was noted: small and quiet, pushed right next to the score */
+.notes .at { min-width: 2.6em; margin: 0 4px 0 auto; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+/* A score in a circle, here and in How to play's example */
+.score {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 46px;
-  border-bottom: 3px solid var(--line);
-  font-size: 1.6rem;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border: 2px solid var(--heading);
+  border-radius: 50%;
+  font-size: 1.1rem;
   font-weight: 700;
-  text-transform: uppercase;
-  transition: border-color .15s;
 }
-.slots span.next { border-color: var(--heading); }
+.notes .score { flex: none; width: 38px; height: 38px; margin-left: 0; font-size: 1.0625rem; }
+.notes .del { flex: none; display: grid; place-items: center; width: 32px; height: 44px; padding: 0; border: 0; background: none; color: var(--muted); }
+.notes .del svg { width: 14px; height: 14px; }
+.notes .del:focus-visible { outline: 2px solid var(--heading); outline-offset: -2px; }
+.notes .who { display: none; }
+.notes .empty { justify-content: center; padding: 12px 0; border-bottom: 0; color: var(--muted); font-size: .9rem; }
 
-/* Secret word entry */
-.secret input {
-  flex: 1;
-  min-width: 0;
-  padding: 8px;
-  border: 2px solid var(--line);
-  border-radius: 12px;
-  background: transparent;
-  color: inherit;
-  font-size: 1.2rem;
-  font-weight: 700;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: .3em;
+/* The guess being typed: outlined tiles, the next one to fill among them, and a dashed score until it can be scored */
+.notes .typing { padding: 10px 0 4px; border-bottom: 0; }
+.typing .n { color: var(--heading); }
+.typing .at { font-weight: 600; }
+.typing .score { border-style: dashed; border-color: var(--ring); color: var(--muted); }
+.typing.ready .at, .typing.ready .score { border-color: var(--heading); color: var(--heading); }
+/* On a narrow phone the tiles give a little, so a guess's time, score and × still fit beside them */
+@media (max-width: 380px) {
+  .notes:not(.group) .tile { width: 40px; height: 40px; }
 }
-.secret input:focus { outline: none; border-color: var(--accent); }
-.secret input::placeholder { color: var(--muted); font-weight: 600; letter-spacing: normal; text-transform: none; }
+.tile.typed { background: var(--bg); box-shadow: inset 0 0 0 2px var(--heading); }
+.tile.blank { background: var(--bg); box-shadow: inset 0 0 0 2px var(--line); }
 
-.secret { display: flex; gap: 8px; }
+/* Face to face and in a duel, before a word or a guess: a card that offers to set your word */
+.notes .start { display: grid; gap: 10px; margin: 16px 0 auto; padding: 18px; border: 0; border-radius: 18px; background: var(--tint); }
+.start-tiles { display: flex; gap: 6px; }
+.start-tiles b { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; background: var(--bg); box-shadow: inset 0 0 0 2px var(--ring); color: var(--heading); }
+.start h2 { margin: 0; font-size: 1.125rem; }
+.start p { margin: 0; font-size: .875rem; color: var(--soft); }
+.start .primary { min-height: 48px; font-size: .9375rem; font-weight: 600; }
+.start .start-foot { font-size: .8125rem; text-align: center; }
+/* On a short phone the card keeps only its title, its button and that the word is optional, so it fits above the guess */
+@media (max-height: 700px) {
+  .notes .start { gap: 6px; margin-top: 8px; padding: 12px 14px; }
+  .start-tiles, .start p:not(.start-foot) { display: none; }
+  .start .primary { min-height: 44px; }
+}
 
-/* Score buttons stay dim until the guess has 4 letters */
-.counts { display: flex; gap: 8px; }
+/* In a group game: no numbers, times or ×, but who made each guess, your own rows tinted, a player going out, and a
+   winning guess kept hidden from the others until the game is over, then its score in green */
+.notes.group li { gap: 4px; }
+.notes.group .n, .notes.group .at, .notes.group .del { display: none; }
+.notes.group .tiles { gap: 4px; margin-left: 0; }
+.notes.group .tile { width: 38px; height: 40px; font-size: 1.125rem; }
+.notes.group .who { display: block; flex: 1; min-width: 0; margin-left: 10px; overflow: hidden; font-size: .75rem; font-weight: 600; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.notes.group .score { width: 36px; height: 36px; font-size: 1rem; }
+.notes li.mine { margin: 0 -8px; padding: 6px 8px; background: var(--mine); }
+.notes li.mine .who, .typing .who.turn { color: var(--heading); }
+.notes li.won .score { border-color: var(--won); background: var(--won); color: #fff; }
+.notes .got { display: grid; place-items: center; width: calc(4 * 38px + 3 * 4px); height: 40px; border-radius: 8px; background: var(--won-bg); color: var(--won); font-size: .875rem; font-weight: 700; }
+.notes.five .got { width: calc(5 * 38px + 4 * 4px); }
+.notes li.event { justify-content: center; padding: 8px 0; border-bottom: 0; font-size: .75rem; font-weight: 600; color: var(--over); text-align: center; }
+
+/* The line over the scores: what to do or whose turn it is, a message in its place for a moment, and on its right
+   the advanced helper's count of the words left */
+.bar { padding-top: 10px; }
+.bar-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 8px; min-height: 1.4em; margin: 0 0 6px; font-size: .8125rem; font-weight: 600; color: var(--soft); }
+#bar-text, .msg { display: inline-flex; align-items: center; gap: 8px; }
+#bar-text svg { flex: none; width: 16px; height: 16px; }
+.msg { color: var(--error); }
+.msg:empty, .msg:not(:empty) + #bar-text { display: none; }
+.bar-line .aside { color: var(--heading); }
+.bar-line.mine { color: var(--heading); }
+.bar-line.over { color: var(--over); }
+.bar-line.won { color: var(--won); }
+body.dark .bar-line.won { color: var(--in); }
+/* A dot by the line that says whose turn it is */
+.pip { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+/* Score buttons stay dim until the guess has 4 letters, and grey while it's the other player's turn */
+.counts { display: flex; gap: 6px; }
 .counts button {
   flex: 1;
-  height: 42px;
+  height: 46px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--accent);
   color: #fff;
-  font-size: 1.12rem;
+  font-size: 1.1875rem;
   font-weight: 700;
   transition: opacity .15s;
 }
 .counts[hidden] { display: none; }
 .counts:not(.ready) button { opacity: .35; }
-/* The group game's Guess button has no label above it, so it keeps its own distance from the slots. It says whose turn
-   it is: grey on someone else's, outlined on yours while you type, filled once the guess can go. */
-#guess-row { margin-top: 24px; }
-#guess-row:not(.ready) button { opacity: 1; background: var(--key); color: var(--muted); }
-#guess-row.mine:not(.ready) button { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); color: var(--heading); }
+.counts.waiting button { opacity: 1; background: var(--key); color: var(--waiting); }
 .counts button:active { filter: brightness(.85); }
+/* The group game's Guess button says whose turn it is: grey on someone else's, outlined on yours while you type,
+   filled once the guess can go */
+.go { width: 100%; height: 48px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-size: 1.0625rem; font-weight: 700; }
+.go[hidden] { display: none; }
+.go:not(.ready) { background: var(--key); color: var(--waiting); font-size: 1rem; }
+.go.mine:not(.ready) { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); color: var(--heading); font-size: 1.0625rem; }
+.go.ready:active { filter: brightness(.85); }
 
-/* The keyboard types the guess; its keys and the guess list's tiles share the same colours */
-.keyboard { user-select: none; -webkit-user-select: none; }
-.row { display: flex; gap: 4px; margin-bottom: 6px; }
-.row:nth-child(2) { padding: 0 5%; }
-.row:nth-child(3) { padding-left: 15%; }
+/* The keyboard types the guess; its keys and the guess list's tiles share the same colours. It sits on its own panel,
+   edge to edge, with the colour key and Clear under it. */
+.kb { margin: 12px -16px 0; padding: 12px 6px max(16px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--panel); }
+/* Over a dock, room under Clear for the note on the dock's edge */
+body.docked .kb { margin-top: 10px; padding: 10px 6px 16px; }
+.keyboard { display: grid; gap: 6px; user-select: none; -webkit-user-select: none; }
+.keyboard .row { display: flex; gap: 4px; }
+.keyboard .row:nth-child(2) { padding: 0 5%; }
+.keyboard .row:nth-child(3) { padding-left: 15%; }
 
 .key, .tile {
   position: relative;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--key);
   font-weight: 700;
   text-transform: uppercase;
 }
-.key { flex: 1 1 0; min-width: 0; height: 56px; font-size: 1.2rem; }
+.key { flex: 1 1 0; min-width: 0; height: 50px; font-size: 1.125rem; }
+body.docked .key { height: 48px; }
 .key:active { filter: brightness(.85); }
 .key.back { flex-grow: 1.5; display: grid; place-items: center; }
 .key.back svg { width: 24px; height: 24px; }
-.tile { width: 40px; height: 40px; font-size: 1.2rem; }
+.tile { display: grid; flex: none; place-items: center; width: 44px; height: 44px; font-size: 1.25rem; }
 
 .in { background: var(--in); color: #fff; }
 .out { background: var(--out); color: #fff; }
@@ -229,7 +330,7 @@ button, select {
   height: 5px;
   border-radius: 50%;
   background: currentColor;
-  opacity: .7;
+  opacity: .75;
 }
 
 .legend {
@@ -237,8 +338,8 @@ button, select {
   flex-wrap: wrap;
   justify-content: center;
   gap: 4px 12px;
-  margin: 6px 0 0;
-  font-size: .8rem;
+  margin: 12px 0 0;
+  font-size: .75rem;
   color: var(--muted);
 }
 .legend span { display: inline-flex; align-items: center; gap: 4px; }
@@ -246,47 +347,66 @@ button, select {
 /* Clear: undoes your own key colours, dim when there are none */
 .clear {
   display: block;
-  margin: 12px auto 0;
-  padding: 8px 28px;
+  margin: 8px auto 0;
+  padding: 5px 24px;
   border: 2px solid var(--line);
   border-radius: 20px;
-  background: transparent;
+  background: var(--bg);
   color: var(--heading);
-  font-size: .95rem;
+  font-size: .85rem;
   font-weight: 600;
 }
 .clear:disabled { opacity: .4; cursor: default; }
 .clear:active:not(:disabled) { background: var(--line); }
 
-/* Guess list: newest first, the score in a circle */
-.notes { margin: 0; padding: 0; list-style: none; }
-.notes li { display: flex; align-items: center; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-.notes li:last-child { border-bottom: 0; }
-/* A 5-letter group game's guesses have narrower tiles, so a row still fits beside the player's name */
-.notes li.five .tile { width: 34px; }
-.notes .empty { padding: 12px 0; color: var(--muted); font-size: .9rem; }
-/* When in the game it was noted: small and quiet, pushed right next to the score */
-.notes .at { margin: 0 6px 0 auto; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.notes .at + .score { margin-left: 0; }
-.score {
+/* Your secret word: a panel over the page's keyboard, the rest of the page dimmed. Letters typed show big, the next
+   one to fill ringed; tap outside or × to leave it as it was. */
+.scrim { position: fixed; inset: 0; z-index: 2; background: rgb(0 0 0 / .45); }
+.scrim[hidden] { display: none; }
+main.setting .kb { position: relative; z-index: 3; padding-top: 4px; border-top-color: transparent; }
+main.setting .legend, main.setting .clear { display: none; }
+.word-panel {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  display: grid;
+  gap: 14px;
+  padding: 18px 16px 16px;
+  border-radius: 24px 24px 0 0;
+  background: var(--bg);
+  box-shadow: 0 -10px 30px rgb(0 0 0 / .18);
+  outline: none;
+}
+.word-panel[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .word-panel { animation: rise .2s cubic-bezier(.2, .8, .2, 1); }
+}
+.word-head { display: flex; align-items: center; gap: 10px; }
+.word-head h2 { flex: 1; margin: 0; font-size: 1.125rem; }
+.word-head .close { width: 40px; height: 40px; font-size: 1.375rem; }
+.word-draft { display: flex; justify-content: center; gap: 10px; margin: 0; }
+.word-draft span {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  margin-left: auto;
-  border: 2px solid var(--heading);
-  border-radius: 50%;
-  font-size: 1.1rem;
+  width: 64px;
+  height: 68px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  font-size: 1.875rem;
   font-weight: 700;
+  text-transform: uppercase;
 }
-/* In a group game: who made the guess, your own rows tinted, and a winning guess kept hidden from the others until the
-   game is over, then its score in green */
-.notes .who { max-width: 7em; margin-left: 8px; overflow: hidden; font-size: .75rem; font-weight: 600; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
-.notes li.mine { margin: 0 -8px; padding: 6px 8px; background: color-mix(in srgb, var(--accent) 6%, var(--bg)); }
-.notes li.mine .who { color: var(--heading); }
-.notes li.won .score { border-color: var(--in); background: var(--in); color: #fff; }
-.notes .got { display: grid; place-items: center; height: 40px; padding: 0 12px; border-radius: 6px; background: color-mix(in srgb, var(--in) 14%, var(--bg)); color: var(--in); font-size: .85rem; font-weight: 700; }
-.delete { width: 40px; height: 40px; border: 0; background: transparent; color: var(--muted); font-size: 1.4rem; }
+.word-draft span:not(:empty) { border-color: var(--fg); }
+.word-draft span.next { border-color: var(--heading); box-shadow: 0 0 0 4px var(--pill); }
+.word-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; }
+.tool { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 2px solid var(--line); border-radius: 22px; background: var(--bg); color: var(--heading); font-size: .875rem; font-weight: 600; }
+.tool svg { flex: none; width: 16px; height: 16px; }
+.tool:active { background: var(--line); }
+.word-note { margin: 0; font-size: .8125rem; color: var(--soft); text-align: center; }
+.word-note.warn { color: var(--error); font-weight: 600; }
+.word-panel .primary { min-height: 50px; font-weight: 600; }
+.word-panel button:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
 
 /* Menu: a drawer from the left, 80% of the screen; tap outside or × to close */
 .menu {
@@ -385,19 +505,15 @@ button, select {
 /* The release version, stamped in on deploy; a local preview shows dev */
 .version { display: block; margin-top: 4px; font-size: .7rem; }
 
-/* Duel clock: the clocks in a dock pinned to the bottom, like a real chess clock. The side that's ticking grows
-   and fills in, so whose turn it is shows from across the table. Its background spans the screen, its sides stay
-   within main's column, and the page gets room underneath so the secret word scrolls clear of it. */
-body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+/* Duel clock: the clocks in a dock at the bottom, under the keyboard, like a real chess clock. The side that's
+   ticking grows and fills in, so whose turn it is shows from across the table. */
 .dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1;
+  position: relative;
   display: flex;
+  flex: none;
   gap: 6px;
-  padding: 8px max(10px, (100% - 480px) / 2) calc(10px + env(safe-area-inset-bottom));
+  margin: 0 -16px;
+  padding: 8px 10px max(22px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: var(--bg);
   box-shadow: 0 -6px 20px rgb(0 0 0 / .06);
@@ -408,6 +524,7 @@ body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
   flex: 1;
   min-width: 0;
   display: grid;
+  align-content: center;
   justify-items: center;
   padding: 6px 4px;
   border-radius: 14px;
@@ -418,20 +535,19 @@ body.docked main { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 .dock .side span { max-width: 100%; overflow: hidden; font-size: .7rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .dock .side b { font-size: 1.25rem; line-height: 1.2; }
 .dock .side.running { flex: 1.6; background: var(--accent); color: #fff; }
-.dock .side.running b { font-size: 2rem; }
-.dock .side.over { background: color-mix(in srgb, var(--out) 12%, var(--bg)); color: var(--out); }
-.dock .side.won { background: var(--in); color: #fff; }
+.dock .side.running b { font-size: 1.875rem; }
+.dock .side.over { background: var(--over-bg); color: var(--over); }
+.dock .side.won { background: var(--won); color: #fff; }
 /* Waiting with nobody there: both sides dimmed; in a group game, a player who dropped out */
 .dock .side.idle { opacity: .55; }
 /* A group game's 3 or 4 sides and the menu button still fit a 360 px phone */
 .dock.many .side b { font-size: 1.1rem; }
 .dock.many .side.running b { font-size: 1.6rem; }
 /* The middle: the clock's settings, with the connection dot under the icon */
-.dock .mid { flex: none; display: grid; place-items: center; width: 40px; padding: 0; border: 0; border-radius: 14px; background: none; color: var(--muted); }
+.dock .mid { flex: none; display: grid; place-items: center; align-content: center; gap: 2px; width: 44px; padding: 0; border: 0; border-radius: 14px; background: none; color: var(--muted); }
 /* A group game's dock with no clocks, for a phone that couldn't join: the button keeps its place and its height */
 .dock .mid:first-child, .dock .note + .mid { min-height: 48px; margin-left: auto; }
 .dock .mid svg { width: 20px; height: 20px; }
-.dock .mid .dot { margin-top: -4px; }
 .dock .mid:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
 /* A small label on the dock's top edge: waiting, joined, dropped out */
 .dock .note {
@@ -611,8 +727,8 @@ body.viewing main, body.viewing .dock { display: none; }
 
 /* Learn words' look-up: the word as tiles, its meaning, and whether the dictionary knows it */
 .lookup { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: color-mix(in srgb, var(--heading) 8%, var(--bg)); }
-.lookup .ask-word { justify-content: flex-start; }
-.lookup .ask-word b { background: var(--bg); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--heading) 18%, var(--bg)); }
+.lookup .ask-word { justify-content: flex-start; gap: 6px; }
+.lookup .ask-word b { width: 40px; height: 46px; border-radius: 8px; background: var(--bg); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--heading) 18%, var(--bg)); color: var(--heading); font-size: 1.3rem; }
 .verdict { font-size: .8rem; font-weight: 600; color: color-mix(in srgb, var(--in) 70%, var(--fg)); }
 .verdict.no { color: var(--error); }
 .view .field input { text-transform: uppercase; letter-spacing: .1em; }
@@ -635,21 +751,23 @@ body.viewing main, body.viewing .dock { display: none; }
 .ask { width: min(340px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 20px; background: var(--bg); color: var(--fg); box-shadow: 0 10px 40px rgb(0 0 0 / .25); }
 .ask form { display: grid; gap: 16px; margin: 0; padding: 22px 18px 18px; }
 .ask p { margin: 0; text-align: center; font-weight: 600; overflow-wrap: anywhere; }
-.ask-word { display: flex; justify-content: center; gap: 6px; }
+.ask-word { display: flex; justify-content: center; gap: 8px; }
 .ask-word[hidden], .ask [hidden] { display: none; }
 .ask-word b {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 46px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--heading) 10%, var(--bg));
-  color: var(--heading);
-  font-size: 1.3rem;
+  width: 48px;
+  height: 50px;
+  border-radius: 10px;
+  background: var(--key);
+  font-size: 1.5rem;
   text-transform: uppercase;
 }
 .ask .ask-meaning { margin-top: -6px; color: var(--muted); font-weight: 400; font-size: .95rem; }
-.ask button { min-height: 44px; border-radius: 14px; }
+.ask .ask-note { display: flex; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-size: .8125rem; font-weight: 400; text-align: left; }
+.ask .ask-note[hidden] { display: none; }
+.ask-note svg { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.ask button { min-height: 50px; border-radius: 14px; font-size: .9375rem; }
 .ask button:focus-visible { outline: 2px solid var(--heading); outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) {
   .ask[open] { animation: pop .15s ease-out; }

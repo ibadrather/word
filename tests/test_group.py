@@ -290,6 +290,70 @@ def test_the_room_chooses_the_letters(steps: dict[str, dict[str, object]]) -> No
     }
 
 
+def guess_row(who: str, word: str, count: int, at: int, **flags: bool) -> object:
+    """Show a guess in the group game's list, as lobby.js's page() does."""
+    return {
+        "word": word,
+        "count": count,
+        "at": at,
+        "who": who,
+        "mine": who == "You",
+        "won": False,
+        "hidden": False,
+    } | flags
+
+
+def test_the_page(steps: dict[str, dict[str, object]]) -> None:
+    """Each phone's guess list, the line over the Guess button, and its wording.
+
+    A player going out shows where it happened, and another player's winning
+    guess stays hidden until the game is over.
+    """
+    page = steps["page"]
+    bear = guess_row("Asha", "bear", 0, 1_000)
+    ben_out = {"event": "Ben ran out of time and is out"}
+    assert page["cleoUp"] == {
+        "notes": [bear, ben_out],
+        "button": "",
+        "last": False,
+        "line": {"text": "Your turn. The page scores it for everyone.", "tone": "mine"},
+    }
+    assert page["ashaWaits"] == {
+        "notes": [guess_row("You", "bear", 0, 1_000), ben_out],
+        "button": "Cleo's turn",
+        "last": False,
+        "line": {"text": "Type your next guess while you wait."},
+    }
+    # Asha left on Cleo's turn: out from that point, after Cleo's guess
+    assert page["leftOff"] == [
+        bear,
+        {"event": "You ran out of time and are out"},
+        guess_row("Cleo", "lion", 1, 70_000),
+        {"event": "Asha left the game"},
+    ]
+    hidden = guess_row("Ben", "stop", 4, 5_000, hidden=True)
+    assert page["lastGuess"] == {
+        "notes": [bear, hidden],
+        "button": "",
+        "last": True,
+        "line": {
+            "text": "Ben got it! Get it too on this last guess and it's a draw.",
+            "tone": "won",
+        },
+    }
+    assert page["notLast"] == {
+        "notes": [guess_row("You", "bear", 0, 1_000), hidden],
+        "button": "Cleo's turn",
+        "last": False,
+        "line": {"text": "Ben got it! The others get their last guess.", "tone": "won"},
+    }
+    assert page["benGotIt"] == {
+        "text": "You got it! The others get their last guess.",
+        "tone": "won",
+    }
+    assert page["over"] == guess_row("Ben", "stop", 4, 5_000, won=True)
+
+
 def test_a_game_stays_in_its_room() -> None:
     """A game saved from one room is dropped on joining another.
 
