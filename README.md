@@ -24,7 +24,10 @@ Install it from the browser (**Add to Home Screen**, or **Install app** on Andro
 
 ## Dev
 ```sh
-python3 -m http.server -d web 8000   # preview at http://localhost:8000
-uv run ruff format . && uv run ruff check . && uv run mypy tests .github/scripts && uv run pytest
+make setup   # install the dev tools and fetch the Claude Code skill
+make serve   # preview at http://localhost:8000
+make check   # lint, type check and test (make format fixes formatting)
 ```
 Any change to `web/` needs a version bump (`uv version --bump patch`). Pushing a new version to `main` releases and deploys it. The `staging` branch is the beta at https://ibadrather.github.io/word/beta/, and other branches get a test copy under `/word/staging/<branch>/`.
+
+The [javascript-pro](https://github.com/jeffallan/claude-skills/tree/main/skills/javascript-pro) skill lives in `.claude/skills/`: Claude Code loads it on its own when working on JavaScript, or run `/javascript-pro`. `make setup` (or `make skills`) pulls its latest version.
