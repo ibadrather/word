@@ -12,9 +12,11 @@ name: Deploy to GitHub Pages
 on:
   workflow_call:
   workflow_dispatch:
+  # Not after CI on main: those runs would only be skipped below
   workflow_run:
     workflows: [CI]
     types: [completed]
+    branches-ignore: [main]
   delete:
 
 permissions:
@@ -26,7 +28,7 @@ jobs:
   deploy:
     # After CI, deploy only for a passing push to a branch other than main:
     # main goes live only through a release, which the Release workflow
-    # deploys itself, and CI's pull request runs repeat its push runs.
+    # deploys itself.
     if: >-
       github.event_name != 'workflow_run' ||
       (github.event.workflow_run.conclusion == 'success' &&

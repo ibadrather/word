@@ -1,10 +1,11 @@
 name: CI
 
-# Lint, type check and test on every push to any branch and on every pull
-# request - but only when something that can change the result changed: the
-# page, the tests, the scripts, the tooling config or this workflow. A README
-# change alone skips it. The Release workflow calls this too, so nothing ships
-# without it.
+# Lint, type check and test on every push to any branch - but only when
+# something that can change the result changed: the page, the tests, the
+# scripts, the tooling config or this workflow. A README change alone skips it.
+# A pull request's branch is pushed here too, and its push run's checks show on
+# the pull request, so there's no pull_request trigger to run them all twice.
+# The Release workflow calls this too, so nothing ships without it.
 
 on:
   push:
@@ -16,14 +17,9 @@ on:
       - ".github/workflows/ci.yml"
       - "pyproject.toml"
       - "uv.lock"
-  pull_request:
-    paths:
-      - "web/**"
-      - "tests/**"
-      - ".github/scripts/**"
-      - ".github/workflows/ci.yml"
-      - "pyproject.toml"
-      - "uv.lock"
+      - "package.json"
+      - "package-lock.json"
+      - "eslint.config.js"
   workflow_call:
 
 permissions:
@@ -49,6 +45,23 @@ jobs:
 
       - name: Lint
         run: uv run ruff check --output-format=github
+
+  lint-js:
+    name: Lint (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: ESLint
+        run: npx eslint --max-warnings 0 .
 
   typecheck:
     name: Type check (mypy)
