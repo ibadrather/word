@@ -26,46 +26,80 @@
         <span id="reset-deal" hidden>Deal</span>
       </button>
     </header>
-    <p id="timer" class="timer" aria-label="Time since your last guess" hidden></p>
-    <p id="times-up" class="times-up" hidden>Your time is up. Play on if you like.</p>
-
-    <!-- One slot a letter: 4, or a 5-letter group game's 5 (app.js) -->
-    <p id="word" class="slots" role="status" aria-label="Your guess"><span></span><span></span><span></span><span></span></p>
-    <p id="counts-label" class="label">How many letters are right?</p>
-    <div id="counts" class="counts"></div>
-    <!-- In a group game the phone knows the word, so one button notes the guess and scores it -->
-    <div id="guess-row" class="counts" hidden><button id="guess" type="button">Guess</button></div>
-    <p id="msg" class="msg"></p>
-    <p id="progress" class="progress" hidden></p>
-
-    <div id="keyboard" class="keyboard"></div>
-    <p class="legend">
-      Tap guessed letters:
-      <span><i class="out"></i>not in</span>
-      <span><i class="unsure"></i>not sure</span>
-      <span><i class="in"></i>in word</span>
-    </p>
-    <button id="clear" class="clear" type="button">Clear</button>
-
-    <div class="guesses-head">
-      <h2 id="guesses-title">Your guesses</h2>
-      <p id="game-stats" class="game-stats" hidden>
-        <span>Guesses: <b id="guess-count"></b></span>
-        <span>Game Timer: <b id="game-time"></b></span>
-      </p>
+    <!-- Your word (face to face and the duel) or the group game's room, and how the game is going -->
+    <div class="info">
+      <button id="secret-chip" class="chip" type="button"></button>
+      <p id="room-line" class="room-line" hidden>Room <b></b></p>
+      <p id="stat" class="stat"></p>
     </div>
-    <ul id="notes" class="notes"></ul>
 
-    <div id="secret-part">
-      <h2><label for="secret">Your secret word</label></h2>
-      <div class="secret">
-        <input id="secret" type="password" maxlength="4" placeholder="Type it here"
-               autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
-        <button id="reveal" class="pill" type="button">Show</button>
-      </div>
-      <p id="secret-msg" class="msg"></p>
+    <!-- The guesses, oldest first, and last the one being typed: app.js keeps #start and #typing and puts them back in
+         on every render -->
+    <ol id="notes" class="notes" aria-label="Your guesses, oldest first">
+      <li id="start" class="start" aria-labelledby="start-title">
+        <span class="start-tiles" aria-hidden="true"><b>?</b><b>?</b><b>?</b><b>?</b></span>
+        <h2 id="start-title">First, pick your secret word</h2>
+        <p></p>
+        <button class="primary" type="button">Set your word</button>
+        <p class="start-foot">Keeping it in your head? Just start guessing.</p>
+      </li>
+      <li id="typing" class="typing" role="status"><span class="n"></span><span class="tiles"></span><span class="who"></span><span class="at"></span><span class="score">?</span><span class="del" aria-hidden="true"></span></li>
+    </ol>
+
+    <!-- Whose turn it is or what to do, then the scores, or in a group game one button that notes the guess and scores it -->
+    <div class="bar">
+      <p id="bar-line" class="bar-line"><span id="msg" class="msg"></span><span id="bar-text"></span><span id="bar-aside" class="aside"></span></p>
+      <div id="counts" class="counts"></div>
+      <button id="guess" class="go" type="button" hidden>Guess</button>
+    </div>
+
+    <div class="kb">
+      <!-- Your secret word: typed on the page's own keyboard below, kept only on Done -->
+      <section id="word-panel" class="word-panel" role="dialog" aria-labelledby="word-title" tabindex="-1" hidden>
+        <div class="word-head">
+          <h2 id="word-title">Your secret word</h2>
+          <button id="word-close" class="close" type="button" aria-label="Close">×</button>
+        </div>
+        <p id="word-draft" class="word-draft" role="status"><span></span><span></span><span></span><span></span></p>
+        <div class="word-tools">
+          <button id="word-hide" class="tool" type="button"></button>
+          <button id="word-pick" class="tool" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>
+            Pick one for me
+          </button>
+        </div>
+        <p id="word-note" class="word-note"></p>
+        <button id="word-done" class="primary" type="button">Done</button>
+      </section>
+      <div id="keyboard" class="keyboard"></div>
+      <p class="legend">
+        <span><i class="out"></i>not in</span>
+        <span><i class="unsure"></i>not sure</span>
+        <span><i class="in"></i>in word</span>
+      </p>
+      <button id="clear" class="clear" type="button">Clear</button>
+    </div>
+
+    <div id="dock" class="dock" role="group" aria-label="Duel clock" hidden>
+      <span id="dock-note" class="note" hidden><i class="dot" aria-hidden="true"></i><span></span></span>
+      <div id="mine" class="side" role="timer"><span>You</span><b></b></div>
+      <button id="dock-menu" class="mid" type="button" aria-label="Duel clock settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>
+        <i class="dot" aria-hidden="true"></i>
+      </button>
+      <div id="theirs" class="side" role="timer"><span></span><b></b></div>
+    </div>
+
+    <!-- The group game's clocks, one side a seat (lobby.js fills them in), with the menu button at the end -->
+    <div id="group-dock" class="dock" role="group" aria-label="Group game clocks" hidden>
+      <span id="group-note" class="note" hidden><i class="dot" aria-hidden="true"></i><span></span></span>
+      <button id="group-menu" class="mid" type="button" aria-label="Group game">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>
+        <i class="dot" aria-hidden="true"></i>
+      </button>
     </div>
   </main>
+  <div id="scrim" class="scrim" hidden></div>
 
   <!-- Learn words: a view of its own at #learn, in place of the game. Look a word up, or browse ten common words of 4
        or 5 letters at random with their meanings, and ten more. -->
@@ -113,7 +147,7 @@
     </div>
     <div data-rules="face">
       <ol class="rules">
-        <li>Each of you picks a secret word of 4 letters and types it at the bottom of the page.</li>
+        <li>Each of you picks a secret word of 4 letters: tap Set your word, or keep it in your head.</li>
         <li>Take turns saying a guess. The other says how many of its letters are in their word, wherever they sit.</li>
         <li>A repeated letter counts once.</li>
         <li>First to guess it wins. If the other then gets theirs on their last turn, it's a draw.</li>
@@ -137,7 +171,7 @@
         <li>Play face to face, with a chess clock shared by both phones.</li>
         <li>One phone makes a room and shares its link. The other joins it.</li>
         <li>Noting a guess stops your clock and starts the other player's.</li>
-        <li>Score a guess 4 and the page asks if it's their word. Once they agree on their phone, the room counts the win.</li>
+        <li>Score a guess 4 and the page asks if it's their word. Their phone checks it against the word they set, or asks them if they didn't, and the room counts the win.</li>
         <li>When your time runs out, the page says so. Play on if you like.</li>
       </ol>
     </div>
@@ -172,25 +206,6 @@
     <p><b data-count="4"></b> words of 4 letters and <b data-count="5"></b> of 5, in British and American spelling.</p>
     <p class="hint">Words from the SCOWL word list, meanings from WordNet.</p>
   </section>
-
-  <div id="dock" class="dock" role="group" aria-label="Duel clock" hidden>
-    <span id="dock-note" class="note" hidden><i class="dot" aria-hidden="true"></i><span></span></span>
-    <div id="mine" class="side" role="timer"><span>You</span><b></b></div>
-    <button id="dock-menu" class="mid" type="button" aria-label="Duel clock settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/><path d="M9 2h6"/></svg>
-      <i class="dot" aria-hidden="true"></i>
-    </button>
-    <div id="theirs" class="side" role="timer"><span></span><b></b></div>
-  </div>
-
-  <!-- The group game's clocks, one side a seat (lobby.js fills them in), with the menu button at the end -->
-  <div id="group-dock" class="dock" role="group" aria-label="Group game clocks" hidden>
-    <span id="group-note" class="note" hidden><i class="dot" aria-hidden="true"></i><span></span></span>
-    <button id="group-menu" class="mid" type="button" aria-label="Group game">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>
-      <i class="dot" aria-hidden="true"></i>
-    </button>
-  </div>
 
   <!-- The menu: what's on now, how you play, and the way to How to play and Learn words -->
   <dialog id="menu" class="menu" aria-labelledby="menu-title">
@@ -354,13 +369,17 @@
     </div>
   </dialog>
 
-  <!-- The page's own questions and notes (ask.js): a line of text, a word as tiles and its meaning if any, and one or
-       two buttons -->
+  <!-- The page's own questions and notes (ask.js): a line of text, a word as tiles and its meaning if any, a warning
+       if any, and one or two buttons -->
   <dialog id="ask" class="ask" aria-labelledby="ask-text">
     <form method="dialog">
       <p id="ask-text"></p>
       <p id="ask-word" class="ask-word" role="img" hidden></p>
       <p id="ask-meaning" class="ask-meaning" hidden></p>
+      <p id="ask-note" class="ask-note" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></svg>
+        <span></span>
+      </p>
       <div class="row-flex">
         <button id="ask-no" class="secondary grow" value="no"></button>
         <button id="ask-yes" class="primary grow" value="yes"></button>

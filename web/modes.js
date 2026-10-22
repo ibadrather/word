@@ -92,6 +92,10 @@ export async function openLink() {
 // Whether a guess can be noted now: "" if it can, or else why not, in the page's words
 export const turn = () => ONLINE[current()]?.screens.turn() ?? "";
 
+// The duel's line over the scores: { text, tone, aside } (duel.js's line() says what each is), or null. The group game
+// words its own in page().
+export const line = () => ONLINE[current()]?.screens.line?.() ?? null;
+
 // What the page shows in place of its own game, for a mode that keeps the game itself (the group game): { book: the
 // key colours and helper, notes, time, letters, waiting, playing, empty } (lobby.js's page() says what each is), or null
 export const page = () => ONLINE[current()]?.screens.page?.() ?? null;
@@ -131,23 +135,15 @@ export function render() {
   if (on !== saved) save(on);
   for (const { screens } of Object.values(ONLINE)) screens.render();
   for (const [name, { dock }] of Object.entries(ONLINE)) $(dock).hidden = name !== on;
-  document.body.classList.toggle("docked", on !== "face"); // makes room under the page for the dock
+  document.body.classList.toggle("docked", on !== "face"); // the keyboard sits a little tighter over the dock
   showChoice(on);
-  showTimesUp(on);
 }
 
 // Every second
 export function tick() {
-  const on = current();
-  ONLINE[on]?.screens.tick();
-  showTimesUp(on);
+  ONLINE[current()]?.screens.tick();
 }
 
 function showChoice(on) {
   for (const input of document.getElementsByName("play")) input.checked = input.value === on;
-}
-
-// When the other player's time runs out instead, the dock alone shows it
-function showTimesUp(on) {
-  $("times-up").hidden = !ONLINE[on]?.screens.timesUp();
 }

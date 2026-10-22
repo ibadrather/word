@@ -18,6 +18,7 @@ import {
   skipped,
   wins,
 } from "../web/group.js";
+import { page } from "../web/lobby.js";
 
 const out = {};
 const MINUTE = 60_000;
@@ -327,6 +328,34 @@ out.chosen = {
     heard({ ...host, picked: 1, pickedBy: "a" }, { ...guest, picked: 1, pickedBy: "b" }, false),
     heard({ ...guest, picked: 1, pickedBy: "b" }, { ...host, picked: 1, pickedBy: "a" }, true),
   ],
+};
+
+// --- The main page in a group game, from each phone's side (lobby.js): the guesses and the players going out in the
+//     order they happened, the line over the Guess button and what the button says ---
+
+// What `id`'s phone shows of the table at `now`
+function seen(t, id, now) {
+  const p = play(t, now);
+  const v = { phase: p.over ? "lobby" : "game", seated: true, play: p, table: t, id, room: "mint-owl-42", letters: 4, lobby: [], error: "" };
+  const { notes, waiting, last, line } = page(v);
+  return { notes, button: waiting, last, line };
+}
+
+// Asha guesses, Ben's minute runs out, Cleo guesses, then Asha leaves on Cleo's turn
+t = guess(table([ASHA, BEN, CLEO], "stop", 1, 0), "a", "bear", 1_000);
+const timedOut = guess(t, "c", "lion", 70_000);
+const leftOff = left(timedOut, "a", 75_000);
+// Ben gets the word: Cleo, after him in the round, has one last guess, and Asha, before him, has none
+const got = guess(guess(table([ASHA, BEN, CLEO], "stop", 1, 0), "a", "bear", 1_000), "b", "stop", 5_000);
+out.page = {
+  cleoUp: seen(t, "c", 66_000),
+  ashaWaits: seen(t, "a", 66_000),
+  leftOff: seen(leftOff, "b", 76_000).notes,
+  lastGuess: seen(got, "c", 6_000),
+  notLast: seen(got, "a", 6_000),
+  benGotIt: seen(got, "b", 6_000).line,
+  // Once the game is over, everyone sees the winning guess
+  over: seen(guess(got, "c", "lion", 7_000), "a", 8_000).notes.at(-2),
 };
 
 console.log(JSON.stringify(out));

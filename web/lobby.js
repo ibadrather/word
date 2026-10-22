@@ -162,26 +162,61 @@ export async function newGame() {
   return false;
 }
 
-// The group game has no "Your time is up" line: running out is said once, as it puts you out
-export const timesUp = () => false;
-
-// What the main page shows in a group game: the table's guesses, newest last, with who made each; another player's
-// winning guess stays hidden until the game is over, as the players after them still get a last guess at the word.
-// Times are from the deal. `book` is this phone's own key colours and helper for the group game. `letters` is how
-// long a guess is: the game's word, or between games the next deal's. `waiting` is what the Guess button says when
-// it isn't this phone's turn ("" when it is), `playing` that a game is on, so the header's Deal can't be used, and
-// `empty` what the guess list says before a deal.
+// What the main page shows in a group game: the table's guesses, oldest first, with who made each, and where a player
+// ran out of time or left; another player's winning guess stays hidden until the game is over, as the players after
+// them still get a last guess at the word. `book` is this phone's own key colours and helper for the group game.
+// `letters` is how long a guess is: the game's word, or between games the next deal's. `room` is the room joined.
+// `waiting` is what the Guess button says when it isn't this phone's turn ("" when it is), `last` that this phone's
+// turn is its last guess, `line` the line over the button ({ text, tone }), `playing` that a game is on, so the
+// header's Deal can't be used, and `empty` what the guess list says before a deal.
 export function page(v = mode.view()) {
   const p = v.seated ? v.play : null;
-  const notes = (p?.notes ?? []).map(({ seat, word, count, at, won }) => {
-    const hidden = won && !p.over && seat !== v.id;
-    return { word, count, at, who: seat === v.id ? "You" : nameOf(v, seat), mine: seat === v.id, won: won && !hidden, hidden };
-  });
   const letters = v.phase === "game" ? v.table.word.length : v.letters;
-  const time = p && { game: p.time };
   const { short, long } = notYours(v);
   const empty = v.phase === "error" ? `${long}.` : "No game yet. Tap Deal for a word."; // the guess list, before a deal
-  return { book: mode.book(), notes, letters, time, waiting: short, playing: v.phase === "game", empty };
+  const last = Boolean(p?.winners.length && p.lastGuesses.includes(v.id));
+  const line = lineFor(v);
+  return { book: mode.book(), notes: p ? notes(v, p) : [], letters, room: v.room, waiting: short, last, line, playing: v.phase === "game", empty };
+}
+
+// The game's guesses and players going out, in the order they happened: { word, count, at, who, mine, won, hidden } a
+// guess, { event } a player out. A player who tapped Leave off their turn is out from the move they left at.
+function notes(v, p) {
+  const out = (id, reason) => {
+    const [who, verb] = id === v.id ? ["You", "are"] : [nameOf(v, id), "is"];
+    return { event: reason === "time" ? `${who} ran out of time and ${verb} out` : `${who} left the game` };
+  };
+  const quits = Object.entries(v.table.quit ?? {}).filter(([id]) => p.out[id] === "left");
+  const quitAt = (i) => quits.filter(([, at]) => at === i).map(([id]) => out(id, "left"));
+  const list = [];
+  let guesses = 0;
+  for (const [i, move] of p.moves.entries()) {
+    list.push(...quitAt(i));
+    if (move.kind === "time" || move.kind === "leave") list.push(out(move.seat, move.kind === "time" ? "time" : "left"));
+    if (move.kind !== "guess") continue;
+    const { seat, word, count, at, won } = p.notes[guesses++];
+    const hidden = won && !p.over && seat !== v.id;
+    list.push({ word, count, at, who: seat === v.id ? "You" : nameOf(v, seat), mine: seat === v.id, won: won && !hidden, hidden });
+  }
+  list.push(...quits.filter(([, at]) => at >= p.moves.length).map(([id]) => out(id, "left")));
+  return list;
+}
+
+// The line over the Guess button, from this phone's side: { text, tone }, the tone "mine" on this phone's turn and
+// "won" once someone has got the word
+function lineFor(v) {
+  if (v.phase !== "game") return { text: `${notYours(v).long}.` };
+  const p = v.play;
+  if (p.out[v.id]) return { text: "You're out of this game. Stay to watch it end, or leave." };
+  if (p.winners.includes(v.id)) return { text: "You got it! The others get their last guess.", tone: "won" };
+  if (p.winners.length) {
+    const who = nameOf(v, p.winners[0]);
+    if (!p.lastGuesses.includes(v.id)) return { text: `${who} got it! The others get their last guess.`, tone: "won" };
+    const which = p.turn === v.id ? "this" : "your";
+    return { text: `${who} got it! Get it too on ${which} last guess and it's a draw.`, tone: "won" };
+  }
+  if (p.turn === v.id) return { text: "Your turn. The page scores it for everyone.", tone: "mine" };
+  return { text: "Type your next guess while you wait." };
 }
 
 // --- Drawing ---
@@ -211,7 +246,7 @@ function draw(v) {
     const name = id === v.id ? "You" : nameOf(v, id);
     const left = p ? p.left[id] : v.minutes * MINUTE;
     side.firstElementChild.textContent = name;
-    side.lastElementChild.textContent = time(left);
+    side.lastElementChild.textContent = p?.out[id] ? "Out" : p?.winners.includes(id) ? "Got it" : time(left);
     side.classList.toggle("running", Boolean(p && p.turn === id));
     side.classList.toggle("over", Boolean(p?.out[id]));
     side.classList.toggle("won", Boolean(p?.winners.includes(id)));
