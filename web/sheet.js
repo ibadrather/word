@@ -1,5 +1,5 @@
 // What the duel's and the group game's sheets share: the room field, sending a room's link, the time a game was
-// played, and the room's wins.
+// played, the room's wins, and chips that pick one of a few values (Learn words has some too).
 
 import { ask } from "./ask.js";
 import { shareLink } from "./room.js";
@@ -38,19 +38,30 @@ export function lowercase(input) {
   return input.value;
 }
 
+// The chip in `chips` whose data-value is `value` shows as picked, and only it
+export function press(chips, value) {
+  for (const chip of chips.children) chip.ariaPressed = String(chip.dataset.value === String(value));
+}
+
 // A moment as 2026-10-18 21:40 UTC, the same on every phone wherever it is
 export const utc = (ms) => `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
+// The room's wins in a line for the menu, this phone's player (`me`) as You: "Wins: You 2 · Sam 1"
+export const winsLine = (board, me) =>
+  board.length ? `Wins: ${board.map(({ name, won }) => `${name === me ? "You" : name} ${won}`).join(" · ")}` : "No wins here yet";
+
 // The room's wins into `list`, one row a player who has played here, this phone's player (`me`) marked, and when the
-// last game was played into `when`
+// last game was played into `when`. A group game's row also says how many of the wins were of 4 letters and of 5.
 export function showWins(list, when, board, me, playedAt) {
-  const rows = board.map(({ name, won }) => {
+  const rows = board.map(({ name, won, letters }) => {
     const li = document.createElement("li");
     li.classList.toggle("me", name === me);
-    li.append(
-      Object.assign(document.createElement("span"), { textContent: name }),
-      Object.assign(document.createElement("b"), { textContent: won }),
-    );
+    li.append(Object.assign(document.createElement("span"), { textContent: name }));
+    if (letters) {
+      const split = Object.entries(letters).map(([length, count]) => `${length} letters: ${count}`);
+      li.append(Object.assign(document.createElement("em"), { textContent: split.join(" · ") }));
+    }
+    li.append(Object.assign(document.createElement("b"), { textContent: won }));
     return li;
   });
   list.replaceChildren(...rows);

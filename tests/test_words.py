@@ -1,53 +1,73 @@
-"""The dictionary in web/words.js is clean and knows the secrets in tests/games/.
+"""The dictionaries in web/words.js and web/words5.js are clean.
 
-Its common words in web/common.js, for Learn words, are clean too.
+The 4-letter one knows the secrets in tests/games/. Their common words in
+web/common.js and web/common5.js, for Learn words and the group game's deal,
+are clean too.
 """
 
 import json
 import re
 from pathlib import Path
 
+import pytest
+from word_lists import COMMON_SOURCES, LETTERS, SOURCES, entries, source
+
 ROOT = Path(__file__).parent.parent
-SOURCE = (ROOT / "web" / "words.js").read_text()
-COMMON_SOURCE = (ROOT / "web" / "common.js").read_text()
 
 
-def entries(source: str) -> list[str]:
-    """Read the words from a word list's string lines."""
-    return " ".join(re.findall(r'^ {2}"([a-z ]+)",$', source, re.MULTILINE)).split(" ")
+@pytest.mark.parametrize("letters", LETTERS)
+def test_words_are_lowercase_letters(letters: int) -> None:
+    """Every entry is 4 (or 5) letters a-z, so lookups of a typed word work."""
+    words = entries(SOURCES[letters])
+    assert all(re.fullmatch(f"[a-z]{{{letters}}}", word) for word in words)
 
 
-WORDS = entries(SOURCE)
-COMMON = entries(COMMON_SOURCE)
-
-
-def test_words_are_four_lowercase_letters() -> None:
-    """Every entry is 4 letters a-z, so lookups of a typed word work."""
-    assert all(re.fullmatch("[a-z]{4}", word) for word in WORDS)
-
-
-def test_words_are_sorted_and_unique() -> None:
+@pytest.mark.parametrize("letters", LETTERS)
+def test_words_are_sorted_and_unique(letters: int) -> None:
     """One sorted entry per word, so the menu's count is the real number of words."""
-    assert sorted(set(WORDS)) == WORDS
+    words = entries(SOURCES[letters])
+    assert sorted(set(words)) == list(words)
 
 
-def test_header_states_the_count() -> None:
+@pytest.mark.parametrize("letters", LETTERS)
+def test_header_states_the_count(letters: int) -> None:
     """The header comment's count matches the list."""
-    assert f"({len(WORDS):,} of them)" in SOURCE
+    name = SOURCES[letters]
+    text = source(name)
+    assert f"({len(entries(name)):,} of them)" in text
 
 
 def test_game_secrets_are_words() -> None:
     """Real games' secrets are known, so the words-left count can reach them."""
+    words = entries(SOURCES[4])
     for path in (ROOT / "tests" / "games").glob("*.json"):
-        assert json.loads(path.read_text())["secret"] in WORDS, path.name
+        assert json.loads(path.read_text())["secret"] in words, path.name
 
 
-def test_common_words_are_dictionary_words() -> None:
+@pytest.mark.parametrize("letters", LETTERS)
+def test_common_words_are_dictionary_words(letters: int) -> None:
     """Learn words only shows words the game accepts, sorted and unique."""
-    assert sorted(set(COMMON)) == COMMON
-    assert set(COMMON) <= set(WORDS)
+    common = entries(COMMON_SOURCES[letters])
+    assert sorted(set(common)) == list(common)
+    assert set(common) <= set(entries(SOURCES[letters]))
 
 
-def test_common_header_states_the_count() -> None:
+@pytest.mark.parametrize("letters", LETTERS)
+def test_common_header_states_the_count(letters: int) -> None:
     """The common list's header comment's count matches the list."""
-    assert f"({len(COMMON):,} of them)" in COMMON_SOURCE
+    name = COMMON_SOURCES[letters]
+    text = source(name)
+    assert f"({len(entries(name)):,} of them)" in text
+
+
+def test_meanings_are_for_words_the_game_deals() -> None:
+    """Every meaning is for a common word, sorted and one each, and says something."""
+    meanings = re.findall(
+        r'^ {2}([a-z]+): "(.+)",$', source("meanings.js"), re.MULTILINE
+    )
+    words = [word for word, _ in meanings]
+    assert sorted(set(words)) == words
+    common = {word for name in COMMON_SOURCES.values() for word in entries(name)}
+    assert set(words) <= common
+    assert all(meaning.strip() for _, meaning in meanings)
+    assert f"({len(words):,} of them)" in source("meanings.js")

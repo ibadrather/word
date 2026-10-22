@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TypedDict
 
 import pytest
+from word_lists import COMMON_SOURCES
 
 GAMES = sorted((Path(__file__).parent / "games").glob("*.json"))
 NODE = shutil.which("node")
@@ -73,13 +74,14 @@ def test_advanced_helper(path: Path) -> None:
 
 
 @pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
-def test_learn_words_are_ten_different_dictionary_words() -> None:
+@pytest.mark.parametrize("letters", COMMON_SOURCES)
+def test_learn_words_are_ten_different_dictionary_words(letters: int) -> None:
     """Learn words shows ten words, all different, all common dictionary words."""
     assert NODE is not None
     script = (
         'import { isWord, randomWords } from "./web/helpers.js";'
-        'import { COMMON } from "./web/common.js";'
-        f"const words = randomWords({LEARN_WORDS});"
+        f'import {{ COMMON }} from "./web/{COMMON_SOURCES[letters]}";'
+        f"const words = randomWords({LEARN_WORDS}, Math.random, {letters});"
         "const known = (w) => isWord(w) && COMMON.includes(w);"
         "console.log(JSON.stringify(words.map((w) => [w, known(w)])));"
     )
@@ -93,10 +95,12 @@ def test_learn_words_are_ten_different_dictionary_words() -> None:
     words = json.loads(result.stdout)
     assert len({word for word, _ in words}) == LEARN_WORDS
     assert all(known for _, known in words)
+    assert all(len(word) == letters for word, _ in words)
 
 
 @pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
-def test_blocked_words_are_never_picked() -> None:
+@pytest.mark.parametrize(("letters", "crude"), [(4, "rape"), (5, "whore")])
+def test_blocked_words_are_never_picked(letters: int, crude: str) -> None:
     """The blocked words are common words, and no pick ever includes one.
 
     Asked for every common word, with a fixed random, the picks are every
@@ -105,10 +109,10 @@ def test_blocked_words_are_never_picked() -> None:
     assert NODE is not None
     script = (
         'import { isWord, randomWords } from "./web/helpers.js";'
-        'import { BLOCKED, COMMON } from "./web/common.js";'
+        f'import {{ BLOCKED, COMMON }} from "./web/{COMMON_SOURCES[letters]}";'
         "let seed = 1;"
         "const random = () => (seed = (seed * 48271) % 2147483647) / 2147483647;"
-        "const words = randomWords(COMMON.length, random);"
+        f"const words = randomWords(COMMON.length, random, {letters});"
         "console.log(JSON.stringify({"
         "  blocked: [...BLOCKED],"
         "  notCommon: [...BLOCKED].filter((w) => !COMMON.includes(w) || !isWord(w)),"
@@ -126,7 +130,7 @@ def test_blocked_words_are_never_picked() -> None:
         cwd=Path(__file__).parent.parent,
     )
     steps = json.loads(result.stdout)
-    assert "rape" in steps["blocked"]
+    assert crude in steps["blocked"]
     assert steps["notCommon"] == []  # no typos: each one is a common, guessable word
     assert steps["pickedBlocked"] == []
     assert steps["picked"] == steps["different"]

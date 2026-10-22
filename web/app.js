@@ -1,11 +1,12 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { ask } from "./ask.js"; // the page's own questions and notes
-import { WORD_COUNT, fittingSets, formatTime, isWord, knownLetters, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, loadMeanings, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
 import * as group from "./group.js"; // the group game's logic and room
 import * as modes from "./modes.js"; // which way you play: the menu's choice, and what a guess or New game does in it
+import { press } from "./sheet.js"; // the chips of Learn words and How to play
 
 const ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
 const NEXT_COLOUR = { "": "out", out: "unsure", unsure: "in", in: "" }; // grey → red → yellow → green: most letters are red
@@ -14,7 +15,6 @@ const STORAGE_KEY = "guess-word-v2"; // old name kept so saved games survive the
 const NOT_A_WORD = "Not in the dictionary";
 const LOCKED = "Locked until New game";
 const TIME_LIMIT = 20 * 60_000; // the game's timers stop here, so one left open doesn't count up for ever
-const LOGO = ["unsure", "out", "", "in"]; // the W O R D tiles' colours
 
 const $ = (id) => document.getElementById(id);
 const BACKSPACE_ICON =
@@ -27,7 +27,9 @@ const BACKSPACE_ICON =
 
 let state = load();
 let settled = {}; // what the helper settled at the last render: { letter: "in" | "out" }
-let guess = ""; // the guess being typed on the page's keyboard, up to 4 letters
+let guess = ""; // the guess being typed on the page's keyboard, up to letters() long
+let learnLetters = 4; // the length of the words Learn words shows
+let dealt = 0; // how many tens Learn words has asked for, so a slow load never shows an older ten over a newer one
 
 function load() {
   const empty = { notes: [], colours: {}, secret: "", helper: "", startedAt: null, held: null };
@@ -40,6 +42,8 @@ function load() {
 
 // The key colours and helper the page shows: this game's, or a group game's own on this phone (modes.js)
 const book = () => modes.page()?.book ?? state;
+// How long a guess is: 4 letters, or a group game's 4 or 5
+const letters = () => modes.page()?.letters ?? 4;
 
 function update(change) {
   change();
@@ -54,7 +58,7 @@ function update(change) {
 
 // The page's keyboard only types: any key, whatever its colour. Colours are set from the guess list's tiles.
 function type(letter) {
-  if (guess.length < 4) setGuess(guess + letter);
+  if (guess.length < letters()) setGuess(guess + letter);
 }
 
 function backspace() {
@@ -63,7 +67,7 @@ function backspace() {
 
 function setGuess(word) {
   guess = word;
-  showMessage(guess.length === 4 && !isWord(guess) ? NOT_A_WORD : ""); // a warning only: you can still note it, except in a group game
+  showMessage(guess.length === letters() && !isWord(guess) ? NOT_A_WORD : ""); // a warning only: you can still note it, except in a group game
   showGuess();
 }
 
@@ -114,7 +118,7 @@ async function addNote(count) {
 // In a group game the phone scores the guess itself. One it can't take (not a word, already guessed, not your turn)
 // is refused, and the turn isn't used.
 function guessWord() {
-  if (guess.length !== 4) return showMessage("Type a 4-letter word first");
+  if (guess.length !== letters()) return showMessage(`Type a ${letters()}-letter word first`);
   const refused = modes.guess(guess);
   if (refused) return showMessage(refused);
   setGuess("");
@@ -215,36 +219,90 @@ async function showWin(text, secret) {
   if (!(await ask(text, { yes: "OK", no: "Undo win", word: cleanWord(secret) }))) duel.undoWin();
 }
 
-// Learn words: ten dictionary words at random as tiles, each a moment after the last
-function showLearnWords() {
-  const items = randomWords(10).map((word, i) => {
-    const li = document.createElement("li");
-    li.ariaLabel = word;
-    li.style.animationDelay = `${i * 30}ms`;
-    li.append(...[...word].map((letter) => Object.assign(document.createElement("b"), { textContent: letter, ariaHidden: "true" })));
-    return li;
+// A word's meaning in `meanings` (loadMeanings), or "" for one without
+const meaningOf = (meanings, word) => (Object.hasOwn(meanings, word) ? meanings[word] : "");
+
+// Learn words: ten common words of the chosen length at random, each with its meaning, a moment after the last. Only
+// words with a meaning are picked, unless the meanings can't load.
+async function showLearnWords() {
+  press($("learn-letters"), learnLetters);
+  const deal = ++dealt;
+  const picked = randomWords(20, Math.random, learnLetters);
+  const meanings = await loadMeanings();
+  if (deal !== dealt) return;
+  const known = picked.filter((word) => meaningOf(meanings, word));
+  const items = (known.length >= 10 ? known : picked).slice(0, 10).map((word, i) => {
+    const row = document.createElement("div");
+    row.style.animationDelay = `${i * 30}ms`;
+    const meaning = Object.assign(document.createElement("dd"), { textContent: meaningOf(meanings, word) });
+    row.append(Object.assign(document.createElement("dt"), { textContent: word }), meaning);
+    return row;
   });
   $("learn-words").replaceChildren(...items);
 }
 
-// Learn words is a view of its own at #learn, so the phone's back button returns to the game
+// Learn words' look-up, from 4 letters on: the word as tiles, its meaning if it has one, and whether the dictionary
+// knows it
+async function lookUp() {
+  const input = $("lookup");
+  input.value = input.value.replace(/[^a-z]/gi, "").slice(0, 5);
+  const word = input.value.toLowerCase();
+  const meanings = word.length < 4 ? {} : await loadMeanings();
+  if (input.value.toLowerCase() !== word) return; // typed on while the meanings loaded
+  $("lookup-result").hidden = word.length < 4;
+  if (word.length < 4) return;
+  const known = isWord(word);
+  const meaning = meaningOf(meanings, word);
+  $("lookup-word").ariaLabel = word;
+  $("lookup-word").replaceChildren(...[...word].map((letter) => Object.assign(document.createElement("b"), { textContent: letter })));
+  $("lookup-meaning").hidden = !meaning;
+  $("lookup-meaning").textContent = meaning;
+  $("lookup-verdict").textContent = !known ? NOT_A_WORD : meaning ? "In the dictionary" : "In the dictionary. No meaning for this one.";
+  $("lookup-verdict").classList.toggle("no", !known);
+}
+
+// How to play: the rules of one way to play, picked by its chip
+function showRules(mode) {
+  press($("rules-modes"), mode);
+  for (const rules of document.querySelectorAll("[data-rules]")) rules.hidden = rules.dataset.rules !== mode;
+}
+
+// How to play and Learn words are views of their own, at #rules and #learn, in place of the game, so the phone's back
+// button returns to it
+const VIEWS = ["rules", "learn"];
+let viewing = ""; // the view shown, or "" for the game
 let openedHere = false; // opened from the menu, so going back leaves the page where it was
 
 function showView() {
-  const learning = location.hash === "#learn";
-  if (learning === document.body.classList.contains("learning")) return;
-  document.body.classList.toggle("learning", learning);
-  $("learn").hidden = !learning;
-  if (learning) {
-    showLearnWords();
-    scrollTo(0, 0);
-  }
+  const view = VIEWS.find((id) => location.hash === `#${id}`) ?? "";
+  if (view === viewing) return;
+  viewing = view;
+  document.body.classList.toggle("viewing", Boolean(view));
+  for (const id of VIEWS) $(id).hidden = id !== view;
+  if (!view) openedHere = false;
+  if (view === "rules") showRules(modes.on()); // the rules of the way you play
+  if (view === "learn") showLearnWords();
+  if (view) scrollTo(0, 0);
 }
 
-function leaveLearn() {
+function leaveView() {
   if (openedHere) return history.back();
-  history.replaceState(null, "", location.pathname + location.search); // opened straight from a #learn link
+  history.replaceState(null, "", location.pathname + location.search); // opened straight from a link
   showView();
+}
+
+// The menu's "Now playing" card: the online mode's own words (modes.js), or face to face this page's game
+function showNow() {
+  const count = state.notes.length;
+  const guesses = count ? `${count} ${count === 1 ? "guess" : "guesses"}` : "No guesses yet";
+  const face = { title: "Face to face", lines: [guesses + (state.startedAt ? ` · ${formatTime(gameTime())}` : "")] };
+  const now = modes.status() ?? face;
+  $("now-title").textContent = now.title;
+  $("now-lines").replaceChildren(...now.lines.filter(Boolean).map((line) => Object.assign(document.createElement("span"), { textContent: line })));
+  $("now-dot").className = `dot ${now.dot ?? ""}`;
+  $("now-dot").hidden = now.dot === undefined; // face to face has no other phone to be connected to
+  $("now-open").hidden = !now.open;
+  $("now-open").textContent = now.open ?? "";
 }
 
 function showSecret(show) {
@@ -287,19 +345,16 @@ function progress(fitting) {
 
 // On top, the time since your last guess (since New game before the first one); the game time sits by "Your guesses".
 // In a duel the two players' clocks tick in the dock at the bottom (duel.js); the game's own times stay as they are.
-// Both stop at TIME_LIMIT into the game and turn red. A group game's times come from its table: the turn being played,
-// and the time since the deal, stopping when the game ends.
+// Both stop at TIME_LIMIT into the game and turn red. A group game has only the time since the deal, from its table,
+// stopping when the game ends: each player's own clock is in the dock, and a second one on top read as yours.
 const gameTime = () => Math.min(Date.now() - state.startedAt, TIME_LIMIT);
 
 function showTimer(page = modes.page()) {
-  $("timer").ariaLabel = page ? "Time this turn" : "Time since your last guess";
   if (page) {
-    $("timer").hidden = $("game-stats").hidden = !page.time;
-    $("timer").classList.remove("over");
+    $("timer").hidden = true;
+    $("game-stats").hidden = !page.time;
     $("game-stats").classList.remove("over");
-    if (!page.time) return;
-    $("timer").textContent = formatTime(page.time.turn);
-    $("game-time").textContent = formatTime(page.time.game);
+    if (page.time) $("game-time").textContent = formatTime(page.time.game);
     return;
   }
   $("timer").hidden = $("game-stats").hidden = !state.startedAt;
@@ -316,16 +371,26 @@ function showMessage(text) {
   $("msg").textContent = text;
 }
 
-// The guess in its four slots, the next one to fill underlined; the scores light up once it's full, on your turn
-function showGuess() {
+// The guess in its slots, one a letter, the next one to fill underlined; the scores light up once it's full, on your
+// turn. A 4-letter game after a 5-letter one drops the guess's last letter. In a group game the Guess button says
+// whose turn it is: filled with the guess once it's full on yours, outlined while you type, grey on someone else's.
+function showGuess(page = modes.page()) {
+  const length = page?.letters ?? 4;
+  if (guess.length > length) guess = guess.slice(0, length);
+  if ($("word").children.length !== length) {
+    $("word").replaceChildren(...Array.from({ length }, () => document.createElement("span")));
+  }
   for (const [i, slot] of [...$("word").children].entries()) {
     slot.textContent = guess[i] ?? "";
     slot.classList.toggle("next", i === guess.length);
   }
   $("word").ariaLabel = guess ? `Your guess: ${guess.toUpperCase()}` : "Your guess";
-  const ready = guess.length === 4 && !modes.turn();
+  const ready = guess.length === length && !(page ? page.waiting : modes.turn());
   $("counts").classList.toggle("ready", ready);
   $("guess-row").classList.toggle("ready", ready);
+  if (!page) return;
+  $("guess-row").classList.toggle("mine", !page.waiting);
+  $("guess").textContent = page.waiting || (ready ? `Guess ${guess.toUpperCase()}` : "Your turn");
 }
 
 // --- Rendering ---
@@ -369,7 +434,7 @@ function buildControls() {
   // A computer's own keyboard types too, unless you're typing in a box or a dialog is open
   document.addEventListener("keydown", (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey || document.querySelector("dialog[open]")) return;
-    if (document.body.classList.contains("learning")) return;
+    if (viewing) return;
     if (event.target.closest("input, select, textarea")) return;
     if (/^[a-z]$/i.test(event.key)) type(event.key.toLowerCase());
     else if (event.key === "Backspace") backspace();
@@ -386,28 +451,41 @@ function buildControls() {
   $("guess").addEventListener("click", guessWord);
   $("reset").addEventListener("click", newGame);
   $("clear").addEventListener("click", clearColours);
-  $("logo").addEventListener("click", () => $("menu").showModal());
+  $("logo").addEventListener("click", () => {
+    showNow();
+    $("menu").showModal();
+  });
   $("close").addEventListener("click", () => $("menu").close());
   $("menu").addEventListener("click", (event) => {
     if (event.target === $("menu")) $("menu").close(); // a tap on the dimmed page outside the drawer
   });
-  $("learn-open").addEventListener("click", () => {
+  $("now-open").addEventListener("click", () => {
     $("menu").close();
-    openedHere = true;
-    location.hash = "learn";
+    modes.openSheet();
   });
-  $("learn-more").addEventListener("click", showLearnWords);
-  $("learn-back").addEventListener("click", leaveLearn);
+  // How to play and Learn words: the link changes the address, and showView() the page
+  for (const link of document.querySelectorAll(".menu-link")) {
+    link.addEventListener("click", () => {
+      $("menu").close();
+      openedHere = true;
+    });
+  }
+  for (const back of document.querySelectorAll(".view .back")) back.addEventListener("click", leaveView);
   addEventListener("hashchange", showView);
+  for (const chip of $("rules-modes").children) chip.addEventListener("click", () => showRules(chip.dataset.value));
+  $("lookup").addEventListener("input", lookUp);
+  $("learn-more").addEventListener("click", showLearnWords);
+  for (const chip of $("learn-letters").children) {
+    chip.addEventListener("click", () => {
+      learnLetters = Number(chip.dataset.value);
+      showLearnWords();
+    });
+  }
   $("helper").addEventListener("change", (event) => chooseHelper(event.target.value));
-  // The dictionary's size as tiles in the logo's colours
-  const tile = (digit, i) => {
-    const el = Object.assign(document.createElement("b"), { textContent: digit });
-    if (LOGO[i % LOGO.length]) el.className = LOGO[i % LOGO.length]; // the plain grey tile has no class
-    return el;
-  };
-  $("word-count").append(...[...String(WORD_COUNT)].map(tile));
-  $("word-count").ariaLabel = `${WORD_COUNT.toLocaleString()} words`;
+  // The dictionaries' sizes, in the menu and How to play
+  for (const el of document.querySelectorAll("[data-count]")) {
+    el.textContent = (el.dataset.count === "5" ? WORD_COUNT_5 : WORD_COUNT).toLocaleString();
+  }
 }
 
 function render() {
@@ -419,6 +497,10 @@ function render() {
   $("counts-label").hidden = $("counts").hidden = Boolean(page);
   $("guess-row").hidden = !page;
   $("guesses-title").textContent = page ? "Guesses" : "Your guesses";
+  // In a group game the header's button deals, and only between games
+  $("reset-new").hidden = Boolean(page);
+  $("reset-deal").hidden = !page;
+  $("reset").disabled = Boolean(page?.playing);
   // Advanced Helper Mode isn't offered in a group game: it would work out the word from everyone's guesses
   const advanced = $("helper").querySelector('[value="advanced"]');
   advanced.hidden = advanced.disabled = Boolean(page);
@@ -435,8 +517,9 @@ function render() {
   document.body.classList.toggle("dark", helper === "advanced");
   // The installed app's status or title bar follows the page into dark and back
   document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.body).getPropertyValue("--bg").trim();
-  showGuess();
+  showGuess(page);
   modes.render();
+  if ($("menu").open) showNow();
   const { known, fitting } = deduce(notes.filter((note) => !note.hidden), book());
   settled = known;
   $("clear").disabled = !Object.keys(colours).length;
@@ -454,6 +537,9 @@ function render() {
   // that they got it, until the game is over.
   const items = [...notes].reverse().map((note) => {
     const li = document.createElement("li");
+    li.classList.toggle("five", note.word.length === 5);
+    li.classList.toggle("mine", Boolean(page && note.mine));
+    li.classList.toggle("won", Boolean(note.won));
     const span = (className, textContent) => Object.assign(document.createElement("span"), { className, textContent });
     if (note.hidden) li.append(span("got", "Got it"));
     else li.append(...[...note.word].map((letter) => letterButton(letter, `tile ${colour(letter)}`)));
@@ -463,7 +549,7 @@ function render() {
     return li;
   });
   if (!items.length) {
-    const empty = !page ? "No guesses yet. Type one above and tap its score." : page.time ? "No guesses yet." : "No game yet. Tap New game to deal a word.";
+    const empty = !page ? "No guesses yet. Type one above and tap its score." : page.time ? "No guesses yet." : page.empty;
     items.push(Object.assign(document.createElement("li"), { className: "empty", textContent: empty }));
   }
   $("notes").replaceChildren(...items);
@@ -477,8 +563,11 @@ render();
 showView();
 modes.openLink(); // a shared link asks to join
 setInterval(() => {
-  showTimer();
+  const page = modes.page();
+  showTimer(page);
+  if (page) showGuess(page); // a clock that ran out passes the turn with no message
   modes.tick();
+  if ($("menu").open) showNow(); // the game's time
 }, 1000);
 
 // Keeps the files for offline use, which also lets the page be installed as an app (sw.js)

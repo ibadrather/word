@@ -1,10 +1,12 @@
 // Plays the group game's pure logic through games and prints what each step showed: node group_steps.mjs
 // Times are ms on each phone's own clock; Ben's phone runs 7 seconds ahead of Asha's throughout, and Cleo's 7 behind.
 import { BLOCKED, COMMON } from "../web/common.js";
+import { BLOCKED as BLOCKED5, COMMON as COMMON5 } from "../web/common5.js";
 import {
   dealing,
   dealt,
   guessed,
+  laterPick,
   left,
   merged,
   mergedResults,
@@ -274,8 +276,56 @@ const longer = { g1: { at: 6_000, players: ["Asha", "Ben"], winners: ["Asha", "B
 const all = mergedResults(early, longer);
 out.results.merged = { games: Object.keys(all).sort(), g1: all.g1.winners, back: mergedResults(all, early).g1.moves };
 out.results.board = wins({ won: { ...won }, drawn: { ...drawn }, lost: { ...lost } });
+// Wins of both lengths count on one board; a game recorded before its letters were is a 4-letter one
+const five = { at: 10_000, players: ["Asha", "Cleo"], winners: ["Cleo"], moves: 2, letters: 5 };
+const old = { at: 1_000, players: ["Asha", "Ben"], winners: ["Asha"], moves: 3 };
+out.results.bothLengths = wins(mergedResults({ won: { ...won }, five }, { old })).board;
 out.results.kept = Object.keys(
   mergedResults({}, Object.fromEntries(Array.from({ length: 250 }, (_, i) => [`g${i}`, { at: i, players: [], winners: [], moves: 1 }]))),
 ).length;
+
+// --- Five letters: the dealer picks the length, and only guesses as long as the word count ---
+
+const fives = Array.from({ length: 200 }, (_, i) => dealt([ASHA, BEN], "a", 5, 1, 0, seeded(i + 1), 5).word);
+t = table([ASHA, BEN], "stone", 1, 0);
+const fourInFive = guess(t, "a", "tone", 1_000);
+t = guess(t, "a", "notes", 1_000); // an anagram: all five letters in, but not the word
+const fiveNote = play(t, 1_000).notes.at(-1);
+t = guess(t, "b", "stone", 2_000);
+out.fiveLetters = {
+  lengths: [...new Set(fives.map((word) => word.length))],
+  common: fives.every((word) => COMMON5.includes(word)),
+  blocked: fives.some((word) => BLOCKED5.has(word)),
+  fourInFive,
+  fiveNote,
+  wins: shown(play(t, 2_000)),
+  // Sent to another phone, the guesses keep all five letters
+  sent: received(message(t, 3_000), 3_000).moves.map((move) => move.word),
+  fiveInFour: guess(table([ASHA, BEN], "stop", 1, 0), "a", "stone", 1_000),
+};
+
+// --- The room's choice for the next deal: every phone here ends up with the same, so whoever deals uses it ---
+
+// A phone holding `ours` hears another's hello with `theirs`, from a phone that has been here longer if `older`: the
+// choice it holds after
+const heard = (ours, theirs, older) => (laterPick(theirs, ours, older) ? theirs : ours);
+const host = { letters: 5, minutes: 3, picked: 0, pickedBy: "" }; // here first, nobody has picked here
+const guest = { letters: 4, minutes: 10, picked: 0, pickedBy: "" };
+const joined = heard(guest, host, true); // the guest takes up the host's choice
+const guestPick = { ...joined, letters: 4, picked: 1, pickedBy: "b" };
+out.chosen = {
+  joined,
+  hostKeeps: heard(host, guest, false),
+  // Back from the background, the host joins again and is now the newest phone here: the guest has the host's choice
+  rejoined: heard(host, joined, true),
+  guestPicked: heard(host, guestPick, false),
+  olderUnpicked: heard(guestPick, host, true), // a pick beats having been here longer
+  hostPickedAgain: heard(guestPick, { ...guestPick, minutes: 10, picked: 2, pickedBy: "a" }, true),
+  // Both picked at once: the higher phone id's pick, on both phones
+  sameTime: [
+    heard({ ...host, picked: 1, pickedBy: "a" }, { ...guest, picked: 1, pickedBy: "b" }, false),
+    heard({ ...guest, picked: 1, pickedBy: "b" }, { ...host, picked: 1, pickedBy: "a" }, true),
+  ],
+};
 
 console.log(JSON.stringify(out));

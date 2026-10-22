@@ -205,25 +205,106 @@ def test_results(steps: dict[str, dict[str, object]]) -> None:
     """Every phone records the game; the board counts a lone winner only."""
     players = ["Asha", "Ben", "Cleo", "Dev"]
     assert steps["results"] == {
-        "won": {"at": 9_000, "players": players, "winners": ["Cleo"], "moves": 4},
+        "won": {
+            "at": 9_000,
+            "players": players,
+            "winners": ["Cleo"],
+            "moves": 4,
+            "letters": 4,
+        },
         "drawn": {
             "at": 8_000,
             "players": players,
             "winners": ["Cleo", "Dev"],
             "moves": 4,
+            "letters": 4,
         },
-        "lost": {"at": 300_000, "players": ["Asha", "Ben"], "winners": [], "moves": 4},
+        "lost": {
+            "at": 300_000,
+            "players": ["Asha", "Ben"],
+            "winners": [],
+            "moves": 4,
+            "letters": 4,
+        },
         "onGoing": None,
         # The entry with more moves wins, from either side
         "merged": {"games": ["g1", "g2"], "g1": ["Asha", "Ben"], "back": 6},
         "board": {
             "board": [
-                {"name": "Cleo", "won": 1},
-                {"name": "Asha", "won": 0},
-                {"name": "Ben", "won": 0},
-                {"name": "Dev", "won": 0},
+                {"name": "Cleo", "won": 1, "letters": {"4": 1, "5": 0}},
+                {"name": "Asha", "won": 0, "letters": {"4": 0, "5": 0}},
+                {"name": "Ben", "won": 0, "letters": {"4": 0, "5": 0}},
+                {"name": "Dev", "won": 0, "letters": {"4": 0, "5": 0}},
             ],
             "at": 300_000,
         },
+        # 4- and 5-letter wins on one board, each length counted
+        "bothLengths": [
+            {"name": "Cleo", "won": 2, "letters": {"4": 1, "5": 1}},
+            {"name": "Asha", "won": 1, "letters": {"4": 1, "5": 0}},
+            {"name": "Ben", "won": 0, "letters": {"4": 0, "5": 0}},
+            {"name": "Dev", "won": 0, "letters": {"4": 0, "5": 0}},
+        ],
         "kept": 200,
+    }
+
+
+def test_five_letters(steps: dict[str, dict[str, object]]) -> None:
+    """A 5-letter deal is a common word; only 5-letter guesses count in it."""
+    assert steps["fiveLetters"] == {
+        "lengths": [5],
+        "common": True,
+        "blocked": False,
+        "fourInFive": {"why": "word"},
+        "fiveNote": {
+            "seat": ASHA,
+            "word": "notes",
+            "count": 5,
+            "at": 1_000,
+            "won": False,
+        },
+        "wins": over([BEN]),
+        "sent": ["notes", "stone"],
+        "fiveInFour": {"why": "word"},
+    }
+
+
+def test_the_room_chooses_the_letters(steps: dict[str, dict[str, object]]) -> None:
+    """Every phone deals with the room's letters and minutes, not its own.
+
+    The latest pick wins, and for picks made at once, the higher phone id's.
+    Before anyone picks, a phone that joins takes up the choice of the phone
+    that was there, and keeps it when that phone joins again later.
+    """
+    host = {"letters": 5, "minutes": 3, "picked": 0, "pickedBy": ""}
+    guest_pick = {"letters": 4, "minutes": 3, "picked": 1, "pickedBy": "b"}
+    both_picked = {"letters": 4, "minutes": 10, "picked": 1, "pickedBy": "b"}
+    assert steps["chosen"] == {
+        "joined": host,
+        "hostKeeps": host,
+        "rejoined": host,
+        "guestPicked": guest_pick,
+        "olderUnpicked": guest_pick,
+        "hostPickedAgain": {**guest_pick, "minutes": 10, "picked": 2, "pickedBy": "a"},
+        "sameTime": [both_picked, both_picked],
+    }
+
+
+def test_a_game_stays_in_its_room() -> None:
+    """A game saved from one room is dropped on joining another.
+
+    Otherwise it would be recorded on the new room's wins board.
+    """
+    assert NODE is not None
+    result = subprocess.run(  # noqa: S603 - our own script, run with the local node
+        [NODE, Path(__file__).parent / "group_room_steps.mjs"],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == {
+        "otherRoom": {"game": None, "played": ""},
+        "sameRoom": {"game": "a:1", "played": "x"},
+        "olderJoined": {"game": "a:1", "played": "x"},
+        "olderTyped": {"game": None, "played": ""},
     }

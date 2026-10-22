@@ -22,12 +22,14 @@
       </select>
       <button id="reset" class="new-game" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>
-        <span>New<span class="wide"> game</span></span>
+        <span id="reset-new">New<span class="wide"> game</span></span>
+        <span id="reset-deal" hidden>Deal</span>
       </button>
     </header>
     <p id="timer" class="timer" aria-label="Time since your last guess" hidden></p>
     <p id="times-up" class="times-up" hidden>Your time is up. Play on if you like.</p>
 
+    <!-- One slot a letter: 4, or a 5-letter group game's 5 (app.js) -->
     <p id="word" class="slots" role="status" aria-label="Your guess"><span></span><span></span><span></span><span></span></p>
     <p id="counts-label" class="label">How many letters are right?</p>
     <div id="counts" class="counts"></div>
@@ -65,20 +67,110 @@
     </div>
   </main>
 
-  <!-- Learn words: a view of its own at #learn, in place of the game. Ten common words at random, and ten more. -->
-  <section id="learn" class="learn" aria-labelledby="learn-title" hidden>
-    <div class="learn-head">
-      <button id="learn-back" class="close" type="button" aria-label="Back to the game">
+  <!-- Learn words: a view of its own at #learn, in place of the game. Look a word up, or browse ten common words of 4
+       or 5 letters at random with their meanings, and ten more. -->
+  <section id="learn" class="view" aria-labelledby="learn-title" hidden>
+    <div class="view-head">
+      <button class="close back" type="button" aria-label="Back to the game">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
       </button>
       <h2 id="learn-title">Learn words</h2>
     </div>
-    <p class="hint">Common words the game knows, picked at random.</p>
-    <ul id="learn-words" class="learn-words"></ul>
+    <label class="field">
+      <span>Look up a word</span>
+      <input id="lookup" maxlength="5" placeholder="4 or 5 letters" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="search">
+    </label>
+    <div id="lookup-result" class="lookup" aria-live="polite" hidden>
+      <p id="lookup-word" class="ask-word" role="img"></p>
+      <p id="lookup-meaning" hidden></p>
+      <p id="lookup-verdict" class="verdict"></p>
+    </div>
+    <h3 class="view-label">Ten at random</h3>
+    <div id="learn-letters" class="chips" role="group" aria-label="Letters in a word">
+      <button type="button" data-value="4">4 letters</button>
+      <button type="button" data-value="5">5 letters</button>
+    </div>
+    <dl id="learn-words" class="learn-words"></dl>
     <button id="learn-more" class="primary new-words" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/></svg>
       New words
     </button>
+  </section>
+
+  <!-- How to play: a view of its own at #rules. The rules of the way you play, or of another one picked from its chips,
+       then marking letters, the helpers and the dictionary, which are the same for all of them. -->
+  <section id="rules" class="view" aria-labelledby="rules-title" hidden>
+    <div class="view-head">
+      <button class="close back" type="button" aria-label="Back to the game">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      </button>
+      <h2 id="rules-title">How to play</h2>
+    </div>
+    <div id="rules-modes" class="chips" role="group" aria-label="Rules for">
+      <button type="button" data-value="face">Face to face</button>
+      <button type="button" data-value="duel">Duel</button>
+      <button type="button" data-value="group">Group</button>
+    </div>
+    <div data-rules="face">
+      <ol class="rules">
+        <li>Each of you picks a secret word of 4 letters and types it at the bottom of the page.</li>
+        <li>Take turns saying a guess. The other says how many of its letters are in their word, wherever they sit.</li>
+        <li>A repeated letter counts once.</li>
+        <li>First to guess it wins. If the other then gets theirs on their last turn, it's a draw.</li>
+      </ol>
+      <div class="example">
+        <div class="example-row" aria-label="Word: CART">
+          <span class="example-label">Word</span>
+          <span class="tiles"><b>C</b><b>A</b><b>R</b><b>T</b></span>
+        </div>
+        <div class="example-row" aria-label="Guess: TART, 3 right">
+          <span class="example-label">Guess</span>
+          <span class="tiles"><b class="in">T</b><b class="in">A</b><b class="in">R</b><b class="again">T</b></span>
+          <span class="score">3</span>
+        </div>
+        <p>T, A and R are in the word. The second T doesn't count again.</p>
+      </div>
+      <p class="hint">The page never checks a score. It tells you when a word isn't in its dictionary.</p>
+    </div>
+    <div data-rules="duel">
+      <ol class="rules">
+        <li>Play face to face, with a chess clock shared by both phones.</li>
+        <li>One phone makes a room and shares its link. The other joins it.</li>
+        <li>Noting a guess stops your clock and starts the other player's.</li>
+        <li>Score a guess 4 and the page asks if it's their word. Once they agree on their phone, the room counts the win.</li>
+        <li>When your time runs out, the page says so. Play on if you like.</li>
+      </ol>
+    </div>
+    <div data-rules="group">
+      <ol class="rules">
+        <li>2 to 4 phones join one room. The computer picks a word of 4 or 5 letters, and anyone in the room can switch the length.</li>
+        <li>Take turns, each with your own clock. Every guess is scored for you and shows on every phone.</li>
+        <li>Only dictionary words count, and none already guessed.</li>
+        <li>Once someone gets it, the players after them in the round get one last guess. More than one right is a draw.</li>
+        <li>Run out of time or leave, and you're out.</li>
+        <li>The room keeps everyone's wins, by name.</li>
+      </ol>
+    </div>
+
+    <h3 class="view-label">Marking letters</h3>
+    <p>Tap a letter in your guesses to mark it. Tap again to change it.</p>
+    <p class="marks">
+      <span><b class="out">S</b>not in</span>
+      <span><b class="unsure">E</b>not sure</span>
+      <span><b class="in">A</b>in word</span>
+    </p>
+
+    <h3 class="view-label">Helper modes</h3>
+    <dl class="helpers">
+      <dt>Normal</dt><dd>You mark every letter.</dd>
+      <dt>Basic</dt><dd>Letters of a guess that scored 0 turn red.</dd>
+      <dt>Advanced</dt><dd>Works out letters from every score and counts the words left. Turns the page dark. Not in the group game.</dd>
+    </dl>
+    <p class="hint">Letters a helper sets get a dot and stay put.</p>
+
+    <h3 class="view-label">Dictionary</h3>
+    <p><b data-count="4"></b> words of 4 letters and <b data-count="5"></b> of 5, in British and American spelling.</p>
+    <p class="hint">Words from the SCOWL word list, meanings from WordNet.</p>
   </section>
 
   <div id="dock" class="dock" role="group" aria-label="Duel clock" hidden>
@@ -100,80 +192,54 @@
     </button>
   </div>
 
-  <dialog id="menu" class="menu" aria-labelledby="about">
+  <!-- The menu: what's on now, how you play, and the way to How to play and Learn words -->
+  <dialog id="menu" class="menu" aria-labelledby="menu-title">
     <div class="menu-body" tabindex="-1" autofocus>
       <div class="menu-head">
         <div class="logo" aria-hidden="true"><b class="unsure">W</b><b class="out">O</b><b>R</b><b class="in">D</b></div>
-        <h2 id="about">About the game</h2>
+        <h2 id="menu-title">Word</h2>
         <button id="close" class="close" type="button" aria-label="Close">×</button>
       </div>
 
-      <h3 id="play-label">How you play</h3>
-      <div class="play-cards" role="radiogroup" aria-labelledby="play-label">
-        <label class="play-card">
+      <!-- app.js fills it in from the way you play (modes.js): its name, a line or three, and a button to its sheet -->
+      <section class="now" aria-labelledby="now-title">
+        <p class="now-label"><i id="now-dot" class="dot" aria-hidden="true"></i>Now playing</p>
+        <h3 id="now-title"></h3>
+        <p id="now-lines"></p>
+        <button id="now-open" class="secondary" type="button" hidden></button>
+      </section>
+
+      <h3 id="play-label" class="menu-label">Switch how you play</h3>
+      <div class="play-rows" role="radiogroup" aria-labelledby="play-label">
+        <label class="play-row">
           <input id="play-face" type="radio" name="play" value="face"><i class="radio" aria-hidden="true"></i>
-          <span><b>Face to face</b>Say guesses and scores out loud.</span>
+          Face to face<small>out loud</small>
         </label>
-        <label class="play-card">
+        <label class="play-row">
           <input id="play-duel" type="radio" name="play" value="duel"><i class="radio" aria-hidden="true"></i>
-          <span><b>Duel clock</b>The same, plus a chess clock shared by both phones.</span>
+          Duel clock<small>2 phones</small>
         </label>
-        <label class="play-card">
+        <label class="play-row">
           <input id="play-group" type="radio" name="play" value="group"><i class="radio" aria-hidden="true"></i>
-          <span><b>Group game</b>2 to 4 phones guess one word the computer picks.</span>
+          Group game<small>2 to 4 phones</small>
         </label>
       </div>
-      <button id="learn-open" class="play-card learn-card" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/></svg>
-        <span><b>Learn words</b>Ten common words at random.</span>
-      </button>
 
-      <p class="intro">
-        <b>Play it face to face.</b> Say your guesses and scores out loud to each other.
-        This page only helps you keep track of letters.
-        Face to face, it tells you when a word isn't in its dictionary, but never checks a score.
-      </p>
+      <nav class="menu-links" aria-label="More">
+        <a class="menu-link" href="#rules">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><path d="M12 17h.01"/></svg>
+          <span><b>How to play</b>Rules, marking letters, helpers</span>
+        </a>
+        <a class="menu-link" href="#learn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/></svg>
+          <span><b>Learn words</b>Look one up, or browse with meanings</span>
+        </a>
+      </nav>
 
-      <h3>Rules</h3>
-      <ol class="rules">
-        <li>Each of you picks a secret word of 4 letters.</li>
-        <li>Take turns guessing the other's word.</li>
-        <li>The answer is how many of the guess's letters are in the word. Where they sit doesn't matter.</li>
-        <li>A repeated letter counts once.</li>
-        <li>First to guess the word wins, unless the other player then gets theirs on their last turn: that's a draw.</li>
-      </ol>
-      <p class="intro">
-        <b>Group game.</b> 2 to 4 phones guess one word the computer picks, taking turns, with a clock each.
-        Every guess is scored for you and shows on every phone. Only dictionary words count, and never one already
-        guessed. Once someone gets it, the players after them in the round get one last guess: more than one right is a
-        draw. Run out of time or leave, and you're out.
-      </p>
-
-      <h3>Example</h3>
-      <div class="example">
-        <div class="example-row" aria-label="Word: CART">
-          <span class="example-label">Word</span>
-          <span class="tiles"><b>C</b><b>A</b><b>R</b><b>T</b></span>
-        </div>
-        <div class="example-row" aria-label="Guess: TART, 3 correct">
-          <span class="example-label">Guess</span>
-          <span class="tiles"><b class="in">T</b><b class="in">A</b><b class="in">R</b><b class="again">T</b></span>
-          <span class="score">3</span>
-        </div>
-        <p>T, A and R are in the word. The second T doesn't count again.</p>
+      <div class="menu-foot">
+        <p><span data-count="4"></span> words of 4 letters · <span data-count="5"></span> of 5</p>
+        <p>Built by Asna and Ibad for you ❤️<span class="version">dev</span></p>
       </div>
-
-      <h3>Dictionary</h3>
-      <div class="example">
-        <div class="example-row">
-          <span id="word-count" class="tiles" role="img"></span>
-          <span class="dictionary-label">words it knows</span>
-        </div>
-        <p>Every 4-letter word in British and American spelling, from the SCOWL word list. Type a word it doesn't know and it tells you.
-          Advanced Helper Mode counts how many your partner's word could still be.</p>
-      </div>
-
-      <p class="menu-foot">Built by Asna and Ibad for you ❤️<span class="version">dev</span></p>
     </div>
   </dialog>
 
@@ -235,7 +301,18 @@
         <h2 id="group-title">Group game</h2>
         <button id="group-close" class="close" type="button" aria-label="Close">×</button>
       </div>
-      <p id="group-intro" class="hint">2 to 4 phones guess one word the computer picks. Everyone has a clock: noting a guess stops yours and starts the next player's.</p>
+      <!-- Alone in the lobby, inviting the others is the thing to do: the room in big letters, as in the duel -->
+      <div id="group-wait" class="wait-box" hidden>
+        <span class="waiting"><i class="dot wait" aria-hidden="true"></i><span>Waiting for others to join…</span></span>
+        <span class="room-big"></span>
+        <button class="secondary share" type="button">Share link</button>
+        <p class="hint">Send the link, or read the room out to them.</p>
+      </div>
+      <div id="group-in-room" class="in-room row-flex" hidden>
+        <span class="grow">Room <b></b></span>
+        <button id="group-share" class="secondary share" type="button">Share link</button>
+      </div>
+      <p id="group-intro" class="hint">2 to 4 phones guess one word of 4 or 5 letters the computer picks. Everyone has a clock: noting a guess stops yours and starts the next player's.</p>
       <p id="group-invite" class="hint">This link is for the room <b></b>. Join it to play with the phones in it.</p>
       <p id="group-error" class="err" role="alert" hidden></p>
       <div id="group-here" class="wins" role="group" aria-labelledby="group-here-label" hidden>
@@ -246,39 +323,44 @@
         <label for="group-room">Room</label>
         <div class="row-flex">
           <input id="group-room" maxlength="20" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done">
-          <button class="secondary share" type="button">Share link</button>
+          <button id="group-room-share" class="secondary share" type="button">Share link</button>
         </div>
       </div>
       <p id="group-room-hint" class="hint">Made up for you. Joining friends? Type their room instead.</p>
       <label id="group-name-field" class="field">
         <span>Your name</span>
-        <input id="group-name" maxlength="12" autocomplete="off" enterkeyhint="done" placeholder="The wins are kept by name">
+        <input id="group-name" maxlength="12" autocomplete="off" enterkeyhint="done">
+        <small class="hint">The room's wins are kept by name.</small>
       </label>
+      <div id="group-letters" class="field">
+        <span id="group-letters-label">Letters in the word</span>
+        <div id="group-letter-chips" class="chips" role="group" aria-labelledby="group-letters-label"></div>
+      </div>
       <div id="group-minutes" class="field">
         <span id="group-minutes-label">Minutes each</span>
         <div id="group-chips" class="chips" role="group" aria-labelledby="group-minutes-label"></div>
       </div>
       <button id="group-go" class="primary" type="button"></button>
-      <button id="group-start" class="primary" type="button">Start game</button>
+      <button id="group-start" class="primary" type="button"></button>
       <button id="group-not-now" class="secondary" type="button">Not now, just play</button>
-      <div id="group-wins" class="wins" role="group" aria-labelledby="group-wins-label" hidden>
-        <span id="group-wins-label">Wins in this room</span>
+      <button id="group-leave" class="secondary" type="button"></button>
+      <p id="group-foot" class="hint foot"></p>
+      <!-- Folded away below the actions, so they stay in reach however many have played here -->
+      <details id="group-wins" class="wins" hidden>
+        <summary>Wins in this room</summary>
         <ol id="group-wins-list"></ol>
         <span id="group-wins-when" class="hint"></span>
-      </div>
-      <div id="group-end" class="row-flex">
-        <button id="group-share" class="secondary grow share" type="button">Share link</button>
-        <button id="group-leave" class="secondary grow" type="button"></button>
-      </div>
-      <p id="group-foot" class="hint foot"></p>
+      </details>
     </div>
   </dialog>
 
-  <!-- The page's own questions and notes (ask.js): a line of text, a word as tiles if any, and one or two buttons -->
+  <!-- The page's own questions and notes (ask.js): a line of text, a word as tiles and its meaning if any, and one or
+       two buttons -->
   <dialog id="ask" class="ask" aria-labelledby="ask-text">
     <form method="dialog">
       <p id="ask-text"></p>
       <p id="ask-word" class="ask-word" role="img" hidden></p>
+      <p id="ask-meaning" class="ask-meaning" hidden></p>
       <div class="row-flex">
         <button id="ask-no" class="secondary grow" value="no"></button>
         <button id="ask-yes" class="primary grow" value="yes"></button>
