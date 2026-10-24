@@ -1,0 +1,14 @@
+{
+  "secret": "crane",
+  "guesses": [
+    { "word": "sloth", "count": 0, "green": "", "letterSetsLeft": 27895, "wordsLeft": 1860 },
+    { "word": "pudgy", "count": 0, "green": "", "letterSetsLeft": 6884, "wordsLeft": 462 },
+    { "word": "brick", "count": 2, "green": "", "letterSetsLeft": 2320, "wordsLeft": 195 },
+    { "word": "fumed", "count": 1, "green": "", "letterSetsLeft": 1110, "wordsLeft": 110 },
+    { "word": "crate", "count": 4, "green": "acer", "letterSetsLeft": 8, "wordsLeft": 15 },
+    { "word": "trace", "count": 4, "green": "acer", "letterSetsLeft": 8, "wordsLeft": 15 },
+    { "word": "caner", "count": 5, "green": "acenr", "letterSetsLeft": 1, "wordsLeft": 4 },
+    { "word": "nacre", "count": 5, "green": "acenr", "letterSetsLeft": 1, "wordsLeft": 3 },
+    { "word": "crane", "count": 5, "green": "acenr", "letterSetsLeft": 1, "wordsLeft": 2 }
+  ]
+}

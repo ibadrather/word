@@ -67,8 +67,8 @@
     </div>
   </main>
 
-  <!-- Learn words: a view of its own at #learn, in place of the game. Look a word up, or browse ten common words of 4
-       or 5 letters at random with their meanings, and ten more. -->
+  <!-- Learn words: a view of its own at #learn, in place of the game. Look a word up, find the words with some letters,
+       or browse ten common words of 4 or 5 letters at random with their meanings, and ten more. -->
   <section id="learn" class="view" aria-labelledby="learn-title" hidden>
     <div class="view-head">
       <button class="close back" type="button" aria-label="Back to the game">
@@ -84,6 +84,14 @@
       <p id="lookup-word" class="ask-word" role="img"></p>
       <p id="lookup-meaning" hidden></p>
       <p id="lookup-verdict" class="verdict"></p>
+    </div>
+    <label class="field">
+      <span>Find words with these letters</span>
+      <input id="letters" maxlength="20" placeholder="3 or more, like a, r, t" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="search">
+    </label>
+    <div id="letters-result" class="lookup" aria-live="polite" hidden>
+      <p id="letters-count" class="verdict"></p>
+      <ul id="letters-words" class="letter-words" hidden></ul>
     </div>
     <h3 class="view-label">Ten at random</h3>
     <div id="learn-letters" class="chips" role="group" aria-label="Letters in a word">
@@ -143,9 +151,9 @@
     </div>
     <div data-rules="group">
       <ol class="rules">
-        <li>2 to 4 phones join one room. The computer picks a word of 4 or 5 letters, and anyone in the room can switch the length.</li>
+        <li>2 to 4 phones join one room. The computer picks a word of 4 or 5 letters, never a plural, and anyone in the room can switch the length.</li>
         <li>Take turns, each with your own clock. Every guess is scored for you and shows on every phone.</li>
-        <li>Only dictionary words count, and none already guessed.</li>
+        <li>Only dictionary words count, plurals too, and none already guessed.</li>
         <li>Once someone gets it, the players after them in the round get one last guess. More than one right is a draw.</li>
         <li>Run out of time or leave, and you're out.</li>
         <li>The room keeps everyone's wins, by name.</li>
@@ -164,7 +172,7 @@
     <dl class="helpers">
       <dt>Normal</dt><dd>You mark every letter.</dd>
       <dt>Basic</dt><dd>Letters of a guess that scored 0 turn red.</dd>
-      <dt>Advanced</dt><dd>Works out letters from every score and counts the words left. Turns the page dark. Not in the group game.</dd>
+      <dt>Advanced</dt><dd>Works out letters from every score and counts the words left, 4 letters or 5. Turns the page dark. In the group game it uses everyone's guesses.</dd>
     </dl>
     <p class="hint">Letters a helper sets get a dot and stay put.</p>
 
@@ -232,7 +240,7 @@
         </a>
         <a class="menu-link" href="#learn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/></svg>
-          <span><b>Learn words</b>Look one up, or browse with meanings</span>
+          <span><b>Learn words</b>Look one up, find by letters, or browse</span>
         </a>
       </nav>
 

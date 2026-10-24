@@ -1,7 +1,7 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { ask } from "./ask.js"; // the page's own questions and notes
-import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, loadMeanings, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, lettersOf, loadMeanings, randomWords, wordsLeft, wordsWith, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
 import * as group from "./group.js"; // the group game's logic and room
@@ -261,10 +261,24 @@ async function lookUp() {
   $("lookup-verdict").classList.toggle("no", !known);
 }
 
+// Learn words' letter search, from 3 letters on, typed like "a, r, t" or "a r t": every word of 4 or 5 letters with all
+// of them, in a list that scrolls
+function searchLetters() {
+  const typed = [...$("letters").value.toLowerCase().replace(/[^a-z]/g, "")];
+  const words = typed.length < 3 ? [] : wordsWith(typed);
+  $("letters-result").hidden = !typed.length;
+  const count = words.length === 1 ? "1 word" : `${words.length.toLocaleString()} words`;
+  $("letters-count").textContent = typed.length < 3 ? "Type at least 3 letters" : words.length ? count : "No word has all of these";
+  $("letters-count").classList.toggle("no", typed.length >= 3 && !words.length);
+  $("letters-words").hidden = !words.length;
+  $("letters-words").replaceChildren(...words.map((word) => Object.assign(document.createElement("li"), { textContent: word })));
+  $("letters-words").scrollTop = 0;
+}
+
 // How to play: the rules of one way to play, picked by its chip
-function showRules(mode) {
-  press($("rules-modes"), mode);
-  for (const rules of document.querySelectorAll("[data-rules]")) rules.hidden = rules.dataset.rules !== mode;
+function showRules(way) {
+  press($("rules-modes"), way);
+  for (const rules of document.querySelectorAll("[data-rules]")) rules.hidden = rules.dataset.rules !== way;
 }
 
 // How to play and Learn words are views of their own, at #rules and #learn, in place of the game, so the phone's back
@@ -280,7 +294,7 @@ function showView() {
   document.body.classList.toggle("viewing", Boolean(view));
   for (const id of VIEWS) $(id).hidden = id !== view;
   if (!view) openedHere = false;
-  if (view === "rules") showRules(modes.on()); // the rules of the way you play
+  if (view === "rules") showRules(modes.current()); // the rules of the way you play
   if (view === "learn") showLearnWords();
   if (view) scrollTo(0, 0);
 }
@@ -322,12 +336,13 @@ async function chooseHelper(helper) {
   else render(); // put the dropdown back
 }
 
-// What the chosen helper has settled ({ letter: "in" | "out" }), and for the advanced one the letter sets that fit.
-function deduce(notes, { helper, colours }) {
+// What the chosen helper has settled ({ letter: "in" | "out" }), and for the advanced one its progress line
+// (progress()), from the guesses of a `length`-letter game
+function deduce(notes, { helper, colours }, length) {
   if (helper === "basic") return { known: zeroGuesses(notes) };
   if (helper === "advanced") {
-    const fitting = fittingSets(notes);
-    return { known: knownLetters(fitting, colours), fitting };
+    const fitting = fittingSets(notes, length);
+    return { known: knownLetters(fitting, colours), line: progress(fitting, notes, length) };
   }
   return { known: {} };
 }
@@ -335,11 +350,12 @@ function deduce(notes, { helper, colours }) {
 const plural = (count, noun) => `${count.toLocaleString()} ${noun}${count === 1 ? "" : "s"}`;
 
 // The advanced helper's progress line. It counts the words left but never shows one.
-function progress(fitting) {
-  if (!state.notes.length) return `${plural(WORD_COUNT, "word")} to start. Every score you note narrows them down.`;
+function progress(fitting, notes, length) {
+  const count = length === 5 ? WORD_COUNT_5 : WORD_COUNT;
+  if (!notes.length) return `${plural(count, "word")} to start. Every score you note narrows them down.`;
   if (!fitting.length) return "No letters fit all these scores. Check them for a mistake.";
-  const words = plural(wordsLeft(fitting, state.notes), "possible word");
-  if (fitting.length === 1) return `Letters found: ${[...fitting[0].toUpperCase()].join(" ")}. ${words} left!`;
+  const words = plural(wordsLeft(fitting, notes, length), "possible word");
+  if (fitting.length === 1) return `Letters found: ${[...lettersOf(fitting[0]).toUpperCase()].join(" ")}. ${words} left!`;
   return `${words}, ${plural(fitting.length, "letter set")} left`;
 }
 
@@ -412,10 +428,10 @@ function letterButton(letter, className) {
 }
 
 function buildControls() {
-  for (const [i, letters] of ROWS.entries()) {
+  for (const [i, keys] of ROWS.entries()) {
     const row = document.createElement("div");
     row.className = "row";
-    for (const letter of letters) {
+    for (const letter of keys) {
       const key = button(letter, "key", () => type(letter));
       key.dataset.letter = letter;
       row.append(key);
@@ -474,6 +490,7 @@ function buildControls() {
   addEventListener("hashchange", showView);
   for (const chip of $("rules-modes").children) chip.addEventListener("click", () => showRules(chip.dataset.value));
   $("lookup").addEventListener("input", lookUp);
+  $("letters").addEventListener("input", searchLetters);
   $("learn-more").addEventListener("click", showLearnWords);
   for (const chip of $("learn-letters").children) {
     chip.addEventListener("click", () => {
@@ -501,9 +518,6 @@ function render() {
   $("reset-new").hidden = Boolean(page);
   $("reset-deal").hidden = !page;
   $("reset").disabled = Boolean(page?.playing);
-  // Advanced Helper Mode isn't offered in a group game: it would work out the word from everyone's guesses
-  const advanced = $("helper").querySelector('[value="advanced"]');
-  advanced.hidden = advanced.disabled = Boolean(page);
   // Only write the secret back when it differs, so typing doesn't jump the cursor to the end.
   if ($("secret").value.toLowerCase() !== state.secret) $("secret").value = state.secret;
   // In a duel, a word is locked once the game is on the clocks, until either player taps New game
@@ -520,13 +534,16 @@ function render() {
   showGuess(page);
   modes.render();
   if ($("menu").open) showNow();
-  const { known, fitting } = deduce(notes.filter((note) => !note.hidden), book());
+  // In a group game the helper works from everyone's guesses, but never another player's hidden winning one. Its
+  // length is the guesses': between games the next deal's may already be another.
+  const guessed = notes.filter((note) => note.word && !note.hidden);
+  const { known, line } = deduce(guessed, book(), guessed[0]?.word.length ?? letters());
   settled = known;
   $("clear").disabled = !Object.keys(colours).length;
   $("guess-count").textContent = notes.length;
   showTimer(page);
-  $("progress").hidden = !fitting;
-  if (fitting) $("progress").textContent = progress(fitting);
+  $("progress").hidden = !line;
+  if (line) $("progress").textContent = line;
   const colour = (letter) => (known[letter] ? `${known[letter]} locked` : colours[letter] || "");
 
   for (const key of $("keyboard").querySelectorAll(".key[data-letter]")) {
