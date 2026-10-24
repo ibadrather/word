@@ -23,8 +23,9 @@ const ONLINE = {
 
 let saved = "face"; // the mode that was on when last rendered: on load, only its room is rejoined
 
-// The mode that's on: an online one whose room is joined, the saved one if two are, or else face to face
-function current() {
+// The way you play that's on, "face", "duel" or "group": an online one whose room is joined, the saved one if two are,
+// or else face to face
+export function current() {
   const on = Object.keys(ONLINE).filter((name) => ONLINE[name].logic.view().active);
   return on.includes(saved) ? saved : (on[0] ?? "face");
 }
@@ -78,8 +79,8 @@ async function choose(event) {
 export async function openLink() {
   const [name, room] =
     Object.entries(ONLINE)
-      .map(([name, { param }]) => [name, roomFromLink(location.search, param)])
-      .find(([, room]) => room) ?? [];
+      .map(([mode, { param }]) => [mode, roomFromLink(location.search, param)])
+      .find(([, linked]) => linked) ?? [];
   if (!room) return;
   history.replaceState(null, "", location.pathname + location.hash);
   const on = current();
@@ -105,9 +106,6 @@ export const status = () => ONLINE[current()]?.screens.status() ?? null;
 
 // The card's button: the online mode's sheet
 export const openSheet = () => ONLINE[current()]?.screens.open();
-
-// The way you play that's on: "face", "duel" or "group"
-export const on = () => current();
 
 // A guess for a mode that scores it itself: "" once it's noted, or why it wasn't
 export const guess = (word) => ONLINE[current()]?.screens.guess(word) ?? "";

@@ -341,7 +341,7 @@ const meaningOf = (word) => loadMeanings().then((meanings) => (Object.hasOwn(mea
 const names = (v, ids) => [...ids].sort((a, b) => (b === v.id) - (a === v.id)).map((id) => (id === v.id ? "you" : nameOf(v, id)));
 
 // Ben, Cleo and Dev
-const listed = (names) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? ""));
+const listed = (list) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list.at(-1)}` : (list[0] ?? ""));
 const capital = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 // A seat's name, or a lobby phone's
@@ -385,7 +385,7 @@ function showPlayers(v, screen) {
   const rows = players.map(({ id, name }, i) => {
     const li = document.createElement("li");
     const away = game && Object.hasOwn(v.away, id);
-    const status = game ? statusOf(v, id) || time(v.play.left[id]) : v.lobby.find((phone) => phone.id === id)?.taken ? "name taken" : "";
+    const doing = game ? statusOf(v, id) || time(v.play.left[id]) : v.lobby.find((phone) => phone.id === id)?.taken ? "name taken" : "";
     li.classList.toggle("me", id === v.id);
     li.classList.toggle("turn", game && v.play.turn === id);
     li.classList.toggle("out", game && Boolean(v.play.out[id]));
@@ -393,7 +393,7 @@ function showPlayers(v, screen) {
     li.append(
       Object.assign(document.createElement("i"), { className: `dot ${away ? "wait" : "live"}`, ariaHidden: "true" }),
       Object.assign(document.createElement("span"), { textContent: id === v.id ? `${name || "You"} (you)` : name }),
-      Object.assign(document.createElement("em"), { textContent: status }),
+      Object.assign(document.createElement("em"), { textContent: doing }),
     );
     return li;
   });

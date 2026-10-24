@@ -6,9 +6,10 @@ SKILL_DEST := .claude/skills/javascript-pro
 
 .PHONY: setup skills serve format lint typecheck test check
 
-# Install the dev tools and fetch the latest Claude Code skill.
+# Install the dev tools (Python's and ESLint) and fetch the latest Claude Code skill.
 setup: skills
 	uv sync
+	npm ci
 
 # Copy the javascript-pro skill from jeffallan/claude-skills. A sparse,
 # blobless clone fetches only that folder, not the whole repository.
@@ -30,6 +31,7 @@ format:
 lint:
 	uv run ruff format --check .
 	uv run ruff check .
+	npx eslint
 
 typecheck:
 	uv run mypy tests .github/scripts

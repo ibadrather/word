@@ -262,9 +262,9 @@ async function lookUp() {
 }
 
 // How to play: the rules of one way to play, picked by its chip
-function showRules(mode) {
-  press($("rules-modes"), mode);
-  for (const rules of document.querySelectorAll("[data-rules]")) rules.hidden = rules.dataset.rules !== mode;
+function showRules(way) {
+  press($("rules-modes"), way);
+  for (const rules of document.querySelectorAll("[data-rules]")) rules.hidden = rules.dataset.rules !== way;
 }
 
 // How to play and Learn words are views of their own, at #rules and #learn, in place of the game, so the phone's back
@@ -280,7 +280,7 @@ function showView() {
   document.body.classList.toggle("viewing", Boolean(view));
   for (const id of VIEWS) $(id).hidden = id !== view;
   if (!view) openedHere = false;
-  if (view === "rules") showRules(modes.on()); // the rules of the way you play
+  if (view === "rules") showRules(modes.current()); // the rules of the way you play
   if (view === "learn") showLearnWords();
   if (view) scrollTo(0, 0);
 }
@@ -414,10 +414,10 @@ function letterButton(letter, className) {
 }
 
 function buildControls() {
-  for (const [i, letters] of ROWS.entries()) {
+  for (const [i, keys] of ROWS.entries()) {
     const row = document.createElement("div");
     row.className = "row";
-    for (const letter of letters) {
+    for (const letter of keys) {
       const key = button(letter, "key", () => type(letter));
       key.dataset.letter = letter;
       row.append(key);

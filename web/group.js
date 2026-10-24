@@ -252,9 +252,11 @@ export function message(table, now) {
   return { ...rest, elapsed: now - at };
 }
 
-const MINUTES = (value) => Math.min(60, Math.max(1, Math.round(Number(value)) || 10));
+// Minutes each, 1 to 60, or 10 for anything that isn't a number
+const cleanMinutes = (value) => Math.min(60, Math.max(1, Math.round(Number(value)) || 10));
 export const LETTERS = [4, 5]; // the words a game can deal, by length
-const LETTER = (value) => (LETTERS.includes(Number(value)) ? Number(value) : 4);
+// A word's length, 4 or 5, or 4 for anything else
+const cleanLetters = (value) => (LETTERS.includes(Number(value)) ? Number(value) : 4);
 
 // Another phone's message as a table on this phone, started `elapsed` ms before `now` by this phone's clock, or null
 // if it isn't one. Everything in it is checked, as it comes from another phone.
@@ -283,7 +285,7 @@ export function received(data, now) {
   const deal = Math.max(0, Math.floor(Number(data.deal)) || 0);
   const dealer = String(data.dealer ?? "");
   const elapsed = Math.max(0, Number(data.elapsed) || 0);
-  return { game: `${dealer}:${deal}`, deal, dealer, word, minutes: MINUTES(data.minutes), seats, moves, quit, at: now - elapsed };
+  return { game: `${dealer}:${deal}`, deal, dealer, word, minutes: cleanMinutes(data.minutes), seats, moves, quit, at: now - elapsed };
 }
 
 // Whether another phone's choice for the next deal ({ letters, minutes, picked, pickedBy }) is the room's rather than
@@ -319,7 +321,7 @@ export function mergedResults(ours, theirs) {
     const at = Number(entry?.at) || 0;
     const moves = Math.max(0, Number(entry?.moves) || 0);
     if (all[game] && all[game].moves >= moves) continue;
-    all[game] = { at, players: names(entry?.players), winners: names(entry?.winners), moves, letters: LETTER(entry?.letters) };
+    all[game] = { at, players: names(entry?.players), winners: names(entry?.winners), moves, letters: cleanLetters(entry?.letters) };
   }
   return Object.fromEntries(Object.entries(all).sort(([, a], [, b]) => b.at - a.at).slice(0, KEPT));
 }
@@ -433,9 +435,9 @@ export function edit(field, value) {
   onChange();
 }
 
-export function connect(name, typed) {
-  name = name.trim().slice(0, NAME);
-  typed = cleanRoom(typed);
+export function connect(typedName, typedRoom) {
+  const name = typedName.trim().slice(0, NAME);
+  const typed = cleanRoom(typedRoom);
   if (!typed) return tell("room");
   if (!name) return tell("name");
   leaveRoom(); // Try again comes here too, from whatever is left of the failed join
@@ -470,8 +472,8 @@ export function deal() {
   if (taken()) return "taken";
   const players = lobby().filter((player) => !player.taken);
   if (players.length < 2) return "alone";
-  const deal = Math.max(state.table?.deal ?? 0, heardDeal) + 1;
-  adopt(dealt(players.slice(0, SEATS), state.id, state.minutes, deal, now, Math.random, state.letters));
+  const next = Math.max(state.table?.deal ?? 0, heardDeal) + 1;
+  adopt(dealt(players.slice(0, SEATS), state.id, state.minutes, next, now, Math.random, state.letters));
   shareTable();
   onChange();
   return "";
@@ -486,7 +488,7 @@ export function guess(word) {
   return {};
 }
 
-export const setMinutes = (minutes) => pick({ minutes: MINUTES(minutes) });
+export const setMinutes = (minutes) => pick({ minutes: cleanMinutes(minutes) });
 
 export function setLetters(letters) {
   if (LETTERS.includes(letters)) pick({ letters });
@@ -679,7 +681,7 @@ const heard = {
     peers[peerId] = { id, name: String(data.name ?? "").slice(0, NAME), since, game };
     // The room's choice is kept here too, so it stays the room's after the phone that made it has gone
     const picked = Math.max(0, Math.floor(Number(data.picked)) || 0);
-    const theirs = { letters: LETTER(data.letters), minutes: MINUTES(data.minutes), picked, pickedBy: String(data.pickedBy ?? "") };
+    const theirs = { letters: cleanLetters(data.letters), minutes: cleanMinutes(data.minutes), picked, pickedBy: String(data.pickedBy ?? "") };
     if (laterPick(theirs, state, since < joinedAt)) {
       state = { ...state, ...theirs };
       save();
