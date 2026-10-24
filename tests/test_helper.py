@@ -218,3 +218,31 @@ def test_made_up_games_match_the_plain_helper(
         if truthful:
             assert set(step["green"]) <= set(secret)
             assert not set(step["red"]) & set(secret)
+
+
+@pytest.mark.skipif(NODE is None, reason="needs Node to run the page's JavaScript")
+def test_letter_search_finds_every_word_with_the_letters() -> None:
+    """Learn words' search lists every word with all the letters.
+
+    The 4-letter words come first, then the 5-letter ones.
+    """
+    assert NODE is not None
+    script = (
+        'import { wordsWith } from "./web/helpers.js";'
+        'console.log(JSON.stringify(wordsWith([..."zqu"])))'
+    )
+    result = subprocess.run(  # noqa: S603 - our own code, run with the local node
+        [NODE, "--input-type=module", "-e", script],
+        capture_output=True,
+        check=True,
+        cwd=Path(__file__).parent.parent,
+        text=True,
+    )
+    expected = [
+        word
+        for letters in LETTERS
+        for word in entries(SOURCES[letters])
+        if {"z", "q", "u"} <= set(word)
+    ]
+    assert expected
+    assert json.loads(result.stdout) == expected

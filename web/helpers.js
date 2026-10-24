@@ -20,6 +20,10 @@ export function isWord(word) {
   return DICTIONARIES[word.length]?.has(word) ?? false;
 }
 
+// Every dictionary word of 4 letters, then of 5, with all of `letters` (["a", "r", "t"]) in it, for Learn words' search
+export const wordsWith = (letters) =>
+  [4, 5].flatMap((length) => [...DICTIONARIES[length]].filter((word) => letters.every((letter) => word.includes(letter))));
+
 // The common words that can be picked, by length: all but the blocked ones
 const pickable = ({ COMMON, BLOCKED }) => COMMON.filter((word) => !BLOCKED.has(word));
 const PICKABLE = { 4: pickable(common4), 5: pickable(common5) };

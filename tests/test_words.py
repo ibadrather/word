@@ -13,6 +13,18 @@ import pytest
 from word_lists import COMMON_SOURCES, LETTERS, SOURCES, entries, source
 
 ROOT = Path(__file__).parent.parent
+# The common words that end in s without being a plural
+NOT_PLURAL = set(
+    re.findall(
+        "[a-z]+",
+        """alas bias hers lens news ours anus axis bass boss dais fuss hiss iris kiss
+        lass less loss mass mess miss moss muss onus opus pass plus puss this thus
+        alias atlas chaos corps ethos kudos mumps yours abyss amass amiss basis
+        bless bliss bogus bonus brass chess class crass cross dress dross fetus
+        floss focus genus glass gloss grass gross guess lotus minus mucus oasis
+        penis pious press sinus virus""",
+    )
+)
 
 
 @pytest.mark.parametrize("letters", LETTERS)
@@ -50,6 +62,17 @@ def test_common_words_are_dictionary_words(letters: int) -> None:
     common = entries(COMMON_SOURCES[letters])
     assert sorted(set(common)) == list(common)
     assert set(common) <= set(entries(SOURCES[letters]))
+
+
+@pytest.mark.parametrize("letters", LETTERS)
+def test_common_words_are_not_plurals(letters: int) -> None:
+    """The group game never deals a plural.
+
+    A common word ends in s only if it isn't one.
+    """
+    common = entries(COMMON_SOURCES[letters])
+    assert {word for word in common if word.endswith("s")} <= NOT_PLURAL
+    assert not {"mice", "geese", "teeth", "women"} & set(common)
 
 
 @pytest.mark.parametrize("letters", LETTERS)

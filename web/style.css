@@ -618,6 +618,10 @@ body.viewing main, body.viewing .dock { display: none; }
 .view .field input { text-transform: uppercase; letter-spacing: .1em; }
 .view .field input::placeholder { text-transform: none; letter-spacing: normal; }
 
+/* Learn words' letter search: how many words have the letters, and the words, in a box that scrolls */
+.letter-words { display: flex; flex-wrap: wrap; gap: 6px; max-height: 15rem; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+.letter-words li { padding: 4px 10px; border-radius: 8px; background: var(--bg); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--heading); }
+
 /* The ten words, each over its meaning; each new ten fades in */
 .learn-words { margin: 0; }
 .learn-words div { padding: 10px 0; border-bottom: 1px solid var(--line); }
