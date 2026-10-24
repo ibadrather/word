@@ -1,7 +1,7 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { ask } from "./ask.js"; // the page's own questions and notes
-import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, loadMeanings, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, lettersOf, loadMeanings, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
 import * as group from "./group.js"; // the group game's logic and room
@@ -322,12 +322,13 @@ async function chooseHelper(helper) {
   else render(); // put the dropdown back
 }
 
-// What the chosen helper has settled ({ letter: "in" | "out" }), and for the advanced one the letter sets that fit.
-function deduce(notes, { helper, colours }) {
+// What the chosen helper has settled ({ letter: "in" | "out" }), and for the advanced one its progress line
+// (progress()), from the guesses of a `length`-letter game
+function deduce(notes, { helper, colours }, length) {
   if (helper === "basic") return { known: zeroGuesses(notes) };
   if (helper === "advanced") {
-    const fitting = fittingSets(notes);
-    return { known: knownLetters(fitting, colours), fitting };
+    const fitting = fittingSets(notes, length);
+    return { known: knownLetters(fitting, colours), line: progress(fitting, notes, length) };
   }
   return { known: {} };
 }
@@ -335,11 +336,12 @@ function deduce(notes, { helper, colours }) {
 const plural = (count, noun) => `${count.toLocaleString()} ${noun}${count === 1 ? "" : "s"}`;
 
 // The advanced helper's progress line. It counts the words left but never shows one.
-function progress(fitting) {
-  if (!state.notes.length) return `${plural(WORD_COUNT, "word")} to start. Every score you note narrows them down.`;
+function progress(fitting, notes, length) {
+  const count = length === 5 ? WORD_COUNT_5 : WORD_COUNT;
+  if (!notes.length) return `${plural(count, "word")} to start. Every score you note narrows them down.`;
   if (!fitting.length) return "No letters fit all these scores. Check them for a mistake.";
-  const words = plural(wordsLeft(fitting, state.notes), "possible word");
-  if (fitting.length === 1) return `Letters found: ${[...fitting[0].toUpperCase()].join(" ")}. ${words} left!`;
+  const words = plural(wordsLeft(fitting, notes, length), "possible word");
+  if (fitting.length === 1) return `Letters found: ${[...lettersOf(fitting[0]).toUpperCase()].join(" ")}. ${words} left!`;
   return `${words}, ${plural(fitting.length, "letter set")} left`;
 }
 
@@ -501,9 +503,6 @@ function render() {
   $("reset-new").hidden = Boolean(page);
   $("reset-deal").hidden = !page;
   $("reset").disabled = Boolean(page?.playing);
-  // Advanced Helper Mode isn't offered in a group game: it would work out the word from everyone's guesses
-  const advanced = $("helper").querySelector('[value="advanced"]');
-  advanced.hidden = advanced.disabled = Boolean(page);
   // Only write the secret back when it differs, so typing doesn't jump the cursor to the end.
   if ($("secret").value.toLowerCase() !== state.secret) $("secret").value = state.secret;
   // In a duel, a word is locked once the game is on the clocks, until either player taps New game
@@ -520,13 +519,16 @@ function render() {
   showGuess(page);
   modes.render();
   if ($("menu").open) showNow();
-  const { known, fitting } = deduce(notes.filter((note) => !note.hidden), book());
+  // In a group game the helper works from everyone's guesses, but never another player's hidden winning one. Its
+  // length is the guesses': between games the next deal's may already be another.
+  const guessed = notes.filter((note) => note.word && !note.hidden);
+  const { known, line } = deduce(guessed, book(), guessed[0]?.word.length ?? letters());
   settled = known;
   $("clear").disabled = !Object.keys(colours).length;
   $("guess-count").textContent = notes.length;
   showTimer(page);
-  $("progress").hidden = !fitting;
-  if (fitting) $("progress").textContent = progress(fitting);
+  $("progress").hidden = !line;
+  if (line) $("progress").textContent = line;
   const colour = (letter) => (known[letter] ? `${known[letter]} locked` : colours[letter] || "");
 
   for (const key of $("keyboard").querySelectorAll(".key[data-letter]")) {

@@ -39,9 +39,9 @@ def test_header_states_the_count(letters: int) -> None:
 
 def test_game_secrets_are_words() -> None:
     """Real games' secrets are known, so the words-left count can reach them."""
-    words = entries(SOURCES[4])
     for path in (ROOT / "tests" / "games").glob("*.json"):
-        assert json.loads(path.read_text())["secret"] in words, path.name
+        secret = json.loads(path.read_text())["secret"]
+        assert secret in entries(SOURCES[len(secret)]), path.name
 
 
 @pytest.mark.parametrize("letters", LETTERS)

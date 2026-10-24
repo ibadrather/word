@@ -64,49 +64,81 @@ export function zeroGuesses(notes) {
   return known;
 }
 
-// --- Advanced helper: try every set of up to 4 letters the secret word could use (about 18,000) and keep the
-// ones that give every guess its count. A letter in all of them is green, in none of them red.
-// Your green/red marks narrow it down too, but never your mark on the letter itself, so a letter the
-// counts settle can't be changed by tapping it. ---
+// --- Advanced helper: try every set of up to 4 letters the secret word could use (about 18,000), or up to 5 for a
+// 5-letter word (about 84,000), and keep the ones that give every guess its count. A letter in all of them is green,
+// in none of them red. Your green/red marks narrow it down too, but never your mark on the letter itself, so a letter
+// the counts settle can't be changed by tapping it. A set is a bitmask, a bit a letter (a is 1, b 2, c 4…), so a
+// guess's score against it is the bits they share. ---
 
-const LETTER_SETS = allSets("", 0);
+const bit = (letter) => 1 << ALPHABET.indexOf(letter);
+const maskOf = (word) => [...word].reduce((mask, letter) => mask | bit(letter), 0);
 
-function allSets(chosen, from) {
-  const sets = chosen ? [chosen] : [];
-  if (chosen.length === 4) return sets;
-  for (let i = from; i < ALPHABET.length; i++) sets.push(...allSets(chosen + ALPHABET[i], i + 1));
+// A set's letters in order, like "ackr"
+export const lettersOf = (set) => [...ALPHABET].filter((letter) => set & bit(letter)).join("");
+
+function bitCount(mask) {
+  let count = 0;
+  for (let rest = mask; rest; rest &= rest - 1) count++;
+  return count;
+}
+
+// Every set of 1 to `size` letters, made the first time a length asks for them
+const LETTER_SETS = {};
+function letterSets(size) {
+  if (LETTER_SETS[size]) return LETTER_SETS[size];
+  const sets = [];
+  const add = (mask, from, left) => {
+    for (let i = from; i < ALPHABET.length; i++) {
+      sets.push(mask | (1 << i));
+      if (left > 1) add(mask | (1 << i), i + 1, left - 1);
+    }
+  };
+  add(0, 0, size);
+  return (LETTER_SETS[size] = sets);
+}
+
+// The letter sets that give every guess of a `letters`-letter game its count (letterSetsLeft in the tests is how
+// many). knownLetters then says which letters those sets settle as "in" or "out".
+export function fittingSets(notes, letters = 4) {
+  let sets = letterSets(letters);
+  for (const { word, count } of notes) {
+    const guess = maskOf(word);
+    sets = sets.filter((set) => bitCount(set & guess) === count);
+  }
   return sets;
 }
 
-// The letter sets (like "ackr") that give every guess its count.
-// knownLetters then says which letters those sets settle as "in" or "out".
-export function fittingSets(notes) {
-  return LETTER_SETS.filter((set) => notes.every(({ word, count }) => score(word, set) === count));
-}
-
 export function knownLetters(fitting, colours) {
-  const marks = Object.entries(colours).filter(([, colour]) => colour !== "unsure");
+  const marks = Object.entries(colours)
+    .filter(([letter, colour]) => ALPHABET.includes(letter) && letter.length === 1 && colour !== "unsure")
+    .map(([letter, colour]) => ({ letter, mask: bit(letter), in: colour === "in" }));
+  const fits = (set, skipped) => marks.every((mark) => mark.letter === skipped || Boolean(set & mark.mask) === mark.in);
+  const allMarked = fitting.filter((set) => fits(set, "")); // for a letter without a mark of its own
   const known = {};
   for (const letter of ALPHABET) {
-    const marked = fitting.filter((set) =>
-      marks.every(([other, colour]) => other === letter || set.includes(other) === (colour === "in")),
-    );
+    const own = marks.some((mark) => mark.letter === letter);
+    const marked = own ? fitting.filter((set) => fits(set, letter)) : allMarked;
     const sets = marked.length ? marked : fitting; // if your marks clash with the counts, trust the counts
     if (!sets.length) continue; // the counts contradict each other
-    if (sets.every((set) => set.includes(letter))) known[letter] = "in";
-    else if (!sets.some((set) => set.includes(letter))) known[letter] = "out";
+    const mask = bit(letter);
+    if (sets.every((set) => set & mask)) known[letter] = "in";
+    else if (!sets.some((set) => set & mask)) known[letter] = "out";
   }
   return known;
 }
 
-// How many dictionary words the secret could still be: those whose letters are a fitting set, minus the ones
-// already guessed (a right guess would have ended the game).
-export function wordsLeft(fitting, notes) {
+// Each dictionary word of a length with its letters' mask, made the first time it's asked for
+const WORD_MASKS = {};
+const wordMasks = (letters) => (WORD_MASKS[letters] ??= [...DICTIONARIES[letters]].map((word) => [word, maskOf(word)]));
+
+// How many dictionary words of `letters` letters the secret could still be: those whose letters are a fitting set,
+// minus the ones already guessed (a right guess would have ended the game).
+export function wordsLeft(fitting, notes, letters = 4) {
   const sets = new Set(fitting);
   const guessed = new Set(notes.map((note) => note.word));
   let count = 0;
-  for (const word of WORDS) {
-    if (!guessed.has(word) && sets.has([...new Set(word)].sort().join(""))) count++;
+  for (const [word, mask] of wordMasks(letters)) {
+    if (!guessed.has(word) && sets.has(mask)) count++;
   }
   return count;
 }
