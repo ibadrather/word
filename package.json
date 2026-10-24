@@ -1,0 +1,15 @@
+{
+  "name": "word",
+  "private": true,
+  "description": "Dev tools for the page's JavaScript: the page itself is plain files in web/, with no build step",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint",
+    "lint:fix": "eslint --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.12.0",
+    "globals": "17.12.0"
+  }
+}

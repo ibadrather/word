@@ -24,9 +24,9 @@ Install it from the browser (**Add to Home Screen**, or **Install app** on Andro
 
 ## Dev
 ```sh
-make setup   # install the dev tools and fetch the Claude Code skill
+make setup   # install the dev tools (uv and npm) and fetch the Claude Code skill
 make serve   # preview at http://localhost:8000
-make check   # lint, type check and test (make format fixes formatting)
+make check   # lint (ruff, ESLint), type check and test (make format fixes formatting)
 ```
 Any change to `web/` needs a version bump (`uv version --bump patch`). Pushing a new version to `main` releases and deploys it. The `staging` branch is the beta at https://ibadrather.github.io/word/beta/, and other branches get a test copy under `/word/staging/<branch>/`.
 

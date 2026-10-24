@@ -9,7 +9,7 @@ let queue = Promise.resolve();
 // for a step like leaving a game.
 export function ask(text, { yes = "OK", no = "Cancel", word = "", meaning = "", danger = false } = {}) {
   const answer = queue.then(async () => show(text, yes, no, word, await meaning, danger));
-  queue = answer;
+  queue = answer.catch(() => false); // a question that failed to show never holds up the ones after it
   return answer;
 }
 

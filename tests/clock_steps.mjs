@@ -168,7 +168,7 @@ out.latestWins = {
   olderPhone: latestWins(ours, undefined),
 };
 // A new player joins the room later: listed after their first game, a draw adds no win
-let wins = counted(ours, ["Cleo", "Ben"], "Cleo", 6_000);
+const wins = counted(ours, ["Cleo", "Ben"], "Cleo", 6_000);
 out.counted = { won: wins, drawn: counted(wins, ["Asha", "Dev"], undefined, 7_000), first: counted(NO_WINS, ["P1", "P2"], "P2", 1) };
 out.board = board(wins);
 // Both players agree to undo Cleo's win: one fewer, and later than the tally even on a phone whose clock is behind,

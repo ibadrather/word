@@ -28,12 +28,12 @@ const PICKABLE = { 4: pickable(common4), 5: pickable(common5) };
 // the group game's deal; all of them, shuffled, when more are asked for than there are
 export function randomWords(count, random = Math.random, letters = 4) {
   const words = [...PICKABLE[letters]];
-  count = Math.min(count, words.length);
-  for (let i = 0; i < count; i++) {
+  const picks = Math.min(count, words.length);
+  for (let i = 0; i < picks; i++) {
     const j = i + Math.floor(random() * (words.length - i));
     [words[i], words[j]] = [words[j], words[i]];
   }
-  return words.slice(0, count);
+  return words.slice(0, picks);
 }
 
 // The common words' brief meanings (meanings.js): { word: meaning }. It's big, so it loads the first time it's asked

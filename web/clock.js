@@ -161,9 +161,9 @@ export function edit(field, value) {
 }
 
 // `joining`: from a shared link, which is always someone else's room to join
-export function connect(name, typed, joining = false) {
-  name = name.trim().slice(0, 12);
-  typed = cleanRoom(typed);
+export function connect(typedName, typedRoom, joining = false) {
+  const name = typedName.trim().slice(0, 12);
+  const typed = cleanRoom(typedRoom);
   if (!typed) return tell("room");
   leaveRoom(); // Try again comes here too, from whatever is left of the failed join
   error = "";
