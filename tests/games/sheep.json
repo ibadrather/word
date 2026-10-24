@@ -1,0 +1,12 @@
+{
+  "secret": "sheep",
+  "guesses": [
+    { "word": "about", "count": 0, "green": "", "letterSetsLeft": 27895, "wordsLeft": 1802 },
+    { "word": "fling", "count": 0, "green": "", "letterSetsLeft": 6884, "wordsLeft": 322 },
+    { "word": "shore", "count": 3, "green": "", "letterSetsLeft": 316, "wordsLeft": 116 },
+    { "word": "these", "count": 3, "green": "ehs", "letterSetsLeft": 79, "wordsLeft": 22 },
+    { "word": "sweep", "count": 3, "green": "ehs", "letterSetsLeft": 22, "wordsLeft": 9 },
+    { "word": "steep", "count": 3, "green": "ehps", "letterSetsLeft": 11, "wordsLeft": 4 },
+    { "word": "sheep", "count": 4, "green": "ehps", "letterSetsLeft": 11, "wordsLeft": 3 }
+  ]
+}
