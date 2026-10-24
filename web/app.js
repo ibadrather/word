@@ -1,7 +1,7 @@
 // Word: notes, a keyboard to type guesses on, and letters you mark by colour. Everything stays in this browser.
 
 import { ask } from "./ask.js"; // the page's own questions and notes
-import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, lettersOf, loadMeanings, randomWords, wordsLeft, zeroGuesses } from "./helpers.js";
+import { WORD_COUNT, WORD_COUNT_5, fittingSets, formatTime, isWord, knownLetters, lettersOf, loadMeanings, randomWords, wordsLeft, wordsWith, zeroGuesses } from "./helpers.js";
 import * as mode from "./clock.js"; // the duel clock's logic and room
 import * as duel from "./duel.js"; // the duel clock's screens: the dock and the sheet
 import * as group from "./group.js"; // the group game's logic and room
@@ -261,6 +261,20 @@ async function lookUp() {
   $("lookup-verdict").classList.toggle("no", !known);
 }
 
+// Learn words' letter search, from 3 letters on, typed like "a, r, t" or "a r t": every word of 4 or 5 letters with all
+// of them, in a list that scrolls
+function searchLetters() {
+  const typed = [...$("letters").value.toLowerCase().replace(/[^a-z]/g, "")];
+  const words = typed.length < 3 ? [] : wordsWith(typed);
+  $("letters-result").hidden = !typed.length;
+  const count = words.length === 1 ? "1 word" : `${words.length.toLocaleString()} words`;
+  $("letters-count").textContent = typed.length < 3 ? "Type at least 3 letters" : words.length ? count : "No word has all of these";
+  $("letters-count").classList.toggle("no", typed.length >= 3 && !words.length);
+  $("letters-words").hidden = !words.length;
+  $("letters-words").replaceChildren(...words.map((word) => Object.assign(document.createElement("li"), { textContent: word })));
+  $("letters-words").scrollTop = 0;
+}
+
 // How to play: the rules of one way to play, picked by its chip
 function showRules(way) {
   press($("rules-modes"), way);
@@ -476,6 +490,7 @@ function buildControls() {
   addEventListener("hashchange", showView);
   for (const chip of $("rules-modes").children) chip.addEventListener("click", () => showRules(chip.dataset.value));
   $("lookup").addEventListener("input", lookUp);
+  $("letters").addEventListener("input", searchLetters);
   $("learn-more").addEventListener("click", showLearnWords);
   for (const chip of $("learn-letters").children) {
     chip.addEventListener("click", () => {
